@@ -41,6 +41,7 @@ untouched. The firmware parses the part-program text itself (letter table 0x1ee8
 | `IO_CTL.md` | I/O status and command words as firmware parameters, output-word ownership, mailbox 0x1b/0x1c protocol and packed-decimal format, Phase 1 bench procedure |
 | `EXT_CODES.md` | M-code dispatcher `FUN_0002ca1e`, hidden user I/O M-codes M300-M663 and their gate (param 285 bit 3), the gate patch, the M-macro mechanism, log of G/M-code modifications |
 | `EXT_PROBING.md` | Probing leads and the proposed tool-length/diameter cycle, log of probing modifications |
+| `PHASE1_TEST_PLAN.md` | Step-by-step machine test of the Phase 1 findings with result tables |
 
 ## 4. Change log
 
@@ -48,3 +49,4 @@ untouched. The firmware parses the part-program text itself (letter table 0x1ee8
 |---|---|
 | 2026-10-22 | Plan written. Phase 1 research: I/O words mapped to parameters 150-172/277-285; M-code dispatcher and user I/O M-codes M300-M663 found; gate (param 285 bit 3) and bypass patch bytes identified; M-macro mechanism and probing leads recorded. No firmware or binary modified. `tools/m68k_dis.py` now finds `BMDC.BIN` relative to the script |
 | 2026-10-22 | Split into `IO_CTL.md`, `EXT_CODES.md` and `EXT_PROBING.md`; this file keeps the plan and index |
+| 2026-10-22 | Added `PHASE1_TEST_PLAN.md` (bench test of the Phase 1 findings) |

@@ -108,6 +108,8 @@ Phase 3 needs live PC-side help.
 
 ## 3. Bench procedure (Phase 1)
 
+The full test plan with result tables is `PHASE1_TEST_PLAN.md`; this is the short version.
+
 Machine in a safe state: E-stop within reach, spindle stopped, no tool in the changer arm, Z resting
 on something or with its brake known to hold. **Do not touch 0x31f4 bit 15 (Z-axis brake release),
 bit 9 (A brake), bit 8 (door guard) or bits 25-31 (tool changer) during these tests.**
