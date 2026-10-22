@@ -495,7 +495,7 @@ The output word `_DAT_000031f4` is a 32-bit value where individual bits are set/
 | 0x013DA2 | Long packet builder (18-byte) |
 | 0x013E08 | Hex character validator |
 | 0x0167D6 | Serial buffer initialization |
-| 0x01F4E8 | M-word letter handler: stores the M number at 0x3ef8, `M<n>:` macro definitions (see `GM_EXTENSION_PLAN.md`) |
+| 0x01F4E8 | M-word letter handler: stores the M number at 0x3ef8, `M<n>:` macro definitions (see `EXT_CODES.md`) |
 | 0x02CA1E | M-code dispatcher (`FUN_0002ca1e`): M list 0x2cbf8 → handler table 0x2ce7e |
 | 0x028794 | Machine-level command handler |
 | 0x030BA8 | M300-M363 / M400-M463 / M500-M563 / M600-M663 user I/O handlers (0x30ba8, 0x30bf6, 0x30c44, 0x30cb2) |
