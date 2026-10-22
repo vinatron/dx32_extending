@@ -59,6 +59,7 @@ long TX/RX with AUF. `dx32_proto.py` is the reference implementation of all of t
 | `BMDC_AXIS_OUTPUTS.md` | Analog axis DACs vs the PWMINT duty-cycle card: boot detection flag 0xafc4, halt codes 0xa1/0xa2, PWMINT register block at 0x01300040, servo-tick output path, PWM clamp window, spindle always analog |
 | `BMDC_PROBE_INTERNALS.md` | Touch-probe internals on both sides (BXX probe mode and PROBEPT overlay, firmware probe cycle, setAxes offset copies, setActvTool); research notes only |
 | `MOTION_PLANNER.md`, `BMDC_PARAM_TABLE.md` | Velocity planners (trapezoid vs S-curve, parameter 010) and the firmware parameter table (number → 68030 address/type) |
+| `GM_EXTENSION_PLAN.md` | Separate track that keeps the DOS system: phased plan for new G/M codes, I/O words as parameters, the M-code dispatcher `FUN_0002ca1e` and the hidden user I/O M-codes M300-M663, bench procedure, M-macro leads |
 | `dx32_proto.py` | Python protocol library (pyserial) |
 | `test_auf.py`, `test_tlauf.py`, `test_sniff.py` | Bench scripts: poll a board, send pocket commands, sniff/decode the bus |
 | `dx32_pktuart.comp`, `LINUXCNC_COMPONENT_PROMPT.md` | LinuxCNC HAL component and its full specification |

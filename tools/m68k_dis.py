@@ -1,5 +1,5 @@
 import sys, capstone, struct
-d=open('/home/jpeverill/sandbox/dx32_hacking/BMDC.BIN','rb').read()
+d=open(__import__('os').path.join(__import__('os').path.dirname(__file__),'..','BMDC.BIN'),'rb').read()
 md=capstone.Cs(capstone.CS_ARCH_M68K, capstone.CS_MODE_M68K_040)
 a,end=int(sys.argv[1],16),int(sys.argv[2],16)
 def ext(b):
