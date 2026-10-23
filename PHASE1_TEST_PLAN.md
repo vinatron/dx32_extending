@@ -1,12 +1,16 @@
-# Phase 1 Test Plan: I/O Status and Output Control
+# Phase 1 Test Plan: I/O Status and Output Control (TC22)
 
-A step-by-step bench test of the Phase 1 findings in `IO_CTL.md` and `EXT_CODES.md`. Each test
-says what the research predicts, so a result either confirms a finding or shows where it is wrong.
-Fill in the **Result** boxes as you go and bring the filled-in copy back. The results decide what
+A step-by-step bench test of the Phase 1 findings, written for **the TC22 and its own files in
+`my_tc22_files/`** (firmware rev 6.73). The research was first done on the repo-root firmware
+(rev 6.89). `TC22_VALIDATION.md` lists every difference; the values below are already the TC22 ones.
+
+Each test says what the research predicts, so a result either confirms a finding or shows where it
+is wrong. Fill in the **Result** boxes and bring the filled-in copy back. The results decide what
 gets built next (see "What the results decide" at the end).
 
-Nothing here modifies `BMDC.BIN`, BXX or the parameter file on disk. Every change is a live
-parameter write that is lost at power-down.
+Nothing here modifies `BMDC.BIN`, BXX or the parameter file on disk. Parameter changes are live
+writes that are lost at power-down. **Always use MAINTPG's "Edit Machine Parameter", never "Edit File
+Parameter"**, and answer **No** if MAINTPG asks to write changes to the parameter file.
 
 ---
 
@@ -17,208 +21,174 @@ parameter write that is lost at power-down.
 - [ ] E-stop within reach and tested.
 - [ ] Spindle stopped. No tool in the changer arm. Carousel and arm in their home positions.
 - [ ] Z axis resting on a block, or its brake known to hold with the drives off.
-- [ ] Work area clear. Coolant nozzles pointed somewhere harmless (the coolant pump is the first output tested).
-- [ ] Have a pencil copy of this file, or a laptop, to record results.
+- [ ] Work area clear. Coolant nozzles pointed somewhere harmless (coolant is the first output tested).
+- [ ] A backup copy of `C:\BMDCPRMS.SYS` on a floppy or USB stick.
+- [ ] A printed copy of this file, or a laptop, to record results.
 
-**Do NOT set any of these bits in any test**. They move or release machine hardware:
+**What is not known on this machine:** which AUF terminal each M300-M363 bit drives. The bit names
+come from the repo's `MAINTPG1.DAT` (another machine), so treat them as warnings, not facts.
+**Do NOT run these M-codes in any test**; on the reference machine they release brakes or move hardware:
 
-| Word | Bit | Function | M-code that would set it |
-|---|---|---|---|
-| param 280 (0x31f4) | 15 | **Z-axis brake release**. Z can drop | M347 |
-| param 280 | 9 | A-axis brake release | M341 |
-| param 280 | 8 | Door guard | M340 |
-| param 280 | 25-31 | Tool changer: air blast, drawbar, arm brake, carousel, arm | M357-M363 |
-| param 280 | 1 | Spindle enable forward | M333 |
-| param 160 | 0, 1, 6, 7 | Axis drives, rotary brake, Z drive, limit override | (parameter write) |
-| param 163 | any | Spindle command word | (parameter write) |
+| M-code | Bit | Function on the reference machine |
+|---|---|---|
+| M347 | M332-word bit 15 | **Z-axis brake release**. Z can drop |
+| M341 | bit 9 | A-axis brake release |
+| M340 | bit 8 | Door guard |
+| M333 | bit 1 | Spindle enable forward |
+| M356-M363 | bits 24-31 | Tool changer (air blast, drawbar, arm brake, carousel, arm). The firmware also rewrites these bits itself |
+
+Parameter writes: change **only** param 161 in these tests. Do not write 160 (drives, brakes, limit
+override), 163 (spindle) or 172 (tool changer).
 
 If anything moves unexpectedly: E-stop first, then note what you did.
 
-**Number conventions used below:**
+**Number conventions:**
 
-- Bit n of a parameter value is worth 2^n: bit 9 = 512, bit 10 = 1024, bit 11 = 2048.
-- A long parameter with bit 31 set displays as a negative number. That is normal.
-- `MAINTPG1.DAT` numbers the bits of 16-bit words b0-b15. `AUF_PACKET_FORMAT.md` noted that MAINTPG's
-  display may number them by byte instead. Test 2 settles which. Always record the **numeric value**
-  as well as what lights up.
+- Bit n of a parameter value is worth 2^n: bit 2 = 4, bit 3 = 8, bit 11 = 2048.
+- On the TC22, params 156 and 161 are **single bytes** (bits 0-7).
+- A long parameter (157, 162) with bit 31 set displays as a negative number. That is normal.
+- Always record the **numeric value** as well as what lights up.
 
 ---
 
-## Test 1: Identify the software you are running
+## Test 1: Confirm the machine runs the files that were analysed
 
-**Predicted:** the machine runs the same firmware the research was done on.
+**Predicted:** the files on the machine's C: drive are the ones in `my_tc22_files/`.
 
-1. On the DX32 PC, note the file sizes (from `DIR`) of these files. If you can copy them to a laptop,
-   compute their MD5 too.
+1. On the DX32 PC, note the sizes (from `DIR C:\`). If you can, copy the files to a laptop and compute
+   their MD5 too.
 
-   | File | Repo size | Repo MD5 | Machine size | Machine MD5 |
+   | File | Expected size | Expected MD5 | Machine size | Machine MD5 |
    |---|---|---|---|---|
-   | BMDC.BIN | 311290 | 0f00128c2ae818fdc2ca1d7fc29c775c | | |
-   | BXX.EXE | 577322 | 99a320a18bf36ae70f19683cd489a43b | | |
-   | MAINTPG.EXE | 332202 | ec6caa36465b29e9c78dda4edd38dc5a | | |
-   | MAINTPG1.DAT | 37864 | a5c882aaf3975eb09b1f19a0b9715490 | | |
+   | BMDC.BIN | 253951 | 9b0bd673021d69290646912efd4a1d58 | | |
+   | BXX.EXE | 403490 | 657801ef0d476af8526cd4157b8c4191 | | |
+   | MAINTPG.EXE | 189182 | 45d19881001e6aff27381887af2e4492 | | |
+   | BMDCPRMS.SYS | 27915 (changes when parameters are saved) | dffbb44ff68f8d15bc15e40121d1fe7e | | |
 
-2. Start MAINTPG and open the parameter viewer. Read **param 0** (BMDC Executive Revision Level).
-   The analysed firmware holds 0x2b1 = **689** there. It may display as 689, 6.89 or similar.
+2. Start MAINTPG. It should report "BMDC version ... running" (or load it). Open the parameter viewer
+   and read **param 0**. Predicted: **673** (it may display as 6.73).
 
-   **Result:** param 0 = ________
+   **Result:** MAINTPG message ____________  param 0 = ________
 
-If BMDC.BIN differs, stop here and send the machine's copy. Every address in the research is
-specific to this one firmware image.
+If BMDC.BIN differs, stop and send the machine's copy; every address in the research depends on it.
 
 ---
 
 ## Test 2: Read-only I/O survey (MAINTPG)
 
-**Predicted (`IO_CTL.md` section 1):** the I/O words are live parameters that change as you operate
-switches. Params 150-156 always react, because they are decoded from the AUF short packet. It is
-**unknown** whether the raw long-packet words 277/278 react on a DX32. This test answers that.
+**Predicted (`TC22_VALIDATION.md` section 3):** params 150-164 are live and change as you operate
+switches.
 
-1. Machine powered, drives may stay off. In MAINTPG's parameter viewer, record the resting values:
+1. Machine powered, drives may stay off. Record the resting values. The "Saved" column is the value
+   in the TC22 `BMDCPRMS.SYS`, for comparison:
 
-   | Param | Name | Resting value |
-   |---|---|---|
-   | 150 | Machine Faults | |
-   | 151 | Axis Limits | |
-   | 152 | Auxiliary Limits | |
-   | 154 | Machine Status | |
-   | 155 | Home Switches | |
-   | 156 | Option Status | |
-   | 158 | Back-End Switch Status | |
-   | 160 | Machine Command | |
-   | 161 | Option Command | |
-   | 163 | Spindle Command | |
-   | 164 | Spindle Status | |
-   | 171 | TLAUF Inputs | |
-   | 277 | GPAUF1 Inputs 0-31 | |
-   | 278 | GPAUF1 Inputs 32-63 | |
-   | 279 | GPAUF1 Outputs 0-31 | |
-   | 280 | GPAUF1 Outputs 32-63 | |
-   | 285 | Control Options | |
+   | Param | Name | Saved | Resting value now |
+   |---|---|---|---|
+   | 150 | Machine Faults | 0 | |
+   | 151 | Axis Limits | 0 | |
+   | 152 | Auxiliary Limits | 0 | |
+   | 153 | Drive Faults | 0 | |
+   | 154 | Machine Status | 1 | |
+   | 155 | Home Switches | -125 | |
+   | 156 | Option Status (byte) | 12 | |
+   | 157 | User Status (M500 inputs) | 0 | |
+   | 158 | Back-End Switches | 0 | |
+   | 160 | Machine Command | 65 | |
+   | 161 | Option Command (byte) | 2 | |
+   | 162 | User Command Bits (M300 outputs) | 0 | |
+   | 163 | Spindle Command | 1280 | |
+   | 164 | Spindle Status | -91 | |
+   | 171 | TLAUF Inputs | 42 | |
 
-   **Predicted:** 285 = 0, 279 = 0.
+   **Predicted:** 162 = 0. Param 157 may be anything: it only refreshes when an I/O M-code runs.
 
-2. Operate one input at a time, and note **every** parameter that changes and its new value:
+2. Operate one input at a time and note **every** parameter that changes:
 
-   | Action | Params that changed (old → new) | Did 277 or 278 change? |
-   |---|---|---|
-   | Press E-stop, then release | | |
-   | Open perimeter door, then close | | |
-   | Press X home switch by hand (drives off) | | |
-   | Press Y home switch by hand | | |
-   | Press Z home switch by hand | | |
-   | Low air: close the air supply until the switch trips | | |
-   | Pendant/console buttons (cycle start, hold), drives off | | |
-   | Touch probe tip, if a probe is fitted (predicted: param 155 bit 7 = +128) | | |
+   | Action | Params that changed (old → new) |
+   |---|---|
+   | Press E-stop, then release | |
+   | Open perimeter door, then close | |
+   | Press X home switch by hand (drives off) | |
+   | Press Y home switch by hand | |
+   | Press Z home switch by hand | |
+   | Low air: close the air supply until the switch trips | |
+   | Cycle start / hold buttons (drives off) | |
+   | Touch probe tip, if a probe is fitted (predicted: param 155 +128, bit 7) | |
 
    **Predicted:** E-stop changes 152 bit 0. The door changes 152 bit 3 and/or 154 bit 3. The home
-   switches change 155 bits 0-2. Low air changes 156 bit 8 (+256). Buttons change 158 bits 28/29.
+   switches change 155 bits 0-2. Low air and low lube change 156 bits 0/1 (TENTATIVE).
 
-3. **Key question:** do the same switches also flip bits in **277/278**? Write down which bit each
-   one flips. MAINTPG1.DAT predicts these names for param 277: b6 E-stop, b10 low air, b15/b16/b17
-   X/Y/Z home, b24 perimeter door.
-
-   **Result:** 277/278 react: YES / NO / PARTLY ____________________
-
----
-
-## Test 3: Live parameter write
-
-**Predicted (`IO_CTL.md` section 1):** MAINTPG's "Edit Machine Values" writes straight to the
-running firmware. In param 161, bit 11 (value 2048) = flood coolant, and 1 = ON.
-
-1. Note the current value of param 161 (from Test 2): V = ______. It is normally 0 with the machine
-   idle.
-2. Choose "Edit Machine Values" (**not** "Edit File Values"). Write param 161 = **V + 2048**.
-
-   **Predicted:** the flood coolant pump runs within a fraction of a second.
-
-   **Result:** pump runs: YES / NO. MAINTPG shows which bit as set? ______
-
-3. Write param 161 = **V** (the original value). **Predicted:** the pump stops.
-4. Optional: repeat with V + 1024 (bit 10 = mist), then restore V.
-
-   **Result:** mist valve: YES / NO
-
-If writing 2048 does nothing, also try **8** once (the byte-numbering hypothesis), then restore V.
-
-   **Result:** 8 did: ____________
-
----
-
-## Test 4: The I/O M-codes are present but switched off
-
-**Predicted (`EXT_CODES.md` sections 1-2):** with param 285 = 0, M300-M663 raise an alarm instead of
-acting.
-
-1. Start BXX normally. In MDI (or a one-line program) run:
-   ```
-   M343
-   ```
-   **Predicted:** an alarm or error message and no coolant. Copy the message text exactly.
+3. Also try MAINTPG's **"Selected I/O Status"** screen and note what it shows.
 
    **Result:** ____________________________________________
 
-2. As a control, run `M08` then `M09`. **Predicted:** flood on, then off, as normal.
+---
 
-   **Result:** ____________
+## Test 3: Live parameter write (flood coolant)
+
+**Predicted:** "Edit Machine Parameter" writes straight to the running firmware. On the TC22, param
+161 bit 3 (value **8**) = flood and bit 2 (value **4**) = mist, with 1 = ON. Confirmed from the
+firmware's own M7/M8/M9 code.
+
+1. Note the current value of param 161 from Test 2: V = ______ (saved value 2 = lube pump bit).
+2. "Edit Machine Parameter": write param 161 = **V + 8**.
+
+   **Predicted:** the flood pump runs.
+
+   **Result:** pump runs: YES / NO
+
+3. Write param 161 = **V**. **Predicted:** the pump stops.
+4. Optional: V + 4 (mist), then back to V.
+
+   **Result:** mist: YES / NO
 
 ---
 
-## Test 5: Switch on "Additional M-codes" and check that the setting survives
+## Test 4: Do the I/O M-codes run without any set-up?
 
-**Predicted:** param 285 bit 3 (value 8) enables the codes. It is unknown whether the value survives
-leaving MAINTPG and starting BXX (BXX might reload the firmware).
+**Predicted:** the TC22 firmware has **no enable option** for M300-M663 (unlike the repo build,
+which needs param 285). They should run straight away.
 
-1. Exit BXX. In MAINTPG, "Edit Machine Values": write param **285 = 8**. Read it back.
-
-   **Result:** reads back as ______
-
-2. Exit MAINTPG **without powering down**, and start BXX.
-3. Run `M343` in MDI.
-   - No alarm and the pump runs: the setting survived. Continue with Test 6.
-   - The same alarm as in Test 4: BXX reloads the firmware/parameters at start-up. Record that,
-     skip to Test 8, and note it under "What the results decide".
-
-   **Result:** survived: YES / NO
-
-4. Optional: did BXX show anything different during start-up (a "loading BMDC" message, a delay)?
+1. Start BXX. Control test first: `M08`, then `M09`. **Predicted:** flood on, then off.
 
    **Result:** ____________
 
+2. Run a harmless user-output code and its clear, in MDI or a two-line program:
+   ```
+   M300
+   M400
+   ```
+   **Predicted:** no alarm.
+
+   **Result:** alarm? NO / YES, text: ____________________________________________
+
 ---
 
-## Test 6: Output M-codes
+## Test 5: Output M-codes and the user output word
 
-Only if Test 5 worked. Use a short program so each step is visible. Use a dwell of a few seconds
-between steps. The dwell units are not confirmed, so adjust `P` until each step lasts 2-5 s, and
-note the value.
+Use short programs so each step is visible. The dwell units are not confirmed: adjust `P` until each
+dwell lasts 2-5 s, and note the value.
 
-### 6a. Flood through the M-code (bit not owned by the firmware on this machine)
+### 5a. M300-M331 set param 162
 
 ```
-M343      (param 280 bit 11 = flood ON)
-G4 P5
-M443      (flood OFF)
+M300      (param 162 bit 0)
+M305      (param 162 bit 5)
 M30
 ```
 
-**Predicted:** the flood pump runs during the dwell. Param 280 gains 2048 while it is on.
+Then (BXX exited, power still on) open MAINTPG and read param 162. Then return to BXX and run
+`M400` / `M405` to clear the bits.
 
-**Result:** pump: YES / NO. Dwell P5 lasted ______ s
+**Predicted:** 162 = 33 (bits 0 and 5) after the first program, and 0 after clearing. If MAINTPG
+reloads the BMDC when it starts (watch for "Loading BMDC"), the value will read 0 regardless. Note
+that, because it also tells us whether MAINTPG and BXX can hand over a running card.
 
-If the pump does not run, the AUF on this machine takes coolant from the short packet, not the long
-one. That is a valid result: record it and continue with 6c.
+**Result:** 162 = ______  MAINTPG reloaded BMDC: YES / NO
 
-### 6b. Mist through the M-code
+### 5b. Map the user outputs to AUF terminals
 
-Same as 6a with M342 / M442 (bit 10).
-
-**Result:** mist: YES / NO
-
-### 6c. Map the long-packet outputs to AUF terminals
-
-Watch the **AUF board output LEDs** (or meter the terminals). Step one bit at a time:
+Watch the **AUF board output LEDs** (or meter the terminals). Step one code at a time:
 
 ```
 M3nn
@@ -227,73 +197,77 @@ M4nn
 G4 P2
 ```
 
-Test **only** these numbers; the rest are excluded by the safety table:
+Test these numbers only:
 
-- M300-M331 (param 279 bits 0-31; nothing in the firmware uses them)
-- M332, M334-M339, M342-M346, M348-M356 (param 280 bits 0, 2-7, 10-14, 16-24)
+- M300-M331 (param 162 bits 0-31)
+- M332, M334-M339, M342-M355 (second word bits 0, 2-7, 10-23)
 
 Fill in every number that changes something:
 
-| M-code | Param.bit | AUF terminal / LED that changed | Notes |
+| M-code | Bit | AUF terminal / LED that changed | Notes |
 |---|---|---|---|
 | | | | |
 | | | | |
 | | | | |
 
-**Predicted for param 280 (MAINTPG1.DAT names):** b0 spindle safe light, b2/b3 gear, b4 shot pin, b6
-lube pump, b10 mist, b11 flood, b12/b13 chip conveyor, b14 index air. Bits 1, 5, 6, 7 and 12-15 are
-re-driven by the firmware every cycle, so M-codes on those bits may flicker or have no effect. Note
-it if so.
+**Predicted:** unknown. In this firmware build nothing but these M-codes writes the user output words,
+so either they reach spare AUF terminals, or the AUF ignores them on this machine. Both are useful
+results. A good first candidate is **M343**, which is flood on the reference machine.
 
-### 6d. Do M-code outputs drop on reset?
+### 5c. Do user outputs drop on reset or program end?
 
-**Predicted (TENTATIVE):** a reset/abort event clears every M-code output.
+1. Turn on one output found in 5b (M3nn) without the matching M4nn.
+2. Then in turn: end the program (M30), press reset, E-stop and reset. Note when the output drops.
 
-1. `M332` (or any bit found in 6c that lights an LED), without the matching M4xx.
-2. Press reset (or E-stop then reset) and watch whether the output drops.
-
-**Result:** dropped on: reset ______ / E-stop ______ / program end ______ / stayed on ______
+**Result:** dropped on: M30 ______ / reset ______ / E-stop ______ / stayed on ______
 
 ---
 
-## Test 7: Wait-for-input M-codes
+## Test 6: Wait-for-input M-codes
 
-Only if Test 5 worked **and** Test 2 found at least one switch that flips a bit in 277/278.
+**Predicted:** `M5nn` waits until bit nn of the long-RX input word is 1, and `M6nn` until it is 0.
+nn = 00-31 is param 157 bit nn; 32-63 is the second input word. **Unknown:** which switch is which
+bit, or whether the AUF reports the main switches in this word at all.
 
-Mapping: input bit n of param 277 → `M5nn` / `M6nn` with nn = n (00-31). Bit n of param 278 →
-nn = n + 32.
+1. **Find the bits.** In BXX, run `M400` (any I/O M-code refreshes the snapshot in param 157), exit
+   to MAINTPG, and read param 157. Repeat with one switch held (door open, E-stop pressed). If 157
+   changes, the changed bit is the nn to use. (If MAINTPG reloads the BMDC, see 5a, this step will
+   not work; skip to 2 with the reference-machine guesses: 06 E-stop, 10 low air, 24 door.)
 
-Example for the door: if Test 2 showed it on 277 bit 24, use M524 / M624.
+   | Switch state | Param 157 |
+   |---|---|
+   | All at rest | |
+   | Door open | |
+   | E-stop pressed | |
 
-```
-M5nn      (waits here until the input is ON = bit set)
-M343      (flood on as a visible marker)
-G4 P5
-M443
-M6nn      (waits here until the input is OFF = bit clear)
-M343
-G4 P5
-M443
-M30
-```
+2. **Wait test** with a bit from step 1:
+   ```
+   M5nn      (waits here until the input bit is 1)
+   M08
+   G4 P5
+   M09
+   M6nn      (waits here until the input bit is 0)
+   M08
+   G4 P5
+   M09
+   M30
+   ```
+   **Predicted:** the program stops at M5nn until you operate the switch, runs flood, then waits at
+   M6nn until you release it.
 
-1. Start with the switch released. **Predicted:** the program stops at M5nn. Operate the switch:
-   flood runs. Release it: flood runs again.
-2. Check that Hold and Reset can still stop the program while it waits.
+3. Check that **Hold and Reset can still stop the program while it is waiting.** Do this first,
+   before relying on a wait in a real program.
 
-**Result:** M5nn waited and released: YES / NO. M6nn: YES / NO. Hold/reset during wait: ______
-
-If Test 2 showed that 277/278 do not react, skip this test: these M-codes cannot see this machine's
-inputs as they stand.
+**Result:** M5nn: ______  M6nn: ______  Hold/reset during wait: ______
 
 ---
 
-## Test 8: Clean-up
+## Test 7: Clean-up
 
-- [ ] Run M400-M463 for every output you set, or power-cycle.
+- [ ] Clear every user output you set (M400-M463), or power-cycle.
 - [ ] Param 161 back to its original value V.
-- [ ] Param 285 back to 0 (or power-cycle; it is not saved to disk).
 - [ ] Coolant off, machine back in its normal state.
+- [ ] Compare `C:\BMDCPRMS.SYS` with your backup (size/date) to make sure nothing was saved.
 
 ---
 
@@ -301,25 +275,24 @@ inputs as they stand.
 
 | Outcome | Next step |
 |---|---|
-| Test 1 file mismatch | Send the machine's BMDC.BIN; addresses must be re-checked first |
-| Test 3 works | Confirmed: the PC can switch any command-word output live, and a DOS I/O utility is worth building |
-| Test 5 survives | Enabling the codes can be done with a parameter. Next: find a persistent way (parameter file or patch) |
-| Test 5 does not survive | Build the 4-edit gate patch (`tools/patch_bmdc_mcodes.py`, `EXT_CODES.md` section 2) |
-| Test 6a/6c map outputs | Record the mapping in `AUF_PACKET_FORMAT.md` and `IO_CTL.md`, mark it CONFIRMED |
-| 6a fails (coolant not on long packet) | New firmware M-codes must drive outputs through the command words (params 160/161) instead. Phase 2 work |
-| Test 7 works | Wait-for-input is usable as is |
-| Test 2 shows 277/278 do not react | Inputs must come from params 150-158. A new wait M-code is needed (Phase 2) |
+| Test 1 mismatch | Send the machine's files; addresses must be re-checked first |
+| Test 3 works | Confirmed: the PC can switch command-byte outputs live, and a DOS I/O utility is worth building |
+| Test 4 no alarm | Confirmed: the user I/O M-codes are available as delivered on the TC22 |
+| Test 4 alarm | The TC22 has a gate the analysis missed; send the alarm text |
+| 5b finds terminals | Record the map in `IO_CTL.md` / `AUF_PACKET_FORMAT.md` as CONFIRMED |
+| 5b finds nothing | User outputs need new firmware code that drives the command bytes (params 160/161). Phase 2 work in the TC22 image |
+| Test 6 works | Wait-for-input usable as is |
+| Test 6 never sees the switches | A wait M-code on params 150-158 is needed (Phase 2) |
 
 ## Results summary (fill in)
 
 | Test | Pass / Fail / Skipped | Notes |
 |---|---|---|
-| 1 Software identity | | |
-| 2 I/O survey (277/278 react?) | | |
-| 3 Live write (flood via 161) | | |
-| 4 M343 alarm with option off | | |
-| 5 Option survives BXX start | | |
-| 6a Flood via M343 | | |
-| 6c Output map | | |
-| 6d Outputs drop on reset | | |
-| 7 Wait-for-input | | |
+| 1 Files and revision | | |
+| 2 I/O survey | | |
+| 3 Flood via param 161 + 8 | | |
+| 4 M-codes run without set-up | | |
+| 5a Param 162 shows M300 bits | | |
+| 5b Output map | | |
+| 5c Outputs drop on reset / M30 | | |
+| 6 Wait-for-input | | |

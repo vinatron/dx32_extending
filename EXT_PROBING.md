@@ -7,6 +7,10 @@ cycle would hang off is in `EXT_CODES.md` section 3.
 Confidence labels follow the repo convention: CONFIRMED = traced in firmware or verified against
 MAINTPG; TENTATIVE = inferred, needs a bench test.
 
+
+> **TC22 (firmware rev 6.73):** that build has no `M<n>:` user macros and no M63, so the
+> "user M6 macro → probe" route below needs new firmware code on the TC22. See `TC22_VALIDATION.md` section 4.
+
 ---
 
 ## 1. Leads (Phase 3)
