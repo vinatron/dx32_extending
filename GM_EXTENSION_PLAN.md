@@ -42,6 +42,7 @@ untouched. The firmware parses the part-program text itself (letter table 0x1ee8
 | `EXT_CODES.md` | M-code dispatcher `FUN_0002ca1e`, hidden user I/O M-codes M300-M663 and their gate (param 285 bit 3), the gate patch, the M-macro mechanism, log of G/M-code modifications |
 | `EXT_PROBING.md` | Probing leads and the proposed tool-length/diameter cycle, log of probing modifications |
 | `PHASE1_TEST_PLAN.md` | Step-by-step machine test of the Phase 1 findings with result tables |
+| `TC22_VALIDATION.md` | TC22 files vs repo originals, and how every Phase 1 finding translates to the TC22 firmware |
 
 ## 4. Change log
 
@@ -50,3 +51,4 @@ untouched. The firmware parses the part-program text itself (letter table 0x1ee8
 | 2026-10-22 | Plan written. Phase 1 research: I/O words mapped to parameters 150-172/277-285; M-code dispatcher and user I/O M-codes M300-M663 found; gate (param 285 bit 3) and bypass patch bytes identified; M-macro mechanism and probing leads recorded. No firmware or binary modified. `tools/m68k_dis.py` now finds `BMDC.BIN` relative to the script |
 | 2026-10-22 | Split into `IO_CTL.md`, `EXT_CODES.md` and `EXT_PROBING.md`; this file keeps the plan and index |
 | 2026-10-22 | Added `PHASE1_TEST_PLAN.md` (bench test of the Phase 1 findings) |
+| 2026-10-23 | Validated `my_tc22_files/` (`TC22_VALIDATION.md`). The TC22 runs firmware rev 6.73: I/O M-codes ungated, user I/O at params 157/162, flood = param 161 + 8, no M-code macros, no M63. `PHASE1_TEST_PLAN.md` rewritten for the TC22 |

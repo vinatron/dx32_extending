@@ -6,6 +6,11 @@ behaviour, and the M-code macro mechanism that new codes will build on. Part of 
 Confidence labels follow the repo convention: CONFIRMED = traced in firmware or verified against
 MAINTPG; TENTATIVE = inferred, needs a bench test.
 
+
+> **TC22 (firmware rev 6.73):** M300-M663 exist there too (handlers 0x2706a/0x2709a/0x270ca/0x2711a)
+> but have **no gate**, so section 2 (enabling) does not apply. The `M<n>:` macro mechanism of
+> section 3 and the codes M16, M17, M63, M71 and M72 are **absent** in that build. See `TC22_VALIDATION.md`.
+
 ---
 
 ## 1. The M-code dispatcher and the user I/O M-codes (CONFIRMED)

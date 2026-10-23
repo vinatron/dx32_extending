@@ -5,6 +5,12 @@ track in `GM_EXTENSION_PLAN.md`; the G/M codes that drive I/O from a part progra
 `EXT_CODES.md`. Confidence labels follow the repo convention: CONFIRMED = traced in firmware or verified against
 MAINTPG; TENTATIVE = inferred, needs a bench test.
 
+
+> **TC22 (the machine under test, firmware rev 6.73):** the addresses and several parameter numbers
+> below are for the repo-root firmware (rev 6.89). On the TC22: params 156/161 are bytes (flood =
+> param 161 bit 3 = 8, mist = bit 2 = 4), the user I/O words are param **157** (inputs) and **162**
+> (outputs), and params 277-285 do not exist. See `TC22_VALIDATION.md` sections 2-3.
+
 ---
 
 ## 1. The I/O words are firmware parameters (CONFIRMED)

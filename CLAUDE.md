@@ -62,6 +62,7 @@ long TX/RX with AUF. `dx32_proto.py` is the reference implementation of all of t
 | `GM_EXTENSION_PLAN.md` | Separate track that keeps the DOS system: phased plan for new G/M codes, document map, change log |
 | `IO_CTL.md`, `EXT_CODES.md`, `EXT_PROBING.md` | That track's findings, one file per topic: I/O control (params, mailbox, bench procedure); G/M codes (dispatcher `FUN_0002ca1e`, hidden M300-M663, gate patch, M-macros, modifications log); probing extensions. New I/O, G/M-code and probing findings go in the matching file |
 | `PHASE1_TEST_PLAN.md` | Machine bench test for the Phase 1 findings, with fill-in result tables. Results that come back go into `IO_CTL.md`/`EXT_CODES.md` and flip TENTATIVE items to CONFIRMED |
+| `my_tc22_files/`, `TC22_VALIDATION.md` | The TC22's own files (BMDC.BIN rev 6.73, older BXX/MAINTPG, its BMDCPRMS.SYS) and their comparison with the repo-root originals (rev 6.89). Firmware work for that machine must use `my_tc22_files/BMDC.BIN`; addresses differ from `decompiled/BMDC.*` |
 | `dx32_proto.py` | Python protocol library (pyserial) |
 | `test_auf.py`, `test_tlauf.py`, `test_sniff.py` | Bench scripts: poll a board, send pocket commands, sniff/decode the bus |
 | `dx32_pktuart.comp`, `LINUXCNC_COMPONENT_PROMPT.md` | LinuxCNC HAL component and its full specification |
