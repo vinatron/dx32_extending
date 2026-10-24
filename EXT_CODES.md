@@ -107,9 +107,6 @@ Phase 2 work:
 
 1. Find the return code (what reaches 0x20176) and the exact definition syntax, and check how BXX
    passes such programs (macros must be in the program buffer the firmware scans).
-   *Update:* 0x20176 is the letter-table handler for `|` (0x1ee84), so a macro body ends with `|`
-   (CONFIRMED in firmware). `M<n>:` takes slots from 199 downward in the subprogram table 0x3820
-   that `#n` ... `$` subprograms also use. See `macro_simulator/LANGUAGE.md` section 9.
 2. Try a minimal macro on the machine (`M1000:` body ending with the return code; then call `M1000`).
 3. Find free space in `BMDC.BIN` for patch code. The image ends at 0x4bffa and the stacks start at
    0x4d000. Then decide whether new codes go into the dispatcher's unknown-M fallback (0x2cb0e) or

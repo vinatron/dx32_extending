@@ -28,6 +28,7 @@ CONFIRMED/TENTATIVE marks and firmware addresses.
 | `corpus_689.txt` | The 6.89 built-in cycle text, one block per line with offsets and table entries |
 | `tools/extract_corpus.py`, `tools/gen_corpus_c.py` | Regenerate `corpus_689.txt` / `src/dxcorpus.c` from `../BMDC.BIN` |
 | `tools/check_grammar.py` | Independent Python recognizer: every corpus block fits the grammar |
+| `tools/m68k_dis.py` | `python3 tools/m68k_dis.py START END`: disassembler for `../BMDC.BIN` (capstone), with its own decoding of 68882 instructions and FBcc, used to trace the interpreter |
 
 ## Building
 

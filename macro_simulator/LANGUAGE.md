@@ -17,7 +17,9 @@ It is the specification `dxsim` implements.
 firmware; **TENTATIVE** = inferred, not traced end to end. `dxsim` follows the firmware where the two differ
 and says so in its trace.
 
-All addresses are 6.89 file offsets = 68030 addresses (`decompiled/BMDC.asm`, `tools/m68k_dis.py`).
+All addresses are 6.89 file offsets = 68030 addresses (`../decompiled/BMDC.asm`, and `tools/m68k_dis.py` in this
+directory: the repo's capstone disassembler extended to decode 68882 instructions and FBcc itself, since
+capstone gets their length wrong and loses sync).
 
 ---
 
@@ -229,7 +231,8 @@ M100 X*1.5               call: any M100 in a program; '*' values as for #n
   the body in slot 199-i of the same table as `#n` macros (0x1f632). M900-M907, M974, M975 and M6 set
   extra flags (hooks; `../EXT_CODES.md` section 3).
 * A call sets call-pending (0x32e3 bit 0) and the nesting count 0xc5c0; at the first level it also allows
-  assignments without PPPL (0x4088 bit 2). `|` (0x20176) returns; after a user M6 macro the real tool
+  assignments without PPPL (0x4088 bit 2). `|` (0x20176, the letter-table entry for `|`) returns; this
+  answers Phase 2 item 1 of `../EXT_CODES.md` section 3 ("find the return code"); after a user M6 macro the real tool
   change M63 is queued.
 * The operator's manual mentions a separate MACROs file, validated with START, and "Loops and Macros
   Illegal in DNC". `dxsim -M file` loads such a file. TENTATIVE.
