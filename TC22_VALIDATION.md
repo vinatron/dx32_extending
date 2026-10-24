@@ -4,7 +4,8 @@ Validation of the files in `my_tc22_files/` (copied from the TC22 the Phase 1 te
 against the binaries the research was done on (repo root). The short answer: **the TC22 runs an
 older build of the same firmware and DOS software.** The Phase 1 findings carry over in substance,
 but every firmware address and several parameter numbers differ. `PHASE1_TEST_PLAN.md` has been
-rewritten for the TC22 values below.
+rewritten for the TC22 values below. The TC22 is being moved to 6.89; see `VERSIONS.md` for the
+full comparison and the upgrade checklist.
 
 Confidence labels: CONFIRMED = found in the TC22 binary by disassembly; TENTATIVE = inferred.
 
