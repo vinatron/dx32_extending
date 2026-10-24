@@ -15,8 +15,22 @@ licensed "PPPL" parametric option (param 285 bit 4).
 |---|---|
 | `manual/` | The Bridgeport programmer's manual (PDF), the primary specification. Upload it here |
 | `README.md` | This file: scope, sources, what is already known |
+| `corpus_689.txt` | The 6.89 built-in cycle text, one block per line with its offset and the table entries that point at it |
+| `GRAMMAR_DRAFT.md` | Pre-manual grammar from the corpus and the interpreter code (CONFIRMED/TENTATIVE per item), open questions, simulator plan |
+| `tools/extract_corpus.py` | Regenerates `corpus_689.txt` from `../BMDC.BIN` |
+| `tools/check_grammar.py` | Recognizer for the draft grammar; checks that every corpus block parses |
 
-Code, tests and the extracted corpus will be added by the simulator project.
+## Status
+
+The manual is not in `manual/` yet. The groundwork that does not need it is done:
+
+```bash
+python3 tools/extract_corpus.py -o corpus_689.txt   # 628 non-empty blocks, tables A (41) and B (12)
+python3 tools/check_grammar.py                      # blocks: 628  unparsed: 0
+```
+
+The simulator itself waits for the manual and for confirmation of the plan in `GRAMMAR_DRAFT.md`
+section 10.
 
 ## Sources for the language definition
 
@@ -46,4 +60,6 @@ Code, tests and the extracted corpus will be added by the simulator project.
    Addresses and tooling are in `../MOTION_PLANNER.md`, `../EXT_CODES.md` and `../CLAUDE.md`
    (`tools/m68k_dis.py`, `decompiled/BMDC.asm`).
 
-All findings above are TENTATIVE until checked against the manual.
+All findings above are TENTATIVE until checked against the manual. `GRAMMAR_DRAFT.md` supersedes
+the summary above: several items are now traced in the firmware, and the `!`/`&` meanings are
+resolved (`!` ends a `?` conditional, which can span blocks and nest; `&` returns from a `%` call).
