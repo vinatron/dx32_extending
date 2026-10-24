@@ -1,0 +1,11 @@
+:1341; A program in 3PL to make five concentric circles.
+N0G75G90G0T1M6; Set system to multiquad circular, absolute rapid,T1 TLO.
+X1 = 5.0; Initialize value of variable X1 to five inches.
+L2
+N5G0X1Y0.Z1.; Position to value of variable X1 and stated values of Y and Z.
+N10G1Z0.F40.; Bring Z down into piece.
+N15G2X1Y0.I0.J0.F40.; 360 degree circle.
+X1 = X1 - 1.0; Subtract 1 inch from the value of variable X1.
+?X1 <GE>0.9; If the circle radius is still more than 1 inch.
+= L2!; Loop back to L2 to cut another circle.
+N20G0M30

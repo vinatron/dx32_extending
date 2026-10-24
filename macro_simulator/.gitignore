@@ -1,0 +1,6 @@
+dxsim
+*.obj
+*.o
+*.EXE
+*.exe
+*.err
