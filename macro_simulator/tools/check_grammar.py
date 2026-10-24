@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the TENTATIVE grammar in GRAMMAR_DRAFT.md against the extracted corpus.
+"""Check the grammar of LANGUAGE.md against the extracted corpus (independent of dxsim).
 
 This is a recognizer, not the simulator: it splits every block into the token
 classes of the draft grammar and reports blocks it cannot place, plus blocks
@@ -100,7 +100,7 @@ ITEM = re.compile("|".join([
     r"(?P<subdef>#\d+)",
     r"(?P<seq>:\d+)",
     r"(?P<word>[A-KM-Z](?:\*(?:%s)?|%s))" % (NUM, NUM),
-    r"(?P<stray>=%s)" % NUM,                     # see GRAMMAR_DRAFT.md open question 1
+    r"(?P<stray>=%s)" % NUM,                     # see LANGUAGE.md open question 1
     r"(?P<comment>;.*$|\"[^\"]*\"|'[^']*'|`[^`]*`)",
 ]))
 
