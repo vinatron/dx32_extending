@@ -48,7 +48,7 @@ long TX/RX with AUF. `dx32_proto.py` is the reference implementation of all of t
 | `ghidra_scripts/*.java` | `ExportAllDecompiled` (→ `*.c`), `ExportListing` (→ `BMDC.asm`), `ApplyCvSymbols` (names from a CSV), `DisableNoReturnDiscovery` (pre-script; without it Ghidra marks MSC's `__chkstk` as non-returning and every DOS function body is cut off after its first line) |
 | `tools/cv_nb09.py`, `tools/cv_types.py` | Parse the CodeView NB09 block at the end of `B3T.EXE`: symbols (→ `decompiled/B3T_symbols.txt`) and struct/union/enum type records (`python3 tools/cv_types.py B3T.EXE 0x10bc ...` → `decompiled/B3T_types.txt`, which names the MOVEBUFFER/MOVCMD/dualPortRAM layouts) |
 | `tools/patch_bmdc_ram.py` | Branch/NOP patch of the boot-time RAM-size checks so a BMDC3 accepts >512 KB (`--max 1M` or `--max 16M`, `--check` to inspect an image); background in `PROTOCOL_NOTES.md` "RAM and dual-port sizing at boot" |
-| `tools/m68k_dis.py` | `python3 tools/m68k_dis.py START END` capstone disassembly of `BMDC.BIN` with resync after undecodable words and decoded extended-precision immediates. Use for the mailbox handlers and G-code handlers that Ghidra never disassembled (they are only reached through jump tables) |
+| `tools/m68k_dis.py` | `python3 tools/m68k_dis.py START END` capstone disassembly of `BMDC.BIN` with resync after undecodable words. 68882 general instructions (all EA modes incl. abs.w/abs.l and extended/double/single immediates) and FBcc are decoded by the script itself, because capstone gets their length wrong and loses sync. Use for the mailbox handlers and G-code handlers that Ghidra never disassembled (they are only reached through jump tables) |
 | `PROTOCOL_NOTES.md` | Master protocol doc: UART config, packet formats, ISA port map, dual-port RAM, 68030 memory map, TLAUF VMC command protocol, key firmware function table, PC→BMDC mailbox command table |
 | `AUF_PACKET_FORMAT.md` | Bit-level AUF packet encoding, input/output bit maps, debounce |
 | `HOMING_SEQUENCE.md`, `TOOL_CHANGE_STATE_MACHINE.md` | Tool changer behavior traced through the firmware |
@@ -64,7 +64,7 @@ long TX/RX with AUF. `dx32_proto.py` is the reference implementation of all of t
 | `PHASE1_TEST_PLAN.md` | Machine bench test for the Phase 1 findings, with fill-in result tables. Results that come back go into `IO_CTL.md`/`EXT_CODES.md` and flip TENTATIVE items to CONFIRMED |
 | `my_tc22_files/`, `TC22_VALIDATION.md` | The TC22's own files (BMDC.BIN rev 6.73, older BXX/MAINTPG, its BMDCPRMS.SYS) and their comparison with the repo-root originals (rev 6.89). Firmware work for that machine must use `my_tc22_files/BMDC.BIN`; addresses differ from `decompiled/BMDC.*` |
 | `VERSIONS.md` | 6.73 vs 6.89 comparison with an address-equivalence table and the TC22 upgrade checklist (BMDCPRMS.SYS conversion: 156/161 × 256, 194-201 gear-shift timers). The TC22 is moving to 6.89, after which the 6.89 research applies directly |
-| `macro_simulator/` | Separate project: simulator for the macro language. `manual/` holds the programmer's manual PDF; the firmware's built-in cycles (6.89 text at 0x26852-0x27b2e) are its test corpus. `corpus_689.txt` is that text extracted (`tools/extract_corpus.py`); `GRAMMAR_DRAFT.md` is the interpreter traced so far (letter table, conditionals, flow control, expression functions) |
+| `macro_simulator/` | Separate project: `dxsim`, a C89 simulator for the part-program/macro language (DOS, Win98, later z/OS with GDDM plots). `LANGUAGE.md` is the language reference (programmer's manual in `manual/` cross-checked against the 6.89 interpreter: letter table, PPPL evaluator, conditionals, macros, canned-cycle variable rules). The canned cycles run the firmware's own cycle text (6.89, 0x26852-0x27b2e), extracted to `corpus_689.txt` and `src/dxcorpus.c`. `make` / `make test` there |
 | `dx32_proto.py` | Python protocol library (pyserial) |
 | `test_auf.py`, `test_tlauf.py`, `test_sniff.py` | Bench scripts: poll a board, send pocket commands, sniff/decode the bus |
 | `dx32_pktuart.comp`, `LINUXCNC_COMPONENT_PROMPT.md` | LinuxCNC HAL component and its full specification |
@@ -89,8 +89,8 @@ $H /tmp/ghidra_projects BXX -import BXX.EXE -scriptPath ./ghidra_scripts -preScr
 DOS executables auto-detect as `x86:LE:16:Real Mode`. `/tmp/ghidra_projects` does not survive reboots;
 recreate it. The BMDC run takes a few minutes; the DOS ones longer. Ghidra silently stops
 disassembling 68k code after an `FMOVECR`/`fmove.p`, so gaps in `BMDC.asm` are expected; fill them
-with capstone (`python3 -c 'import capstone'` works here, mode `CS_MODE_M68K_040`), but capstone
-mislabels packed/absolute FPU operands as `invalid` and misdecodes `FBcc`, so decode those by hand.
+with `tools/m68k_dis.py` (capstone, `pip install capstone` if missing), which decodes the FPU
+instructions itself; only packed-decimal (`fmove.p`) immediates still need decoding by hand.
 
 ### Quick disassembly with Rizin
 
