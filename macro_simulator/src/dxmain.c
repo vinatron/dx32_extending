@@ -16,6 +16,7 @@ static const char *const help[] = {
     "  -p FILE    plot file: .svg, .plt/.hpg (HPGL) or .ps/.eps (PostScript)",
     "  -v VIEW    plot view: xy (default), xz, yz, iso",
     "  -r         do not draw rapid moves",
+    "  -S / -Sf   live preview on the VGA screen, paced per move / at the feed rate (DOS)",
 #ifdef DX_GDDM
     "  -g         draw on the 3270 terminal with GDDM",
 #endif
@@ -109,7 +110,8 @@ int main(int argc, char **argv)
     dxsim *s = &sim;
     const char *prog = 0, *trace = 0, *pfile = 0, *expr = 0;
     const char *macf[8];
-    int nmacf = 0, quiet = 0, dump = 0, mm = 0, cov = 0, gddm = 0, check = 0, i, rc, li, idx;
+    int nmacf = 0, quiet = 0, dump = 0, mm = 0, cov = 0, gddm = 0, check = 0, screen = 0;
+    int i, rc, li, idx;
     double v;
     FILE *tf = stdout, *pf = 0;
 
@@ -138,6 +140,8 @@ int main(int argc, char **argv)
             i++;
         }
         else if (!strcmp(a, "-r")) plot.rapids = 0;
+        else if (!strcmp(a, "-S")) screen = 1;
+        else if (!strcmp(a, "-Sf")) screen = 2;
 #ifdef DX_GDDM
         else if (!strcmp(a, "-g")) gddm = 1;
 #endif
@@ -208,8 +212,20 @@ int main(int argc, char **argv)
     dxlddone(s);
     s->dunit = (mm || s->metric0) ? 25.4 : 1.0;
 
-    if (pfile || gddm) {
-        if (gddm) plot.dev = DXP_GDDM;
+#ifndef DX_SCREEN
+    if (screen) {
+        fprintf(stderr, "dxsim: -S needs the DOS build with the screen preview (makefile.wat dos)\n");
+        return 1;
+    }
+#else
+    if (screen) {
+        dxscinit(screen == 2);
+        if (!trace) quiet = 1;          /* text on the graphics screen would spoil it */
+    }
+#endif
+    if (pfile || gddm || screen) {
+        if (screen) plot.dev = DXP_SCREEN;
+        else if (gddm) plot.dev = DXP_GDDM;
         else if (ext(pfile, ".svg")) plot.dev = DXP_SVG;
         else if (ext(pfile, ".plt") || ext(pfile, ".hpg") || ext(pfile, ".hgl")) plot.dev = DXP_HPGL;
         else if (ext(pfile, ".ps") || ext(pfile, ".eps")) plot.dev = DXP_PS;
@@ -233,7 +249,7 @@ int main(int argc, char **argv)
         }
     }
     s->trace = quiet ? 0 : tf;
-    if (gddm) {
+    if (gddm || screen) {
         plot.pass = 2;
         dxplbeg(s);
     } else if (pfile) {
@@ -248,7 +264,7 @@ int main(int argc, char **argv)
     }
     dxreset(s);
     rc = dxrun(s);
-    if (pfile || gddm) dxplend(s);
+    if (pfile || gddm || screen) dxplend(s);
     if (pf) fclose(pf);
     if (rc) {
         if (s->trace) fprintf(s->trace, "ERROR   %s\n", s->emsg);

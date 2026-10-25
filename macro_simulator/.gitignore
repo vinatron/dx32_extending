@@ -7,3 +7,5 @@ dxsim
 tests/dxtest
 tests/dxt.out
 RESULTS.TXT
+dxsim-scstub
+tests/dxscreen.log

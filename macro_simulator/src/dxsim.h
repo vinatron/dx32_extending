@@ -62,6 +62,7 @@
 #define DXP_HPGL    2
 #define DXP_PS      3
 #define DXP_GDDM    4
+#define DXP_SCREEN  5       /* live VGA preview (dxscreen.c, DOS) */
 
 /* projections */
 #define DXV_XY      0
@@ -243,6 +244,7 @@ typedef struct dxsim {
     int    bset;
     int    warned[16];
     unsigned char cov[1024];    /* built-in blocks executed (coverage) */
+    void (*blkhook)(struct dxsim *s);   /* called before each block (live preview) */
 
     /* ---- errors ---- */
     jmp_buf err;
@@ -300,6 +302,16 @@ void  dxemit(dxsim *s, const dxseg *g);
 void  dxplbeg(dxsim *s);
 void  dxplend(dxsim *s);
 void  dxsumm(dxsim *s);
+
+#ifdef DX_SCREEN
+/* ---- dxscreen.c (DOS VGA preview, Open Watcom graph.lib) ---- */
+void  dxscinit(int paced);
+void  dxscbeg(dxsim *s, dxplot *pl);
+void  dxscline(dxsim *s, dxplot *pl, int pen, double x0, double y0, double x1, double y1, double len);
+void  dxscrate(double feedipm);
+void  dxscmove(dxsim *s);
+void  dxscend(dxsim *s);
+#endif
 
 #ifdef DX_GDDM
 /* ---- dxgddm.c (z/OS, not built by default) ---- */

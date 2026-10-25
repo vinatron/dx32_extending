@@ -4,7 +4,7 @@
 CC      ?= cc
 CFLAGS  ?= -std=c89 -pedantic -Wall -Wextra -O2
 SRC      = src/dxmain.c src/dxinterp.c src/dxexpr.c src/dxmotion.c src/dxprog.c \
-           src/dxout.c src/dxcorpus.c
+           src/dxout.c src/dxcorpus.c src/dxscreen.c
 
 dxsim: $(SRC) src/dxsim.h
 	$(CC) $(CFLAGS) -o $@ $(SRC) -lm
@@ -21,6 +21,18 @@ test: dxsim tests/dxtest
 	python3 tools/check_grammar.py
 
 clean:
-	rm -f dxsim tests/dxtest
+	rm -f dxsim dxsim-scstub tests/dxtest
 
-.PHONY: test clean
+# the VGA preview (dxscreen.c) with graph.lib, keyboard and delay() replaced by a
+# logger: every test program must stay inside the 640x448 drawing area
+dxsim-scstub: $(SRC) src/dxsim.h
+	$(CC) $(CFLAGS) -DDX_SCREEN -DDX_SCSTUB -o $@ $(SRC) -lm
+
+test-screen: dxsim-scstub
+	cd tests && for t in `grep -v '^;' tests.lst`; do \
+	  DXSC_KEYS= ../dxsim-scstub $$t.txt -Sf >/dev/null 2>&1; \
+	  printf '%-8s %s\n' $$t "`tail -1 dxscreen.log`"; \
+	  tail -1 dxscreen.log | grep -q ' offscreen 0 ' || exit 1; \
+	done; rm -f dxscreen.log
+
+.PHONY: test test-screen clean

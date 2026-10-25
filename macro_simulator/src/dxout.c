@@ -5,7 +5,8 @@
  * extent, pass 2 draws.  Nothing is kept in memory, which suits 16-bit DOS.
  * Arcs are cut into chords (tolerance dxplot.tol) before projection, so a
  * device only needs straight lines: SVG, HPGL and PostScript here; IBM GDDM
- * (z/OS) through dxgddm.c when built with -DDX_GDDM.
+ * (z/OS) through dxgddm.c when built with -DDX_GDDM; a live VGA preview (DOS)
+ * through dxscreen.c when built with -DDX_SCREEN.
  */
 #include <math.h>
 #include <string.h>
@@ -146,10 +147,25 @@ static void plline(dxsim *s, int pen, const double *a, const double *b)
     if (pen && fabs(X1 - X0) + fabs(Y1 - Y0) < 1e-9 && fabs(a[2] - b[2]) > 1e-9) {
         /* a plunge seen end-on (a drilled hole in the XY view): draw a small x */
         h = pl->mark;
+#ifdef DX_SCREEN
+        if (pl->dev == DXP_SCREEN) {
+            dxscline(s, pl, 1, X0 - h, Y0 - h, X0 + h, Y0 + h, fabs(a[2] - b[2]));
+            dxscline(s, pl, 1, X0 - h, Y0 + h, X0 + h, Y0 - h, 0.0);
+            return;
+        }
+#endif
         devline(pl, 1, X0 - h, Y0 - h, X0 + h, Y0 + h);
         devline(pl, 1, X0 - h, Y0 + h, X0 + h, Y0 - h);
         return;
     }
+#ifdef DX_SCREEN
+    if (pl->dev == DXP_SCREEN) {
+        dxscline(s, pl, pen, X0, Y0, X1, Y1,
+                 sqrt((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1]) +
+                      (b[2] - a[2]) * (b[2] - a[2])));
+        return;
+    }
+#endif
     devline(pl, pen, X0, Y0, X1, Y1);
 }
 
@@ -166,6 +182,8 @@ void dxplbeg(dxsim *s)
     m = (w > h ? w : h) * 0.05;
     pl->minx -= m;
     pl->miny -= m;
+    pl->maxx += m;              /* keep the bounds and w, h consistent (screen, GDDM) */
+    pl->maxy += m;
     w += 2 * m;
     h += 2 * m;
     pl->pen = -1;
@@ -217,6 +235,11 @@ void dxplbeg(dxsim *s)
         dxgdbeg(pl);
         break;
 #endif
+#ifdef DX_SCREEN
+    case DXP_SCREEN:
+        dxscbeg(s, pl);         /* sets the scale: pixels per inch */
+        break;
+#endif
     default:
         break;
     }
@@ -241,6 +264,11 @@ void dxplend(dxsim *s)
 #ifdef DX_GDDM
     case DXP_GDDM:
         dxgdend(pl);
+        break;
+#endif
+#ifdef DX_SCREEN
+    case DXP_SCREEN:
+        dxscend(s);
         break;
 #endif
     default:
@@ -274,6 +302,10 @@ void dxemit(dxsim *s, const dxseg *g)
     double tol = s->plot && s->plot->tol > 0 ? s->plot->tol : 0.001;
 
     s->nmoves++;
+#ifdef DX_SCREEN
+    if (s->plot && s->plot->dev == DXP_SCREEN && s->plot->pass == 2)
+        dxscrate(pen ? g->feed * dxunit(s) : 0.0);
+#endif
     fmtxyz(s, a, g->p1);
     if (!g->arc) {
         len = sqrt((g->p1[0] - g->p0[0]) * (g->p1[0] - g->p0[0]) +
@@ -291,6 +323,9 @@ void dxemit(dxsim *s, const dxseg *g)
         bbox(s, g->p0);
         bbox(s, g->p1);
         plline(s, pen, g->p0, g->p1);
+#ifdef DX_SCREEN
+        if (s->plot && s->plot->dev == DXP_SCREEN && s->plot->pass == 2) dxscmove(s);
+#endif
         return;
     }
     {
@@ -326,6 +361,9 @@ void dxemit(dxsim *s, const dxseg *g)
             plline(s, 1, p, q);
             memcpy(p, q, sizeof p);
         }
+#ifdef DX_SCREEN
+        if (s->plot && s->plot->dev == DXP_SCREEN && s->plot->pass == 2) dxscmove(s);
+#endif
     }
 }
 

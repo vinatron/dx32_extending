@@ -21,7 +21,7 @@ CONFIRMED/TENTATIVE marks and firmware addresses.
 |---|---|
 | `LANGUAGE.md` | Language reference (manual + firmware 6.89), canned-cycle variable rules, open questions |
 | `manual/` | Programmer's manual (1994), operator's manual (1997), work-shift appendix (PDF) |
-| `src/` | The simulator (C89): `dxmain.c` command line, `dxinterp.c` interpreter and flow control, `dxexpr.c` numbers, variables and PPPL expressions, `dxmotion.c` geometry, `dxout.c` trace and plots, `dxprog.c` program text, `dxcorpus.c` built-in cycles (generated), `dxgddm.c` GDDM device (z/OS, not built by default) |
+| `src/` | The simulator (C89): `dxmain.c` command line, `dxinterp.c` interpreter and flow control, `dxexpr.c` numbers, variables and PPPL expressions, `dxmotion.c` geometry, `dxout.c` trace and plots, `dxprog.c` program text, `dxcorpus.c` built-in cycles (generated), `dxscreen.c` live VGA preview (DOS), `dxgddm.c` GDDM device (z/OS, not built by default) |
 | `src/makefile.wat` | Open Watcom: DOS 16-bit, DOS/4GW, Win32 console |
 | `Makefile` | gcc / clang on Linux, macOS, Cygwin |
 | `tests/` | Test programs (`*.txt`, 8.3 names, most from the manual's figures, listed in `tests.lst`), expected traces, `dxtest.c` runner, `RUNTESTS.BAT` |
@@ -38,8 +38,8 @@ The source is plain C89 with no POSIX calls, so any C compiler should do.
 make                                  # Linux/macOS: gcc or clang, produces ./dxsim
 
 cd src                                # Open Watcom 1.9 or 2.0
-wmake -f makefile.wat dos             # DXSIM.EXE    16-bit DOS, large model (8086 and up)
-wmake -f makefile.wat dos32           # DXSIM4G.EXE  DOS/4GW extender
+wmake -f makefile.wat dos             # DXSIM.EXE    16-bit DOS, large model (8086 and up), with -S preview
+wmake -f makefile.wat dos32           # DXSIM4G.EXE  DOS/4GW extender, with -S preview
 wmake -f makefile.wat win32           # DXSIM32.EXE  console, Windows 95/98/NT and later
 wmake -f makefile.wat tests           # ..\tests\DXTEST.EXE test runner (tests32 for Windows)
 
@@ -71,6 +71,7 @@ dxsim [options] program.txt
   -o FILE    trace to FILE (default: screen)       -q    no trace
   -p FILE    plot: FILE.svg, FILE.plt (HPGL), FILE.ps (PostScript)
   -v VIEW    plot view xy (default), xz, yz, iso   -r    do not draw rapids
+  -S / -Sf   live VGA preview, paced per move / at the feed rate (DOS builds)
   -s         trace variable assignments             -b/-B echo program blocks / also built-in blocks
   -d         dump the variables set, at the end     -cov  list the built-in blocks executed
   -M FILE    load M-macro definitions (M<n>: ... |)
@@ -104,6 +105,34 @@ Errors use the control's own messages (operator's manual appendix D) and name th
 
 Programs: one block per line, as on the control. The manual writes the end of block as `;`, which is also
 the comment character, so `N10G1X1.F10.; feed` is fine.
+
+## Live preview on the screen (DOS)
+
+The DOS builds (`wmake -f makefile.wat dos` or `dos32`) draw the tool path on a VGA screen while the program
+runs, like the control's own **F5 PREVIEW** (operator's manual chapter 3). They use Open Watcom's
+`graph.lib`. This works in plain DOS and full-screen in a Windows 98 DOS box.
+
+```
+DXSIM -S  PROGRAM.TXT        draw as the program runs, a fixed pause after each move
+DXSIM -Sf PROGRAM.TXT        draw at the programmed feed rate (rapids at 472 ipm): about machine time
+```
+
+| Key | Action |
+|---|---|
+| SPACE | pause / continue |
+| B | block by block on/off: stops before each program block and shows it (a canned cycle runs as one block) |
+| + / - | faster / slower: pause per move 0-800 ms, or feed-rate factor ×1/64…×64 |
+| F | switch between per-move and feed-rate pacing |
+| ESC | stop |
+
+The status lines show the block, the position, the feed and the pacing. Rapids are drawn red and dashed,
+feeds cyan, drilled holes as a small x. The view is chosen with `-v xy|xz|yz|iso` and the whole part is fitted to
+the screen (a quick first pass measures it). The trace goes to a file only with `-o`, so it does not
+write over the graphics. The DOS timer ticks 18.2 times a second, so feed-rate pacing is approximate.
+
+`make test-screen` (Linux) runs `dxscreen.c` with `graph.lib`, the keyboard and `delay()` replaced by a logger
+(`-DDX_SCSTUB`). It checks that every test program stays inside the 640×448 drawing area and reports the
+paced time.
 
 ## Testing
 

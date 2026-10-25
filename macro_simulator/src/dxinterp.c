@@ -764,6 +764,7 @@ static void exblock(dxsim *s)
     int first = 1, c;
     char buf[DX_MAXLINE + 24];
 
+    if (s->blkhook) s->blkhook(s);
     s->bt = t;
     s->p = t + s->start.off;
     if (s->start.blk >= s->corp0 && s->start.blk - s->corp0 < 1024)
