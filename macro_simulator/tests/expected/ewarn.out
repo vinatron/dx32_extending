@@ -1,0 +1,20 @@
+L2      RAPID X0.0000 Y0.0000 Z0.1000
+L3      SPIN  M3 S1000
+L4      WARN  X1 reads variable X1, which was never set (0); write X1. for the number 1
+L4      WARN  '=5.' is ignored: an assignment must start its block (no N number or other word before it)
+L5      FEED  X2.0000 Y0.0000 Z0.1000  F10.0
+L6      WARN  Y1.23456 has more decimals than the input increment allows (.0001); the manual calls this an input error
+L6      FEED  X2.0000 Y1.2346 Z0.1000  F10.0
+L7      WARN  F400 is above the maximum feed (295 ipm); the control clamps it
+L7      FEED  X3.0000 Y1.2346 Z0.1000  F400.0
+L8      MCODE M8
+L8      WARN  more than one M code in a block (manual chapter 9: only one M code per block)
+L8      MCODE M7
+L9      WARN  S5000 is outside the range 1-4200 (manual table 2-2)
+L10     WARN  ?P7 tests variable P7, which was never set (0)
+L13     END   M2
+------- summary
+moves   4 (rapid 0.1000, feed 4.2346 in)
+extent  X0.0000 Y0.0000 Z0.0000 .. X3.0000 Y1.2346 Z0.1000
+final   X3.0000 Y1.2346 Z0.1000  (G90, G1, T0)
+warnings 7

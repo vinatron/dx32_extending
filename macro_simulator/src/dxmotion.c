@@ -360,6 +360,9 @@ static double norm2pi(double d, int ccw)
 static void needfeed(dxsim *s)
 {
     if (s->feed <= 0.0) dxerror(s, "Parser: No Feedrate Specified");
+    if (s->sdir != 3 && s->sdir != 4 && dxuser(s))
+        dxwarn(s, 6, "feed move with no M3/M4 programmed: the spindle must already be on, or the control "
+                     "stops with SPINDLE NOT ON CANNOT CUT");
 }
 
 static int ijkinc(const dxsim *s);

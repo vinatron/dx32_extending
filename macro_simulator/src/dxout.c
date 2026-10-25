@@ -4,9 +4,9 @@
  * Plots are written in two passes over the program: pass 1 only measures the
  * extent, pass 2 draws.  Nothing is kept in memory, which suits 16-bit DOS.
  * Arcs are cut into chords (tolerance dxplot.tol) before projection, so a
- * device only needs straight lines: SVG, HPGL and PostScript here; IBM GDDM
- * (z/OS) through dxgddm.c when built with -DDX_GDDM; a live VGA preview (DOS)
- * through dxscreen.c when built with -DDX_SCREEN.
+ * device only needs straight lines: SVG, HPGL and PostScript here, and the live
+ * preview (DOS VGA or a Windows window) through dxscreen.c when built with
+ * -DDX_SCREEN.
  */
 #include <math.h>
 #include <string.h>
@@ -105,11 +105,6 @@ static void devline(dxplot *pl, int pen, double X0, double Y0, double X1, double
         }
         fprintf(pl->fp, "%.2f %.2f lineto\n", X1, Y1);
         break;
-#ifdef DX_GDDM
-    case DXP_GDDM:
-        dxgdlin(pl, pen, X0, Y0, X1, Y1);
-        break;
-#endif
     default:
         break;
     }
@@ -182,7 +177,7 @@ void dxplbeg(dxsim *s)
     m = (w > h ? w : h) * 0.05;
     pl->minx -= m;
     pl->miny -= m;
-    pl->maxx += m;              /* keep the bounds and w, h consistent (screen, GDDM) */
+    pl->maxx += m;              /* keep the bounds and w, h consistent (screen preview) */
     pl->maxy += m;
     w += 2 * m;
     h += 2 * m;
@@ -228,13 +223,6 @@ void dxplbeg(dxsim *s)
                 "/R { stroke 0.82 0.25 0.12 setrgbcolor [3 3] 0 setdash } def\n"
                 "0.5 setlinewidth 1 setlinejoin newpath\n");
         break;
-#ifdef DX_GDDM
-    case DXP_GDDM:
-        pl->sc = 1.0;
-        pl->ox = pl->oy = 0.0;
-        dxgdbeg(pl);
-        break;
-#endif
 #ifdef DX_SCREEN
     case DXP_SCREEN:
         dxscbeg(s, pl);         /* sets the scale: pixels per inch */
@@ -261,11 +249,6 @@ void dxplend(dxsim *s)
     case DXP_PS:
         fprintf(pl->fp, "stroke\nshowpage\n%%%%EOF\n");
         break;
-#ifdef DX_GDDM
-    case DXP_GDDM:
-        dxgdend(pl);
-        break;
-#endif
 #ifdef DX_SCREEN
     case DXP_SCREEN:
         dxscend(s);
@@ -386,4 +369,5 @@ void dxsumm(dxsim *s)
     sprintf(buf, "final   %s  (%s, %s, T%d)", a, s->abs ? "G90" : "G91",
             s->mot == 0 ? "G0" : s->mot == 1 ? "G1" : s->mot == 2 ? "G2" : "G3", s->tool);
     fprintf(fp, "%s\n", buf);
+    if (s->nwarn) fprintf(fp, "warnings %ld\n", s->nwarn);
 }

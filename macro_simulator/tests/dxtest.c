@@ -5,7 +5,8 @@
  *   dxtest [-u] [path-to-dxsim]        run from the tests directory
  *
  * 1. "dxsim -check" must parse every block of the built-in cycle text.
- * 2. Each program in TESTS.LST must reproduce EXPECTED\<name>.OUT.  Numbers may
+ * 2. Each program in TESTS.LST (a name, then optional dxsim options) must
+ *    reproduce EXPECTED\<name>.OUT, warnings and error reports included.  Numbers may
  *    differ by one digit in the last place (C libraries round halfway cases
  *    differently).  -u rewrites the expected files after a reviewed change.
  * 3. Results worked out by hand from the programmer's manual's figures.
@@ -64,7 +65,7 @@ static void dx(const char *args)
 {
     char cmd[256];
     remove(TMPOUT);
-    sprintf(cmd, "%.80s %.80s -o %s", dxsim, args, TMPOUT);
+    sprintf(cmd, "%.80s %.80s -silent -o %s", dxsim, args, TMPOUT);
     if (system(cmd)) {
         /* COMMAND.COM gives no exit codes, so the output file is what counts */
     }
@@ -202,20 +203,21 @@ static void addcov(void)
     fclose(fp);
 }
 
-static void runprog(const char *name)
+/* name: test program without .txt; opts: extra dxsim options from TESTS.LST */
+static void runprog(const char *name, const char *opts)
 {
-    char args[96], exp[96], why[120], what[300];
-    sprintf(args, "%s.txt", name);
+    char args[128], exp[96], why[120], what[300];
+    sprintf(args, "%.20s.txt %.60s", name, opts);
     dx(args);
-    sprintf(exp, "%s%s.out", EXPDIR, name);
+    sprintf(exp, "%s%.20s.out", EXPDIR, name);
     if (update) copyfile(TMPOUT, exp);
-    sprintf(what, "trace of %s.txt matches %s", name, exp);
+    sprintf(what, "trace of %s.txt %s matches %s", name, opts, exp);
     if (!compare(TMPOUT, exp, why)) {
         strcat(what, ": ");
         strcat(what, why);
         check(0, what);
     } else check(1, what);
-    sprintf(args, "%s.txt -q -cov", name);
+    sprintf(args, "%.20s.txt %.60s -q -cov", name, opts);
     dx(args);
     addcov();
 }
@@ -443,8 +445,12 @@ int main(int argc, char **argv)
         return 2;
     }
     while (fgets(name, sizeof name, lst)) {
+        char *opts;
         chop(name);
-        if (name[0] && name[0] != ';') runprog(name);
+        if (!name[0] || name[0] == ';') continue;
+        opts = strchr(name, ' ');           /* "ELINT -lint": options after the name */
+        if (opts) *opts++ = 0;
+        runprog(name, opts ? opts : "");
     }
     fclose(lst);
 

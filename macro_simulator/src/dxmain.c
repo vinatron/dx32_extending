@@ -17,9 +17,6 @@ static const char *const help[] = {
     "  -v VIEW    plot view: xy (default), xz, yz, iso",
     "  -r         do not draw rapid moves",
     "  -S / -Sf   live preview, paced per move / at the feed rate (DOS VGA, DXSIMW window)",
-#ifdef DX_GDDM
-    "  -g         draw on the 3270 terminal with GDDM",
-#endif
     "  -M FILE    load M-macro definitions (M<n>: ... |) from FILE",
     "  -s         trace variable assignments",
     "  -b         echo program blocks;  -B  also built-in cycle blocks",
@@ -39,6 +36,8 @@ static const char *const help[] = {
     "  -e EXPR    evaluate a PPPL expression and exit",
     "  -corpus    list the built-in cycle entry points and exit",
     "  -check     parse every built-in cycle block and exit",
+    "  -lint      check every line of the program without running it; list all errors",
+    "  -silent    no error or warning summary on the console (the trace has them)",
     0
 };
 
@@ -94,10 +93,7 @@ static void corpus(void)
 /* -e: print the value, or "error: message" */
 static int evalexpr(dxsim *s, FILE *out, const char *expr)
 {
-    char *q;
     if (setjmp(s->err)) {
-        q = strstr(s->emsg, " [");      /* no block location for a command-line expression */
-        if (q) *q = 0;
         fprintf(out, "error: %s\n", s->emsg);
         return 2;
     }
@@ -110,7 +106,7 @@ int main(int argc, char **argv)
     dxsim *s = &sim;
     const char *prog = 0, *trace = 0, *pfile = 0, *expr = 0;
     const char *macf[8];
-    int nmacf = 0, quiet = 0, dump = 0, mm = 0, cov = 0, gddm = 0, check = 0, screen = 0;
+    int nmacf = 0, quiet = 0, dump = 0, mm = 0, cov = 0, check = 0, lint = 0, screen = 0, silent = 0;
     int i, rc, li, idx;
     double v;
     FILE *tf = stdout, *pf = 0;
@@ -142,9 +138,6 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-r")) plot.rapids = 0;
         else if (!strcmp(a, "-S")) screen = 1;
         else if (!strcmp(a, "-Sf")) screen = 2;
-#ifdef DX_GDDM
-        else if (!strcmp(a, "-g")) gddm = 1;
-#endif
         else if (!strcmp(a, "-M") && nx) { if (nmacf < 8) macf[nmacf++] = nx; i++; }
         else if (!strcmp(a, "-s")) s->vtrace = 1;
         else if (!strcmp(a, "-b")) s->btrace = 1;
@@ -185,6 +178,8 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-e") && nx) { expr = nx; i++; }
         else if (!strcmp(a, "-corpus")) { corpus(); return 0; }
         else if (!strcmp(a, "-check")) check = 1;
+        else if (!strcmp(a, "-lint")) lint = 1;
+        else if (!strcmp(a, "-silent")) silent = 1;
         else { usage(); return 1; }
     }
 
@@ -211,6 +206,16 @@ int main(int argc, char **argv)
         }
     dxlddone(s);
     s->dunit = (mm || s->metric0) ? 25.4 : 1.0;
+    if (lint) {
+        if (trace && !(tf = fopen(trace, "w"))) {
+            fprintf(stderr, "dxsim: cannot write %s\n", trace);
+            return 1;
+        }
+        dxreset(s);
+        rc = dxlint(s, tf) ? 2 : 0;
+        if (tf != stdout) fclose(tf);
+        return rc;
+    }
 
 #ifndef DX_SCREEN
     if (screen) {
@@ -223,9 +228,8 @@ int main(int argc, char **argv)
         if (!trace) quiet = 1;          /* text on the graphics screen would spoil it */
     }
 #endif
-    if (pfile || gddm || screen) {
+    if (pfile || screen) {
         if (screen) plot.dev = DXP_SCREEN;
-        else if (gddm) plot.dev = DXP_GDDM;
         else if (ext(pfile, ".svg")) plot.dev = DXP_SVG;
         else if (ext(pfile, ".plt") || ext(pfile, ".hpg") || ext(pfile, ".hgl")) plot.dev = DXP_HPGL;
         else if (ext(pfile, ".ps") || ext(pfile, ".eps")) plot.dev = DXP_PS;
@@ -249,7 +253,7 @@ int main(int argc, char **argv)
         }
     }
     s->trace = quiet ? 0 : tf;
-    if (gddm || screen) {
+    if (screen) {
         plot.pass = 2;
         dxplbeg(s);
     } else if (pfile) {
@@ -264,12 +268,14 @@ int main(int argc, char **argv)
     }
     dxreset(s);
     rc = dxrun(s);
-    if (pfile || gddm || screen) dxplend(s);
+    if (pfile || screen) dxplend(s);
     if (pf) fclose(pf);
     if (rc) {
-        if (s->trace) fprintf(s->trace, "ERROR   %s\n", s->emsg);
-        fprintf(stderr, "dxsim: %s\n", s->emsg);
+        if (s->trace) dxerrrep(s, s->trace);
+        if (s->trace != stdout && !silent) dxerrrep(s, stderr);
     }
+    if (s->nwarn && s->trace != stdout && !silent)
+        fprintf(stderr, "dxsim: %ld warning%s, see the trace\n", s->nwarn, s->nwarn == 1 ? "" : "s");
     dxsumm(s);
     if (dump && s->trace) {
         int k;

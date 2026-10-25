@@ -260,7 +260,7 @@ void dxscmove(dxsim *s)
 void dxscend(dxsim *s)
 {
     char msg[100];
-    if (s->stop == 2) sprintf(msg, "ERROR %.50s", s->emsg);
+    if (s->stop == 2) sprintf(msg, "ERROR %.20s: %.40s", s->eloc, s->emsg);
     else strcpy(msg, sc.quit ? "STOPPED - any key" : "END - any key");
     status(s, msg);
     while (kbhit()) getch();

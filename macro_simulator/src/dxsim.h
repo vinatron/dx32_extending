@@ -61,7 +61,6 @@
 #define DXP_SVG     1
 #define DXP_HPGL    2
 #define DXP_PS      3
-#define DXP_GDDM    4
 #define DXP_SCREEN  5       /* live VGA preview (dxscreen.c, DOS) */
 
 /* projections */
@@ -248,7 +247,16 @@ typedef struct dxsim {
 
     /* ---- errors ---- */
     jmp_buf err;
-    char   emsg[160];
+    char   emsg[160];               /* error message (the control's wording) */
+    char   eloc[80];                /* "line 12" or "built-in cycle block @27454, called from line 5" */
+    char   etext[DX_MAXLINE];       /* the block */
+    int    ecol;                    /* column of the word in error, -1 if none */
+    const char *wstart;             /* start of the word being handled */
+    long   nwarn;                   /* warnings given */
+    int    linting;                 /* -lint: no warnings, no motion */
+    int    nfrac;                   /* significant decimals of the last number read */
+    int    nm;                      /* M words in this block */
+    unsigned char vwarn[26][DX_NVAR];   /* "never set" warning given for this variable */
 } dxsim;
 
 /* ---- dxcorpus.c (generated) ---- */
@@ -285,6 +293,9 @@ int   dxrun(dxsim *s);
 int   dxcheck(dxsim *s, FILE *out);
 void  dxerror(dxsim *s, const char *msg);
 void  dxwarn(dxsim *s, int once, const char *msg);
+void  dxerrrep(const dxsim *s, FILE *fp);
+int   dxlint(dxsim *s, FILE *out);
+int   dxuser(const dxsim *s);
 
 /* ---- dxmotion.c ---- */
 void  dxmreset(dxsim *s);
@@ -313,11 +324,5 @@ void  dxscmove(dxsim *s);
 void  dxscend(dxsim *s);
 #endif
 
-#ifdef DX_GDDM
-/* ---- dxgddm.c (z/OS, not built by default) ---- */
-void  dxgdbeg(dxplot *p);
-void  dxgdlin(dxplot *p, int pen, double x0, double y0, double x1, double y1);
-void  dxgdend(dxplot *p);
-#endif
 
 #endif

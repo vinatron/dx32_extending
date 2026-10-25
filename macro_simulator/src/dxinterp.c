@@ -24,28 +24,93 @@ static int LA, LB, LC, LF, LI, LJ, LP, LQ, LR, LU, LV, LW, LX, LY, LZ;
 
 #define V(l, n)  (s->var[l][n])
 
+/* a variable the firmware sets directly (no trace line) */
+static void vz(dxsim *s, int l, int n, double v)
+{
+    s->var[l][n] = v;
+    s->setv[l][n] = 1;
+}
+
 /* ------------------------------------------------------------------ */
 /* errors and warnings                                                 */
 
+/* the program block that called the canned cycle being executed, or -1 */
+static long callerblk(const dxsim *s)
+{
+    long b;
+    if (s->sdepth <= 0) return -1;
+    b = s->sret[0].off ? s->sret[0].blk : s->sret[0].blk - 1;
+    return b >= 0 && b < s->corp0 ? b : -1;
+}
+
+/* 1 if the block being executed belongs to the user's program (not the built-in text) */
+int dxuser(const dxsim *s)
+{
+    return s->start.blk < s->corp0;
+}
+
+/*
+ * Stop with an error, as the control does.  The message uses the control's
+ * wording (operator's manual appendix D); dxerrrep() prints it with the line,
+ * the block and a ^ under the word in error.
+ */
 void dxerror(dxsim *s, const char *msg)
 {
-    char where[16];
-    const char *t;
-    dxbwhere(s, s->start.blk, where);
-    t = dxbtext(s, s->start.blk);
-    sprintf(s->emsg, "%.80s [%s: %.40s]", msg, where, t);
+    long b = s->start.blk, call;
+    const char *t = dxbtext(s, b);
+    strncpy(s->emsg, msg, sizeof s->emsg - 1);
+    s->emsg[sizeof s->emsg - 1] = 0;
+    strncpy(s->etext, t, DX_MAXLINE - 1);
+    s->etext[DX_MAXLINE - 1] = 0;
+    s->ecol = -1;
+    if (s->wstart && s->bt == t && s->wstart >= t && s->wstart <= t + strlen(t))
+        s->ecol = (int)(s->wstart - t);
+    s->eloc[0] = 0;
+    if (b >= s->corp0 && b < s->ntotal && s->nblk > 0) {
+        /* inside the firmware's cycle text: report the program line that called it */
+        call = callerblk(s);
+        if (call >= 0) {
+            sprintf(s->eloc, "line %ld, in its canned cycle (built-in block @%05lx: %.24s)",
+                    dxbline(s, call), dxcorpof[b - s->corp0], t);
+            strncpy(s->etext, dxbtext(s, call), DX_MAXLINE - 1);
+            s->ecol = -1;
+        } else sprintf(s->eloc, "built-in cycle block @%05lx", dxcorpof[b - s->corp0]);
+    } else if (b >= 0 && b < s->nblk) {
+        sprintf(s->eloc, "line %ld", dxbline(s, b));
+    }
     s->stop = 2;
     longjmp(s->err, 1);
 }
 
+/*
+ * ERROR   line 12: Parser: Illegal G-Code
+ *         N60G1X1.G33
+ *                 ^
+ */
+void dxerrrep(const dxsim *s, FILE *fp)
+{
+    int i;
+    if (s->eloc[0]) fprintf(fp, "ERROR   %s: %s\n", s->eloc, s->emsg);
+    else fprintf(fp, "ERROR   %s\n", s->emsg);
+    if (!s->eloc[0] || !s->etext[0]) return;
+    fprintf(fp, "        %s\n", s->etext);
+    if (s->ecol >= 0) {
+        fprintf(fp, "        ");
+        for (i = 0; i < s->ecol; i++) fputc(' ', fp);
+        fprintf(fp, "^\n");
+    }
+}
+
 void dxwarn(dxsim *s, int once, const char *msg)
 {
-    char buf[120];
+    char buf[160];
+    if (s->linting) return;
     if (once > 0 && once < 16) {
         if (s->warned[once]) return;
         s->warned[once] = 1;
     }
-    sprintf(buf, "WARN  %.100s", msg);
+    s->nwarn++;
+    sprintf(buf, "WARN  %.150s", msg);
     dxtline(s, buf);
 }
 
@@ -87,6 +152,8 @@ void dxreset(dxsim *s)
     memset(s->labset, 0, sizeof s->labset);
     memset(s->subset, 0, sizeof s->subset);
     memset(s->warned, 0, sizeof s->warned);
+    memset(s->vwarn, 0, sizeof s->vwarn);
+    s->nwarn = 0;
     s->nmac = 0;
     s->gdepth = s->sdepth = s->ldepth = 0;
     s->nprm = s->rprm = s->frame0 = 0;
@@ -123,16 +190,38 @@ static double tgtp(dxsim *s, int ax)
     return s->tgt[ax] / unitf(s);
 }
 
+/* the finest increment a word accepts (manual table 2-1), as decimals; 99 = not checked */
+static int maxdec(const dxsim *s, int c)
+{
+    if (strchr("ABE", c)) return 3;
+    if (c == 'Q') return 2;
+    if (strchr("XYZUVWIJKRDP", c)) return s->metric ? 3 : 4;
+    return 99;
+}
+
 /* read a word value and apply the variable rule; returns -1 if it was a '*' push */
 static int wordval(dxsim *s, int li, double *out)
 {
-    int fl;
+    int fl, n, c = letters[li];
     double v, var;
+    char buf[160];
     v = dxval(s, &s->p, &fl);
     if (fl & DXN_PARAM) return -1;
     if (dxvref(s, li, fl, v, &var)) {
+        n = (int)v;
+        if (dxuser(s) && !s->setv[li][n] && !s->vwarn[li][n]) {
+            s->vwarn[li][n] = 1;
+            sprintf(buf, "%c%d reads variable %c%d, which was never set (0); write %c%d. for the number %d",
+                    c, n, c, n, c, n, n);
+            dxwarn(s, 0, buf);
+        }
         *out = var;
         return fl | DXN_FROMVAR;
+    }
+    if (dxuser(s) && (fl & DXN_POINT) && s->nfrac > maxdec(s, c)) {
+        sprintf(buf, "%c%g has more decimals than the input increment allows (%s); the manual calls this an input error",
+                c, v, maxdec(s, c) == 4 ? ".0001" : maxdec(s, c) == 3 ? ".001" : ".01");
+        dxwarn(s, 0, buf);
     }
     if (s->compat && !(fl & DXN_POINT)) v /= s->metric ? 1000.0 : 10000.0;
     *out = v;
@@ -198,7 +287,8 @@ static void rearm(dxsim *s)
     s->intext = 1;
     if (s->cycdrv > 0x17) return;
     s->cycdrv = 0x14;
-    V(LX, 1) = V(LX, 2) = V(LY, 1) = V(LY, 2) = V(LU, 1) = V(LV, 1) = 0.0;
+    vz(s, LX, 1, 0.0); vz(s, LX, 2, 0.0); vz(s, LY, 1, 0.0);
+    vz(s, LY, 2, 0.0); vz(s, LU, 1, 0.0); vz(s, LV, 1, 0.0);
     s->zcyc = 1;
 }
 
@@ -216,9 +306,10 @@ static void startg8x(dxsim *s, int n)
 {
     s->cycn = n;
     s->cycdrv = 0x14;
-    V(LX, 1) = V(LX, 2) = V(LY, 1) = V(LY, 2) = V(LU, 1) = V(LV, 1) = 0.0;
-    V(LC, 9) = 0.0;     /* 0x208aa: a Z height for the C9 word, not modelled */
-    V(LZ, 6) = s->peckclr > 0 ? s->peckclr / unitf(s) : 0.0;  /* param 272 */
+    vz(s, LX, 1, 0.0); vz(s, LX, 2, 0.0); vz(s, LY, 1, 0.0);
+    vz(s, LY, 2, 0.0); vz(s, LU, 1, 0.0); vz(s, LV, 1, 0.0);
+    vz(s, LC, 9, 0.0);  /* 0x208aa: a Z height for the C9 word, not modelled */
+    vz(s, LZ, 6, s->peckclr > 0 ? s->peckclr / unitf(s) : 0.0);  /* param 272 */
     s->zcyc = 1;
     s->cap = 1;
     s->intext = 1;
@@ -229,11 +320,12 @@ static void startmill(dxsim *s, int drv)
     double r = 0.0;
     if (s->tool >= 1 && s->tool < DX_NTOOL) r = s->tools[s->tool].dia / 2.0;
     s->cycdrv = drv;
-    V(LP, 8) = s->p8 ? 1.0 : 0.0;          /* 0x20920: machine family flag */
+    vz(s, LP, 8, s->p8 ? 1.0 : 0.0);       /* 0x20920: machine family flag */
     cycvar(s, LR, 1, r / unitf(s));         /* manual: R1 = tool radius */
-    V(LR, 2) = 0.0;
-    V(LZ, 2) = V(LZ, 3) = 0.0;
-    V(LP, 9) = s->abs ? 0.0 : 1.0;          /* restore G91 afterwards (B12) */
+    vz(s, LR, 2, 0.0);
+    vz(s, LZ, 2, 0.0);
+    vz(s, LZ, 3, 0.0);
+    vz(s, LP, 9, s->abs ? 0.0 : 1.0);       /* restore G91 afterwards (B12) */
     s->cap = 1;
     s->intext = 1;
 }
@@ -266,7 +358,7 @@ static void gword(dxsim *s)
     }
     if (g >= 77 && g <= 79) {
         s->cycdrv = 0x1b + (int)g - 77;
-        V(LP, 9) = s->abs ? 0.0 : 1.0;
+        vz(s, LP, 9, s->abs ? 0.0 : 1.0);
         s->cap = 1;
         s->intext = 1;
         return;
@@ -285,8 +377,8 @@ static void gword(dxsim *s)
         s->cycdrv = g >= 190 ? 0x1a : 0x18;
         s->cap = 1;
         s->intext = 1;
-        V(LF, 1) = s->feed;
-        V(LW, 9) = s->peckclr > 0 ? s->peckclr / unitf(s) : 0.0;
+        vz(s, LF, 1, s->feed);
+        vz(s, LW, 9, s->peckclr > 0 ? s->peckclr / unitf(s) : 0.0);
         return;
     }
     dxgcode(s, (int)g);
@@ -349,6 +441,8 @@ static void mword(dxsim *s)
     int fl, i;
     long m = intval(s, &fl);
     if (fl & DXN_PARAM) return;
+    if (++s->nm == 2 && dxuser(s) && peekc(s) != ':')
+        dxwarn(s, 0, "more than one M code in a block (manual chapter 9: only one M code per block)");
     if (peekc(s) == ':') {      /* a definition met at run time: skip its body */
         skipdef(s);
         return;
@@ -375,7 +469,7 @@ static void word(dxsim *s, int li)
     double v;
     int fl, c = letters[li], n;
     long k;
-    char buf[64];
+    char buf[120];
 
     switch (c) {
     case 'G': gword(s); return;
@@ -429,7 +523,7 @@ static void word(dxsim *s, int li)
                 s->nx = 2;
                 if (s->cycdrv == 0x1c) {
                     cycvar(s, LY, 2, v);
-                    V(LX, 3) = 0.0;
+                    vz(s, LX, 3, 0.0);
                 } else if (s->zcyc) s->cycdrv = 0x17;
             } else cycvar(s, LX, 3, v);
             return;
@@ -527,6 +621,11 @@ static void word(dxsim *s, int li)
         if (s->nf == 0) {                   /* 0x1f344 */
             s->nf = 1;
             s->feed = v;
+            if (dxuser(s) && !s->cap && v > (s->metric ? 7500.0 : 295.0)) {
+                sprintf(buf, "F%g is above the maximum feed (%s); the control clamps it",
+                        v, s->metric ? "7500 mm/min" : "295 ipm");
+                dxwarn(s, 0, buf);
+            }
             if (s->cap) {
                 cycvar(s, LF, 1, v);
                 if (s->cycdrv == 13 || s->cycdrv == 14 || s->cycdrv == 19) {
@@ -573,6 +672,10 @@ static void word(dxsim *s, int li)
         return;
     case 'S':
         s->spindle = v;
+        if (dxuser(s) && (v < 0 || v > 4200)) {
+            sprintf(buf, "S%g is outside the range 1-4200 (manual table 2-2)", v);
+            dxwarn(s, 0, buf);
+        }
         return;
     case 'C':
         return;                             /* C axis / C9: not modelled */
@@ -606,6 +709,13 @@ static void condlhs(dxsim *s)
     s->p++;
     v = dxnum(s, &s->p, &fl);
     if (!dxvref(s, li, fl, v, &var)) dxerror(s, "Parser: #16 Internal Addressing Error");
+    if (dxuser(s) && !s->setv[li][(int)v] && !s->vwarn[li][(int)v]) {
+        char buf[100];
+        s->vwarn[li][(int)v] = 1;
+        sprintf(buf, "?%c%d tests variable %c%d, which was never set (0)", letters[li], (int)v,
+                letters[li], (int)v);
+        dxwarn(s, 0, buf);
+    }
     s->clhs = var;
     s->clet = li;
 }
@@ -739,7 +849,15 @@ static void dochar(dxsim *s, int c)
         s->cop[1] = (char)(*s->p ? toupper((unsigned char)*s->p++) : 0);
         break;
     case '>': condrhs(s); break;
-    case '=': s->callpend = 1; break;
+    case '=':
+        s->callpend = 1;
+        if (dxuser(s) && ((*s->p >= '0' && *s->p <= '9') || *s->p == '.' || *s->p == '-')) {
+            char buf[120];
+            sprintf(buf, "'=%.12s' is ignored: an assignment must start its block (no N number or other word before it)",
+                    s->p);
+            dxwarn(s, 0, buf);
+        }
+        break;
     case '#': hashc(s); break;
     case '$': s->state = DXS_RETSUB; s->starg = 0; break;
     case '|': s->state = DXS_RETSUB; s->starg = 1; break;
@@ -777,6 +895,8 @@ static void exblock(dxsim *s)
     s->tblk = 0;
     s->nloop = 0;
     s->endpend = 0;
+    s->nm = 0;
+    s->wstart = 0;
     dxmblock(s);
 
     if (s->btrace == 2 || (s->btrace == 1 && s->start.blk < s->corp0)) {
@@ -797,15 +917,18 @@ static void exblock(dxsim *s)
             const char *p = s->p;
             first = 0;
             if (c != '$' && c != ';' && p[1] && p[2] && (p[2] == '=' || p[3] == '=')) {
+                s->wstart = s->p;
                 if (!s->intext && !s->pppl)
                     dxerror(s, "PPPL option (param 285 bit 4) not enabled");
                 dxassgn(s);
                 continue;
             }
         }
+        s->wstart = s->p;
         s->p++;
         dochar(s, c);
     }
+    s->wstart = 0;
 }
 
 static void gosub(dxsim *s, dxpos ret, int slot)
@@ -994,12 +1117,27 @@ int dxrun(dxsim *s)
 /* ------------------------------------------------------------------ */
 /* -check: parse every built-in block without executing it              */
 
+/* G codes the control accepts (manual table 3-1, firmware G table 0x205e2 and 0x208f8) */
+static int gvalid(long g)
+{
+    static const short ok[] = { 0, 1, 2, 3, 4, 8, 9, 12, 13, 17, 18, 19, 22, 23, 30, 31, 32, 40, 41,
+        42, 44, 45, 46, 47, 48, 49, 54, 55, 56, 57, 58, 59, 70, 71, 72, 73, 74, 75, 77, 78, 79, 90,
+        91, 92, 94, 95, 96, 97, 99, -1 };
+    int i;
+    if ((g >= 80 && g <= 89) || (g >= 170 && g <= 199)) return 1;
+    for (i = 0; ok[i] >= 0; i++)
+        if (ok[i] == g) return 1;
+    return 0;
+}
+
 static void chkblock(dxsim *s, const char *t)
 {
-    int c, li, fl, first = 1;
+    int c, li, fl, first = 1, eq = 0;
+    double v;
     s->bt = t;
     s->p = t;
     while ((c = (unsigned char)*s->p) != 0) {
+        s->wstart = s->p;
         if (first) {
             const char *p = s->p;
             first = 0;
@@ -1012,9 +1150,22 @@ static void chkblock(dxsim *s, const char *t)
         li = dxlet(c);
         if (li >= 0) {
             if (c == 'O') continue;
-            (void)dxval(s, &s->p, &fl);
+            if (*s->p == '*') {                 /* macro parameter: nothing to read here */
+                s->p++;
+                (void)dxnum(s, &s->p, &fl);
+                eq = 0;
+                continue;
+            }
+            v = dxval(s, &s->p, &fl);
+            if (c == 'G' && !(fl & DXN_PARAM) && !gvalid((long)(v + 0.5)))
+                dxerror(s, "Parser: Illegal G-Code");
+            if (c == 'T' && (v < 0 || v >= DX_NTOOL)) dxerror(s, "Parser: #15 Internal Addressing Error");
+            if (c == 'L' && (v < 1 || v > 9))
+                dxerror(s, eq ? "Parser: #9 Internal Addressing Error" : "Parser: #5 Internal Addressing Error");
+            eq = 0;
             continue;
         }
+        eq = c == '=';
         switch (c) {
         case '?': condlhs(s); break;
         case '<':
@@ -1035,7 +1186,7 @@ static void chkblock(dxsim *s, const char *t)
         case '+': case '-': case '*': case '@':
             break;
         default:
-            if (c < '0' || c > '9') dxerror(s, "unexpected character");
+            if (c < '0' || c > '9') dxerror(s, "unexpected character (the control ignores it)");
             break;
         }
     }
@@ -1061,6 +1212,32 @@ int dxcheck(dxsim *s, FILE *out)
         chkblock(s, dxcorptx[i]);
     }
     fprintf(out, "checked %d built-in blocks, %d failed\n", dxcorpn, bad);
+    return bad;
+}
+
+/* -lint: parse every block of the program without running it; report every error */
+int dxlint(dxsim *s, FILE *out)
+{
+    static volatile long b;
+    static volatile int bad;
+    int k, n;
+    bad = 0;
+    s->linting = 1;
+    for (b = 0; b < s->nblk; b++) {
+        for (k = 0; k < 26; k++)            /* every variable 1: no division by zero */
+            for (n = 1; n < DX_NVAR; n++) s->var[k][n] = 1.0;
+        setpos(&s->start, b, 0);
+        s->wstart = 0;
+        if (setjmp(s->err)) {
+            dxerrrep(s, out);
+            bad++;
+            continue;
+        }
+        chkblock(s, dxbtext(s, b));
+    }
+    s->linting = 0;
+    if (bad) fprintf(out, "%d error%s in %ld lines\n", bad, bad == 1 ? "" : "s", s->nblk);
+    else fprintf(out, "no errors in %ld lines\n", s->nblk);
     return bad;
 }
 

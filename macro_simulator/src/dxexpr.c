@@ -92,6 +92,14 @@ double dxnum(dxsim *s, const char **pp, int *flags)
     } else if (nint == 1 || nint == 2) {
         fl |= DXN_SHORT;
     }
+    {                                   /* significant decimals, for the increment check */
+        int k = n;
+        s->nfrac = nfrac;
+        while (s->nfrac > 0 && buf[k - 1] == '0') {
+            s->nfrac--;
+            k--;
+        }
+    }
     if (n == 0 || (n == 1 && buf[0] == '-')) buf[n++] = '0';
     buf[n] = 0;
     *pp = p;
@@ -163,11 +171,19 @@ int dxvref(dxsim *s, int li, int flags, double v, double *out)
 
 typedef struct ev {
     dxsim *s;
+    const char *begin;  /* start of the text */
     const char *p;      /* next character */
     const char *end;    /* terminator ('!', ';', CR or NUL) */
 } ev;
 
 static double eexpr(ev *e);
+
+/* an error inside an expression: point at the character the evaluator stopped on */
+static void eerr(ev *e, const char *msg)
+{
+    e->s->wstart = e->p > e->begin ? e->p - 1 : e->p;
+    dxerror(e->s, msg);
+}
 
 /* 0x260c4: next character, blanks skipped, lower case folded */
 static int enext(ev *e)
@@ -213,7 +229,7 @@ static double func1(ev *e, const char *name, double x)
     double r = PI / 180.0;
     if (!strcmp(name, "ABS")) return fabs(x);
     if (!strcmp(name, "SQR")) {
-        if (x < 0) dxerror(s, "PPPL: SQR of a negative number");
+        if (x < 0) eerr(e, "PPPL: SQR of a negative number");
         return sqrt(x);
     }
     if (!strcmp(name, "SIN")) return sin(x * r);
@@ -254,7 +270,7 @@ static double func1(ev *e, const char *name, double x)
         if (n < 0 || n > 255) return 0.0;
         return (double)(signed char)s->upar[n];
     }
-    dxerror(s, "PPPL: Improper Function call");
+    eerr(e, "PPPL: Improper Function call");
     return 0.0;
 }
 
@@ -292,7 +308,7 @@ static double func2(ev *e, const char *name, double a, double b)
         if (n >= 0 && n <= 255) s->upar[n] = (unsigned char)(long)b;
         return b;
     }
-    dxerror(s, "PPPL: Improper Function call");
+    eerr(e, "PPPL: Improper Function call");
     return 0.0;
 }
 
@@ -321,12 +337,12 @@ static int isfunc1(const char *name)
 static int evindex(ev *e, int li)
 {
     int c = enext(e), n;
-    if (c < '1' || c > '9') dxerror(e->s, "PPPL: Bad destination variable index");
+    if (c < '1' || c > '9') eerr(e, "PPPL: Bad destination variable index");
     n = c - '0';
     if (isdig(epeek(e))) {
         n = n * 10 + (enext(e) - '0');
         if (n > 50 || (n > 19 && !dxextlet(li)))
-            dxerror(e->s, "Parser: #16 Internal Addressing Error");
+            eerr(e, "Parser: #16 Internal Addressing Error");
     }
     return n;
 }
@@ -343,7 +359,7 @@ static const char *eclose(ev *e, int stopcomma)
         } else if (*q == ',' && depth == 1 && stopcomma) return q;
         q++;
     }
-    dxerror(e->s, "PPPL: Syntax Error-Parsed past End of Line");
+    eerr(e, "PPPL: Syntax Error-Parsed past End of Line");
     return q;
 }
 
@@ -352,10 +368,11 @@ static double esub(ev *e, const char *end)
     ev sub;
     double v;
     sub.s = e->s;
+    sub.begin = e->begin;
     sub.p = e->p;
     sub.end = end;
     v = eexpr(&sub);
-    if (epeek(&sub) != 0) dxerror(e->s, "PPPL: Expected Operator");
+    if (epeek(&sub) != 0) eerr(e, "PPPL: Expected Operator");
     e->p = end + 1;
     return v;
 }
@@ -368,7 +385,7 @@ static double efactor(ev *e)
     const char *q;
     int n;
 
-    if (c == 0) dxerror(e->s, "PPPL: Syntax Error: Missing Value");
+    if (c == 0) eerr(e, "PPPL: Syntax Error: Missing Value");
     if (c == '(') {
         q = eclose(e, 0);
         return esub(e, q);
@@ -376,14 +393,14 @@ static double efactor(ev *e)
     if (c == '-') return -efactor(e);
     if (c == '+') return efactor(e);
     if (c == '#') {
-        if (enext(e) != 'P' || enext(e) != 'I') dxerror(e->s, "PPPL: Bad PI");
+        if (enext(e) != 'P' || enext(e) != 'I') eerr(e, "PPPL: Bad PI");
         return PI;
     }
     if (isdig(c) || c == '.' || c == ',') {
         n = 0;
         numbuf[n++] = (char)(c == ',' ? '.' : c);
         while (e->p < e->end && (isdig(*e->p) || *e->p == '.' || *e->p == ',')) {
-            if (n >= 20) dxerror(e->s, "PPPL: Syntax Error: Too Many Digits");
+            if (n >= 20) eerr(e, "PPPL: Syntax Error: Too Many Digits");
             numbuf[n++] = (char)(*e->p == ',' ? '.' : *e->p);
             e->p++;
         }
@@ -391,9 +408,15 @@ static double efactor(ev *e)
         return atof(numbuf);
     }
     li = dxlet(c);
-    if (li < 0) dxerror(e->s, "PPPL: Improper Function call");
+    if (li < 0) eerr(e, "PPPL: Improper Function call");
     if (isdig(epeek(e))) {
         n = evindex(e, li);
+        if (dxuser(e->s) && !e->s->setv[li][n] && !e->s->vwarn[li][n]) {
+            char buf[100];
+            e->s->vwarn[li][n] = 1;
+            sprintf(buf, "%c%d is used in an expression but was never set (0)", c, n);
+            dxwarn(e->s, 0, buf);
+        }
         return e->s->var[li][n];
     }
     name[0] = (char)c;
@@ -401,9 +424,9 @@ static double efactor(ev *e)
     name[2] = (char)enext(e);
     name[3] = 0;
     if (isfunc2(name)) {
-        if (enext(e) != '(') dxerror(e->s, "PPPL: 2-Argument Functions Require Parentheses");
+        if (enext(e) != '(') eerr(e, "PPPL: 2-Argument Functions Require Parentheses");
         q = eclose(e, 1);
-        if (*q != ',') dxerror(e->s, "PPPL: 2-Argument Functions Require Parentheses");
+        if (*q != ',') eerr(e, "PPPL: 2-Argument Functions Require Parentheses");
         a = esub(e, q);
         q = eclose(e, 0);
         b = esub(e, q);
@@ -413,7 +436,7 @@ static double efactor(ev *e)
         a = efactor(e);    /* a one-argument function applies to the next factor */
         return func1(e, name, a);
     }
-    dxerror(e->s, "PPPL: Improper Function call");
+    eerr(e, "PPPL: Improper Function call");
     return 0.0;
 }
 
@@ -429,7 +452,7 @@ static double eterm(ev *e)
         } else if (c == '/') {
             enext(e);
             r = efactor(e);
-            if (r == 0.0) dxerror(e->s, "PPPL: division by zero");
+            if (r == 0.0) eerr(e, "PPPL: division by zero");
             v /= r;
         } else return v;
     }
@@ -450,7 +473,7 @@ static double eexpr(ev *e)
         } else if (c == 0 || c == ')' || c == ',') {
             return v;
         } else {
-            dxerror(e->s, "PPPL: Expected Operator");
+            eerr(e, "PPPL: Expected Operator");
         }
     }
 }
@@ -470,15 +493,16 @@ void dxassgn(dxsim *s)
     double v;
 
     e.s = s;
+    e.begin = s->p;
     e.p = s->p;
     e.end = aend(s->p);
     c = enext(&e);
     li = dxlet(c);
-    if (li < 0) dxerror(s, "PPPL: Bad destination variable letter");
+    if (li < 0) eerr(&e, "PPPL: Bad destination variable letter");
     n = evindex(&e, li);
-    if (enext(&e) != '=') dxerror(s, "PPPL: Cannot find equals sign");
+    if (enext(&e) != '=') eerr(&e, "PPPL: Cannot find equals sign");
     v = eexpr(&e);
-    if (epeek(&e) != 0) dxerror(s, "PPPL: Expected Operator");
+    if (epeek(&e) != 0) eerr(&e, "PPPL: Expected Operator");
     dxvset(s, li, n, v);
     s->p = e.end;
 }
@@ -489,9 +513,10 @@ double dxexprs(dxsim *s, const char *text)
     ev e;
     double v;
     e.s = s;
+    e.begin = text;
     e.p = text;
     e.end = text + strlen(text);
     v = eexpr(&e);
-    if (epeek(&e) != 0) dxerror(s, "PPPL: Expected Operator");
+    if (epeek(&e) != 0) eerr(&e, "PPPL: Expected Operator");
     return v;
 }

@@ -1,4 +1,4 @@
-; dxtest programs, one 8.3 name per line
+; dxtest programs, one 8.3 name per line, then extra dxsim options
 cbolt
 cg170
 cg171
@@ -30,3 +30,8 @@ mmacro
 mmirror
 mrotate
 mtransl
+eerrfeed
+eerrcyc
+eerrg
+ewarn
+elint -lint

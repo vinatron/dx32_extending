@@ -6,7 +6,8 @@ programs, including new macro and probing cycles (`../EXT_PROBING.md`), on a PC 
 machine.
 
 * Target firmware: **6.89** (repo-root `BMDC.BIN`). The TC22 is moving to 6.89 (`../VERSIONS.md`).
-* Written in **ANSI C89** for DOS, Windows 98 and later IBM z/OS (plots through GDDM).
+* Written in **ANSI C89** for DOS and Windows 98. A z/OS port with GDDM plots is planned for a later,
+  separate PR; the plot-device layer is ready for it.
 * The canned cycles are not reimplemented: `dxsim` runs **the firmware's own cycle programs**, extracted
   from `BMDC.BIN` into `src/dxcorpus.c`, with the same interpreter as user programs.
 * The output is a **trace** (every move, dwell, tool change, optionally every variable assignment) and an
@@ -21,7 +22,7 @@ CONFIRMED/TENTATIVE marks and firmware addresses.
 |---|---|
 | `LANGUAGE.md` | Language reference (manual + firmware 6.89), canned-cycle variable rules, open questions |
 | `manual/` | Programmer's manual (1994), operator's manual (1997), work-shift appendix (PDF) |
-| `src/` | The simulator (C89): `dxmain.c` command line, `dxinterp.c` interpreter and flow control, `dxexpr.c` numbers, variables and PPPL expressions, `dxmotion.c` geometry, `dxout.c` trace and plots, `dxprog.c` program text, `dxcorpus.c` built-in cycles (generated), `dxscreen.c` live preview (DOS VGA; Windows window via `dxwin.c`/`dxgraph.h`), `dxgddm.c` GDDM device (z/OS, not built by default) |
+| `src/` | The simulator (C89): `dxmain.c` command line, `dxinterp.c` interpreter and flow control, `dxexpr.c` numbers, variables and PPPL expressions, `dxmotion.c` geometry, `dxout.c` trace and plots, `dxprog.c` program text, `dxcorpus.c` built-in cycles (generated), `dxscreen.c` live preview (DOS VGA; Windows window via `dxwin.c`/`dxgraph.h`) |
 | `src/makefile.wat` | Open Watcom: DOS 16-bit, DOS/4GW, Win32 console |
 | `Makefile` | gcc / clang on Linux, macOS, Cygwin |
 | `tests/` | Test programs (`*.txt`, 8.3 names, most from the manual's figures, listed in `tests.lst`), expected traces, `dxtest.c` runner, `RUNTESTS.BAT` |
@@ -57,14 +58,6 @@ Portability rules kept in the source: no `//` comments, declarations only at the
 under 40 KB); letters are looked up in a string, never with `c - 'A'`, so EBCDIC works; external names are
 unique in 8 characters ignoring case.
 
-### z/OS and GDDM (later)
-
-`src/dxgddm.c` is a skeleton plot device for GDDM (FSINIT, GSFLD, GSWIN, GSMOVE, GSLINE, ASREAD, FSTERM).
-Build with `-DDX_GDDM`, include `dxgddm.c`, and run with `-g` to draw on a 3270 graphics terminal. The
-GDDM C binding (header name, argument types) has to be checked against the installed GDDM before the first
-build; only the `DXG_` macros at the top of the file should need changes. File names are 8.3 and external
-names fit 8 characters, so the members can go into a PDS as they are.
-
 ## Running
 
 ```
@@ -82,6 +75,7 @@ dxsim [options] program.txt
   -nopppl    machine without the PPPL option        -boss      BOSS 4-7 compatibility mode
   -keep      keep blanks in blocks                  -del       block delete switch on
   -p8 0|1    P8 for G170-G179 (machine family flag, default 1)
+  -lint      check every line without running it    -silent    no error/warning lines on the console
   -e EXPR    evaluate a PPPL expression and exit    -corpus / -check   list / parse the built-in cycles
 ```
 
@@ -102,10 +96,51 @@ L8      SET   X1 = 4
 The first column is the source: `L7` is line 7 of the program, `@26986` a block of the built-in cycle text
 (its offset in `BMDC.BIN`, see `corpus_689.txt`). Coordinates are base part coordinates (after G92, G97,
 G73, mirror). `ARC2`/`ARC3` give the end point, centre, radius and signed sweep; `SPIRL` a polar spiral.
-Errors use the control's own messages (operator's manual appendix D) and name the block.
+Errors and warnings are described in the next section.
 
 Programs: one block per line, as on the control. The manual writes the end of block as `;`, which is also
 the comment character, so `N10G1X1.F10.; feed` is fine.
+
+## Errors and warnings
+
+An **error** stops the run, as on the control. The message is the control's own (operator's manual
+appendix D), with the line, the block and a `^` under the word in error. It goes to the trace and, when
+the trace is in a file, to the console. On the preview it appears on the status line. The exit code is 2.
+
+```
+ERROR   line 3: Parser: Illegal G-Code
+        N2G33X1.
+          ^
+```
+
+An error inside a canned cycle (for example a G170 block without F) is reported against your line, with
+the firmware's cycle block for reference:
+
+```
+ERROR   line 5, in its canned cycle (built-in block @26965: G91G1U1W1F3!): Parser: No Feedrate Specified
+        N3G170X1.Y1.Z0X1.Y1.R.1Z.2P.1P.1
+```
+
+A **warning** does not stop the run. It marks something the control rejects or ignores, or a likely
+mistake. Warnings are only given for your program's lines, never for the built-in cycle text:
+
+| Warning | Why |
+|---|---|
+| `X1 reads variable X1, which was never set` | a word without a decimal point is a variable (manual ch.10); usually a missing point |
+| `?P7 tests variable P7, which was never set`, `P3 is used in an expression but was never set` | the same, in a condition or an expression |
+| `'=5.' is ignored: an assignment must start its block` | `N3X1=5.` is not an assignment on the control: the third character must be `=` |
+| `Y1.23456 has more decimals than the input increment allows` | manual ch.2: finer than .0001 in (.001 mm) is an input error |
+| `F400 is above the maximum feed` | the control clamps to 295 ipm / 7500 mm/min |
+| `more than one M code in a block` | manual ch.9 |
+| `S5000 is outside the range 1-4200` | manual table 2-2 |
+| `feed move with no M3/M4 programmed` | the control stops with SPINDLE NOT ON CANNOT CUT unless the operator started the spindle |
+| cutter compensation, fillets, E words | not simulated (see the end of this file) |
+
+The summary at the end of the trace counts the warnings. When the trace goes to a file, the console also
+says how many there were (`-silent` turns these console lines off).
+
+`dxsim -lint PROGRAM.TXT` checks every line without running anything and lists **all** errors at once:
+syntax of words, expressions and conditions, unknown G codes, label and tool numbers.
 
 ## Live preview on the screen (DOS and Windows)
 
@@ -159,7 +194,9 @@ files it writes (`-o`), so it needs neither shell redirection nor exit codes, wh
 return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
 
 1. `dxsim -check` parses all 652 blocks of the built-in cycle text (628 non-empty).
-2. Every program in `tests.lst` must reproduce `expected/<name>.out`. Numbers may differ by one unit in
+   (The tests run `dxsim` with `-silent`, so the expected errors don't clutter the console.)
+2. Every program in `tests.lst` (a name, then optional `dxsim` options) must reproduce
+   `expected/<name>.out`, warnings and error reports included; `e*.txt` are the error and warning tests. Numbers may differ by one unit in
    the last printed digit, because C libraries round halfway cases differently. After a reviewed change,
    `DXTEST -u` (or `RUNTESTS path\DXSIM.EXE -u`) rewrites the expected files; check the diff.
 3. Results worked out by hand from the manual's figures: the five 3PL circles, the G81 example, the G191

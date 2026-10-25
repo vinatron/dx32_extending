@@ -1,6 +1,7 @@
 L2      TOOL  M6 change to T1 (TLO 0.0000 DIA 0.0000)
 L5      RAPID X0.0000 Y0.0000 Z1.0000
 L5      RAPID X5.0000 Y0.0000 Z1.0000
+L6      WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
 L6      FEED  X5.0000 Y0.0000 Z0.0000  F40.0
 L7      ARC2  X5.0000 Y0.0000 Z0.0000  CX0.0000 Y0.0000 R5.0000  -360.000 deg  F40.0
 L5      RAPID X5.0000 Y0.0000 Z1.0000
@@ -24,3 +25,4 @@ L11     END   M30
 moves   20 (rapid 14.0000, feed 99.2478 in)
 extent  X-5.0000 Y-4.9990 Z0.0000 .. X5.0000 Y4.9990 Z1.0000
 final   X1.0000 Y0.0000 Z0.0000  (G90, G0, T1)
+warnings 1
