@@ -16,7 +16,7 @@ static const char *const help[] = {
     "  -p FILE    plot file: .svg, .plt/.hpg (HPGL) or .ps/.eps (PostScript)",
     "  -v VIEW    plot view: xy (default), xz, yz, iso",
     "  -r         do not draw rapid moves",
-    "  -S / -Sf   live preview on the VGA screen, paced per move / at the feed rate (DOS)",
+    "  -S / -Sf   live preview, paced per move / at the feed rate (DOS VGA, DXSIMW window)",
 #ifdef DX_GDDM
     "  -g         draw on the 3270 terminal with GDDM",
 #endif
@@ -214,7 +214,7 @@ int main(int argc, char **argv)
 
 #ifndef DX_SCREEN
     if (screen) {
-        fprintf(stderr, "dxsim: -S needs the DOS build with the screen preview (makefile.wat dos)\n");
+        fprintf(stderr, "dxsim: -S needs a build with the preview (makefile.wat dos, dos32 or win32w)\n");
         return 1;
     }
 #else

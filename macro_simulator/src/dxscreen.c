@@ -14,6 +14,7 @@
  * 472 ipm, manual chapter 8) times a speed factor; the DOS clock ticks 18.2
  * times a second, so the timing is approximate.
  *
+ * -DDX_WIN (DXSIMW.EXE) draws in a Windows window instead, through dxwin.c.
  * -DDX_SCSTUB replaces graph.lib, conio and delay() with a logger so this file
  * can be compiled and exercised on any system (tests); DXSC_KEYS holds the
  * keys to "press".
@@ -26,7 +27,9 @@
 #include <math.h>
 #include "dxsim.h"
 
-#ifndef DX_SCSTUB
+#if defined(DX_WIN)
+#include "dxgraph.h"            /* the same calls on Win32 GDI (dxwin.c) */
+#elif !defined(DX_SCSTUB)
 #include <graph.h>
 #include <conio.h>
 #include <i86.h>

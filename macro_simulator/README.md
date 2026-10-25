@@ -21,7 +21,7 @@ CONFIRMED/TENTATIVE marks and firmware addresses.
 |---|---|
 | `LANGUAGE.md` | Language reference (manual + firmware 6.89), canned-cycle variable rules, open questions |
 | `manual/` | Programmer's manual (1994), operator's manual (1997), work-shift appendix (PDF) |
-| `src/` | The simulator (C89): `dxmain.c` command line, `dxinterp.c` interpreter and flow control, `dxexpr.c` numbers, variables and PPPL expressions, `dxmotion.c` geometry, `dxout.c` trace and plots, `dxprog.c` program text, `dxcorpus.c` built-in cycles (generated), `dxscreen.c` live VGA preview (DOS), `dxgddm.c` GDDM device (z/OS, not built by default) |
+| `src/` | The simulator (C89): `dxmain.c` command line, `dxinterp.c` interpreter and flow control, `dxexpr.c` numbers, variables and PPPL expressions, `dxmotion.c` geometry, `dxout.c` trace and plots, `dxprog.c` program text, `dxcorpus.c` built-in cycles (generated), `dxscreen.c` live preview (DOS VGA; Windows window via `dxwin.c`/`dxgraph.h`), `dxgddm.c` GDDM device (z/OS, not built by default) |
 | `src/makefile.wat` | Open Watcom: DOS 16-bit, DOS/4GW, Win32 console |
 | `Makefile` | gcc / clang on Linux, macOS, Cygwin |
 | `tests/` | Test programs (`*.txt`, 8.3 names, most from the manual's figures, listed in `tests.lst`), expected traces, `dxtest.c` runner, `RUNTESTS.BAT` |
@@ -41,6 +41,7 @@ cd src                                # Open Watcom 1.9 or 2.0
 wmake -f makefile.wat dos             # DXSIM.EXE    16-bit DOS, large model (8086 and up), with -S preview
 wmake -f makefile.wat dos32           # DXSIM4G.EXE  DOS/4GW extender, with -S preview
 wmake -f makefile.wat win32           # DXSIM32.EXE  console, Windows 95/98/NT and later
+wmake -f makefile.wat win32w          # DXSIMW.EXE   same, with the -S preview in a window
 wmake -f makefile.wat tests           # ..\tests\DXTEST.EXE test runner (tests32 for Windows)
 
 bcc -ml -A dxmain.c dxinterp.c dxexpr.c dxmotion.c dxprog.c dxout.c dxcorpus.c   # Borland/Turbo C++ (untested)
@@ -71,7 +72,7 @@ dxsim [options] program.txt
   -o FILE    trace to FILE (default: screen)       -q    no trace
   -p FILE    plot: FILE.svg, FILE.plt (HPGL), FILE.ps (PostScript)
   -v VIEW    plot view xy (default), xz, yz, iso   -r    do not draw rapids
-  -S / -Sf   live VGA preview, paced per move / at the feed rate (DOS builds)
+  -S / -Sf   live preview, paced per move / at the feed rate (DOS builds, DXSIMW.EXE)
   -s         trace variable assignments             -b/-B echo program blocks / also built-in blocks
   -d         dump the variables set, at the end     -cov  list the built-in blocks executed
   -M FILE    load M-macro definitions (M<n>: ... |)
@@ -106,11 +107,16 @@ Errors use the control's own messages (operator's manual appendix D) and name th
 Programs: one block per line, as on the control. The manual writes the end of block as `;`, which is also
 the comment character, so `N10G1X1.F10.; feed` is fine.
 
-## Live preview on the screen (DOS)
+## Live preview on the screen (DOS and Windows)
 
 The DOS builds (`wmake -f makefile.wat dos` or `dos32`) draw the tool path on a VGA screen while the program
 runs, like the control's own **F5 PREVIEW** (operator's manual chapter 3). They use Open Watcom's
 `graph.lib`. This works in plain DOS and full-screen in a Windows 98 DOS box.
+
+On Windows, `wmake -f makefile.wat win32w` builds **DXSIMW.EXE**: the same preview (same keys, pacing and
+status lines) in a 640×480 window, through `dxwin.c`, a small Win32 GDI version of the `graph.lib` calls the
+preview uses. It runs from a command prompt like the other builds and uses only Windows 95-era calls.
+Closing the window is the same as ESC; the picture is redrawn when the window is covered.
 
 ```
 DXSIM -S  PROGRAM.TXT        draw as the program runs, a fixed pause after each move
