@@ -4,3 +4,6 @@ dxsim
 *.EXE
 *.exe
 *.err
+tests/dxtest
+tests/dxt.out
+RESULTS.TXT

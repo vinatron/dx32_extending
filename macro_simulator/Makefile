@@ -13,11 +13,14 @@ dxsim: $(SRC) src/dxsim.h
 src/dxcorpus.c: ../BMDC.BIN tools/gen_corpus_c.py tools/extract_corpus.py
 	python3 tools/gen_corpus_c.py
 
-test: dxsim
-	python3 tests/run_tests.py
+tests/dxtest: tests/dxtest.c
+	$(CC) $(CFLAGS) -o $@ tests/dxtest.c -lm
+
+test: dxsim tests/dxtest
+	cd tests && ./dxtest ../dxsim
 	python3 tools/check_grammar.py
 
 clean:
-	rm -f dxsim
+	rm -f dxsim tests/dxtest
 
 .PHONY: test clean

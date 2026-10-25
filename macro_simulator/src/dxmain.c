@@ -90,12 +90,26 @@ static void corpus(void)
         printf("  B%-3d %05lx  %s\n", i + 1, dxcorpof[dxcorptb[i]], dxcorptx[dxcorptb[i]]);
 }
 
+/* -e: print the value, or "error: message" */
+static int evalexpr(dxsim *s, FILE *out, const char *expr)
+{
+    char *q;
+    if (setjmp(s->err)) {
+        q = strstr(s->emsg, " [");      /* no block location for a command-line expression */
+        if (q) *q = 0;
+        fprintf(out, "error: %s\n", s->emsg);
+        return 2;
+    }
+    fprintf(out, "%.10g\n", dxexprs(s, expr));
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     dxsim *s = &sim;
     const char *prog = 0, *trace = 0, *pfile = 0, *expr = 0;
     const char *macf[8];
-    int nmacf = 0, quiet = 0, dump = 0, mm = 0, cov = 0, gddm = 0, i, rc, li, idx;
+    int nmacf = 0, quiet = 0, dump = 0, mm = 0, cov = 0, gddm = 0, check = 0, i, rc, li, idx;
     double v;
     FILE *tf = stdout, *pf = 0;
 
@@ -166,22 +180,20 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-p8") && nx) { s->p8 = atoi(nx); i++; }
         else if (!strcmp(a, "-e") && nx) { expr = nx; i++; }
         else if (!strcmp(a, "-corpus")) { corpus(); return 0; }
-        else if (!strcmp(a, "-check")) {
-            dxlddone(s);
-            dxreset(s);
-            return dxcheck(s, stdout) ? 2 : 0;
-        }
+        else if (!strcmp(a, "-check")) check = 1;
         else { usage(); return 1; }
     }
 
-    if (expr) {
-        dxreset(s);
-        if (setjmp(s->err)) {
-            fprintf(stderr, "error: %s\n", s->emsg);
-            return 2;
+    if (check || expr) {                /* both honour -o, for test scripts */
+        if (trace && !(tf = fopen(trace, "w"))) {
+            fprintf(stderr, "dxsim: cannot write %s\n", trace);
+            return 1;
         }
-        printf("%.10g\n", dxexprs(s, expr));
-        return 0;
+        dxlddone(s);
+        dxreset(s);
+        rc = check ? (dxcheck(s, tf) ? 2 : 0) : evalexpr(s, tf, expr);
+        if (tf != stdout) fclose(tf);
+        return rc;
     }
     if (!prog) { usage(); return 1; }
     if (dxload(s, prog, 0)) {
@@ -254,7 +266,7 @@ int main(int argc, char **argv)
     }
     if (cov) {
         int k, n = 0;
-        FILE *cf = s->trace ? s->trace : stdout;
+        FILE *cf = tf;              /* the -o file even with -q */
         for (k = 0; k < dxcorpn; k++) if (s->cov[k]) n++;
         fprintf(cf, "------- built-in blocks executed: %d of %d\n", n, dxcorpn);
         for (k = 0; k < dxcorpn; k++)

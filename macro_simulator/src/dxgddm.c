@@ -66,4 +66,9 @@ void dxgdend(dxplot *p)
     DXG_TERM();
 }
 
+#else
+
+/* ISO C forbids an empty file: keeps "wcl *.c" and similar builds working */
+int dxgdnone;
+
 #endif

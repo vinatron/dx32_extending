@@ -24,7 +24,7 @@ CONFIRMED/TENTATIVE marks and firmware addresses.
 | `src/` | The simulator (C89): `dxmain.c` command line, `dxinterp.c` interpreter and flow control, `dxexpr.c` numbers, variables and PPPL expressions, `dxmotion.c` geometry, `dxout.c` trace and plots, `dxprog.c` program text, `dxcorpus.c` built-in cycles (generated), `dxgddm.c` GDDM device (z/OS, not built by default) |
 | `src/makefile.wat` | Open Watcom: DOS 16-bit, DOS/4GW, Win32 console |
 | `Makefile` | gcc / clang on Linux, macOS, Cygwin |
-| `tests/` | Test programs (`*.txt`, most from the manual's figures), expected traces, `run_tests.py` |
+| `tests/` | Test programs (`*.txt`, 8.3 names, most from the manual's figures, listed in `tests.lst`), expected traces, `dxtest.c` runner, `RUNTESTS.BAT` |
 | `corpus_689.txt` | The 6.89 built-in cycle text, one block per line with offsets and table entries |
 | `tools/extract_corpus.py`, `tools/gen_corpus_c.py` | Regenerate `corpus_689.txt` / `src/dxcorpus.c` from `../BMDC.BIN` |
 | `tools/check_grammar.py` | Independent Python recognizer: every corpus block fits the grammar |
@@ -41,13 +41,15 @@ cd src                                # Open Watcom 1.9 or 2.0
 wmake -f makefile.wat dos             # DXSIM.EXE    16-bit DOS, large model (8086 and up)
 wmake -f makefile.wat dos32           # DXSIM4G.EXE  DOS/4GW extender
 wmake -f makefile.wat win32           # DXSIM32.EXE  console, Windows 95/98/NT and later
+wmake -f makefile.wat tests           # ..\tests\DXTEST.EXE test runner (tests32 for Windows)
 
 bcc -ml -A dxmain.c dxinterp.c dxexpr.c dxmotion.c dxprog.c dxout.c dxcorpus.c   # Borland/Turbo C++ (untested)
 gcc -std=c89 -o dxsim.exe *.c -lm                                              # DJGPP (untested)
 ```
 
 Checked here: gcc and clang with `-std=c89 -pedantic -Wall -Wextra`, and Open Watcom 1.9 with `-za -wx`
-for the three targets above (no warnings). The DOS executables could not be run here (no DOS emulator).
+for the three targets above and the test runner (no warnings). Built and run by the owner on
+Windows 98 SE.
 
 Portability rules kept in the source: no `//` comments, declarations only at the top of blocks, no
 `snprintf`; nothing larger than 64 KB in one object (the block table is chunked, the simulator state is
@@ -81,10 +83,10 @@ dxsim [options] program.txt
   -e EXPR    evaluate a PPPL expression and exit    -corpus / -check   list / parse the built-in cycles
 ```
 
-Example (`tests/man_1341.txt`, the manual's 3PL example):
+Example (`tests/m1341.txt`, the manual's 3PL example):
 
 ```
-$ ./dxsim tests/man_1341.txt -s -p circles.svg
+$ ./dxsim tests/m1341.txt -s -p circles.svg
 L2      TOOL  M6 change to T1 (TLO 0.0000 DIA 0.0000)
 L3      SET   X1 = 5
 L5      RAPID X0.0000 Y0.0000 Z1.0000
@@ -105,13 +107,26 @@ the comment character, so `N10G1X1.F10.; feed` is fine.
 
 ## Testing
 
+The test runner `tests/dxtest.c` is C89 like the simulator, so the tests run wherever `dxsim` runs.
+
 ```
-make test        # or: python3 tests/run_tests.py [path/to/dxsim]
+make test                                   Linux/macOS (also runs tools/check_grammar.py)
+
+cd src                                      DOS / Windows 98 with Open Watcom
+wmake -f makefile.wat dos tests             DXSIM.EXE + ..\tests\DXTEST.EXE (16-bit DOS)
+wmake -f makefile.wat win32 tests32         DXSIM32.EXE + DXTEST.EXE (Windows console)
+cd ..\tests
+RUNTESTS                                    results on screen and in RESULTS.TXT
 ```
 
+`DXTEST [-u] [path-to-dxsim]` must run in `tests/`. It starts `dxsim` with `system()` and only reads the
+files it writes (`-o`), so it needs neither shell redirection nor exit codes, which COMMAND.COM does not
+return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
+
 1. `dxsim -check` parses all 652 blocks of the built-in cycle text (628 non-empty).
-2. Every `tests/*.txt` must reproduce `tests/expected/*.out`. After a reviewed change, regenerate with
-   `python3 tests/run_tests.py --update` and check the diff.
+2. Every program in `tests.lst` must reproduce `expected/<name>.out`. Numbers may differ by one unit in
+   the last printed digit, because C libraries round halfway cases differently. After a reviewed change,
+   `DXTEST -u` (or `RUNTESTS path\DXSIM.EXE -u`) rewrites the expected files; check the diff.
 3. Results worked out by hand from the manual's figures: the five 3PL circles, the G81 example, the G191
    frame (18 holes), the G181 row, both bolt circles (6 holes at 30°…330° on R1.75), the nested-loop example
    (42 holes in 6 rows), G83 peck depths, macro parameters, mirror image, the three arc forms, and the
