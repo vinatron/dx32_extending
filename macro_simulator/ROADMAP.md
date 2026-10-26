@@ -18,7 +18,7 @@ A finished feature leaves this file, and its description moves into `README.md` 
 
 Another track in this repo is extending probing and some machine functions; see `../GM_EXTENSION_PLAN.md`,
 `../EXT_PROBING.md`, `../EXT_CODES.md` and `../IO_CTL.md`. When those changes are merged, that track's
-agent will hand over the details. They then take priority over the list above:
+agent will record the details in `HANDOFF.md`. Those entries then take priority over the list above:
 
 1. **Validate.** Check each new or changed code against the 6.89 firmware (`BMDC.BIN`, `decompiled/`,
    `tools/m68k_dis.py`) and against the bench results in `../PHASE1_TEST_PLAN.md`. Label each finding
