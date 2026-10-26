@@ -1,11 +1,11 @@
 # dxsim roadmap
 
-Features planned after PR #5 (the first version) is merged, in the agreed order. Each one is a separate PR,
-and all the work stays in `macro_simulator/`. The owner can change the order.
+Features planned for dxsim, in the agreed order. All the work stays in `macro_simulator/`. The owner can
+change the order.
 
 | # | Feature | Status |
 |---|---|---|
-| 1 | Machine parameters (`-P BMDCPRMS.SYS`) | planned |
+| 1 | Machine parameters (`-P BMDCPRMS.SYS`) | **done** (PR #5): `README.md` "Machine parameters", `LANGUAGE.md` 14a |
 | 2 | Cutter diameter compensation (G41/G42) | planned |
 | 3 | Fillets and corner radii (G22/G23) | planned |
 | 4 | Program flow view: main program → macros → cycles | planned (design below) |
@@ -35,38 +35,16 @@ agent will record the details in `HANDOFF.md`. Those entries then take priority 
 
 ---
 
-## 1. Machine parameters
+## 1. Machine parameters (done)
 
-The aim is to check how a program behaves on one particular machine. Only the parameters that change what
-a part program does on paper are read. The rest of the file is ignored on purpose.
-
-**Read**
-- **Travel limits:** parameters 17-26, in units of 2,540,000 per inch.
-- **Maximum traverse rate:** parameters 7, 8 and 47.
-  - These replace the fixed 472 ipm rapid and the feed clamp.
-  - The units still have to be traced in the firmware. Until then they are TENTATIVE, and dxsim keeps
-    472 ipm.
-- **Spindle range maxima.** These replace the S 1-4200 range from the manual.
-- **Option word:** parameter 156.
-- **Peck clearance:** parameter 272. This replaces `-peck` when the file holds it.
-
-**Ignored:** acceleration, servo gains, following error, encoders, homing, gear shifting and I/O. Those are
-machine dynamics, not the language. They can't be checked without the machine, and a wrong model would give
-false confidence.
-
-**Options**
-- `-P file` reads the parameter file. The format is the same for 6.73 and 6.89, so the TC22's own file
-  works as is.
-- `-model "VMC-1000/22"` applies that section of `BMDCPRMS.INI` on top of the file. See
-  `../BMDCPRMS_INI.md`.
-- `-zero X..,Y..,Z..` gives the machine position of part zero. Travel limits are measured from home, so
-  without this option only the part's overall size can be checked against the travel.
-
-**Errors and tests**
-- Over-travel is an error, reported like the other errors: the line, the block, and a `^` under the axis
-  word. A move that only goes over inside a canned cycle is reported against the calling line.
-- The tests run both the TC22 file and the 6.89 file.
-- Without `-P`, nothing changes.
+Done in PR #5; see `README.md` "Machine parameters" and `LANGUAGE.md` section 14a. Differences from the
+plan:
+- **Rates:** the units were traced (169.333 units/tick = 1 ipm), so params 7 and 8 are used. The feed
+  clamp is still the manual's 295 ipm.
+- **Parameter 156** holds only run-time status, so it isn't used.
+- **Parameters 272 and 285** are not in `BMDCPRMS.SYS`.
+- **Z check:** the firmware applies it only for some machine configurations (0xaf58, 0x2988). That isn't
+  traced yet; dxsim always checks Z.
 
 ## 2. Cutter diameter compensation (G41/G42)
 

@@ -85,7 +85,7 @@ static void delay(unsigned ms) { stubms += ms; }
 
 #define SCW     640
 #define SCH     448             /* drawing area; rows 29-30 are the status lines */
-#define RAPID   472.0           /* ipm, manual chapter 8 */
+#define RAPID   472.0           /* ipm, manual chapter 8; dxemit passes params 7/8 */
 #define TICKMS  55              /* one DOS clock tick */
 
 static const unsigned movems[10] = { 0, 2, 5, 10, 20, 50, 100, 200, 400, 800 };
@@ -242,7 +242,7 @@ void dxscline(dxsim *s, dxplot *pl, int pen, double x0, double y0, double x1, do
         draw(pen, x0, y0, x1, y1);
         return;
     }
-    ms = len / (pen ? (sc.rate > 0 ? sc.rate : RAPID) : RAPID) * 60000.0 / sc.factor;
+    ms = len / (sc.rate > 0 ? sc.rate : RAPID) * 60000.0 / sc.factor;
     n = (long)(ms / TICKMS);
     if (n < 1) n = 1;
     if (n > 200) n = 200;
@@ -255,7 +255,7 @@ void dxscline(dxsim *s, dxplot *pl, int pen, double x0, double y0, double x1, do
     (void)pl;
 }
 
-/* before a move is drawn: its feed rate (in/min) for the pacing */
+/* before a move is drawn: its rate (in/min) for the pacing, feed or rapid */
 void dxscrate(double feedipm)
 {
     sc.rate = feedipm;

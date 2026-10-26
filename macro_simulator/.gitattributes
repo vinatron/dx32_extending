@@ -1,3 +1,5 @@
 # DOS batch files must keep CR/LF line ends, also in ZIP downloads
 *.BAT -text
 *.bat -text
+*.SYS -text
+*.INI -text

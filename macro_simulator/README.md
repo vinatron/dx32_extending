@@ -77,6 +77,8 @@ dxsim [options] program.txt
   -keep      keep blanks in blocks                  -del       block delete switch on
   -p8 0|1    P8 for G170-G179 (machine family flag, default 1)
   -lint      check every line without running it    -silent    no error/warning lines on the console
+  -P FILE    machine parameters (BMDCPRMS.SYS, BMDCPRMS.INI)   -model M   apply [M] of BMDCPRMS.INI
+  -zero X,Y,Z  machine position of part zero: check the travel limits (needs -P)
   -e EXPR    evaluate a PPPL expression and exit    -corpus / -check   list / parse the built-in cycles
 ```
 
@@ -122,6 +124,45 @@ three are drawn at the same time.
 Programs: one block per line, as on the control. The manual writes the end of block as `;`, which is also
 the comment character, so `N10G1X1.F10.; feed` is fine.
 
+## Machine parameters
+
+`-P` reads a machine's own parameter file, so a program can be checked against that machine:
+
+```
+DXSIM PART.TXT -P BMDCPRMS.SYS                          size of the part against the travel
+DXSIM PART.TXT -P BMDCPRMS.SYS -zero 10.,8.,-15.        travel limits, with part zero at that machine position
+DXSIM PART.TXT -P BMDCPRMS.SYS -model "VMC-1000/22" -model "8K SPINDLE"
+```
+
+Only the parameters that change what a part program does on paper are read. Acceleration, servo, homing,
+gear-shift and I/O parameters are ignored on purpose, because they are machine dynamics, not the language.
+
+| Parameters | Used for |
+|---|---|
+| 17-22 | X, Y, Z travel limits in machine coordinates (2,540,000 units per inch). The trace shows them at the top |
+| 7, 8 | rapid rate X/Y and Z (169.333 units/tick = 1 ipm). The live preview paces rapids with them |
+| 73-76 | spindle maximum: the highest of the range maximums 74-76. `S` above it is a warning, as the control clamps it |
+
+* **`-model`** applies a section of `BMDCPRMS.INI` (see `../BMDCPRMS_INI.md`) on top of the `.SYS` file, in
+  the order given. The `.INI` is looked for next to the first `.SYS` file, or given with another `-P`.
+* **`-zero X,Y,Z`** is where part zero is in machine coordinates (in inches, or mm with `-m`). Home is machine
+  0,0,0, with the quill at the top, so the simulation then starts at home, as the real machine does. Give
+  Z for the tool tip of the tool being used. Tool length offsets are not applied.
+* **With `-zero`**, every move is checked as the control does it:
+  * The end point of every block, including the blocks inside a canned cycle, is checked against params
+    17-22. Over the limit, the run stops with the control's message, e.g.
+    `Parser: Commanded X Axis Move Too Far Positive`, and a `^` under the axis word.
+  * Above the Z positive limit, a move is refused only if it goes higher than Z already is.
+  * Z limit -2147483648 means no Z check.
+  * An arc that bulges past a limit between its end points stops with the `dpCom:` form of the message,
+    which is what the interpolator reports on the machine.
+* **Without `-zero`**, the summary warns when the program's size on an axis is more than that axis's
+  travel.
+
+Parameter 156, the option word, was in the original plan. It turned out to hold only run-time status
+(low air, low lube, index in/out), so it plays no part here. The PPPL option (param 285) and the peck
+clearance (param 272) are not in `BMDCPRMS.SYS`; `-nopppl` and `-peck` still set them.
+
 ## Errors and warnings
 
 An **error** stops the run, as on the control. The message is the control's own (operator's manual
@@ -153,7 +194,7 @@ mistake. Warnings are only given for your program's lines, never for the built-i
 | `Y1.23456 has more decimals than the input increment allows` | manual ch.2: finer than .0001 in (.001 mm) is an input error |
 | `F400 is above the maximum feed` | the control clamps to 295 ipm / 7500 mm/min |
 | `more than one M code in a block` | manual ch.9 |
-| `S5000 is outside the range 1-4200` | manual table 2-2 |
+| `S5000 is outside the range 1-4200` | manual table 2-2; with `-P`, the machine's spindle maximum (params 73-76) |
 | `feed move with no M3/M4 programmed` | the control stops with SPINDLE NOT ON CANNOT CUT unless the operator started the spindle |
 | cutter compensation, fillets, E words | not simulated (see the end of this file) |
 
@@ -224,8 +265,11 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
    frame (18 holes), the G181 row, both bolt circles (6 holes at 30°…330° on R1.75), the nested-loop example
    (42 holes in 6 rows), G83 peck depths, macro parameters, mirror image, the three arc forms, and the
    expression evaluator.
-4. The tests together execute 617 of the 628 non-empty built-in blocks. The rest are G178's empty body
+4. The tests together execute 620 of the 628 non-empty built-in blocks. The rest are G178's empty body
    and the A33 helper, which no block calls.
+5. `p*.txt` check the machine parameters with copies of the 6.89 and the TC22 `BMDCPRMS.SYS` (`P689.SYS`,
+   `PTC22.SYS`) and `BMDCPRMS.INI`: each travel limit message, an arc past the limit, a canned cycle past
+   the limit, the Z positive rule, the size check and a `-model` section.
 
 ## Not simulated (yet)
 

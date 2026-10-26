@@ -1,0 +1,18 @@
+------- machine parameters: P689.SYS
+travel  X 0.0000 .. 22.2000  Y 0.0000 .. 16.2000  Z -20.0000 .. 0.2000 in (params 17-22, machine coordinates)
+zero    not given (-zero): only the size of the part is checked
+rapid   X/Y 472.0 ipm  Z 300.0 ipm (params 7, 8); spindle max 6000 rpm (params 73-76)
+------- program
+L3      RAPID X0.0000 Y0.0000 Z0.1000
+L4      WARN  S8000 is above the spindle maximum 6000 rpm (params 73-76); the control clamps it
+L4      SPIN  M3 S8000
+L5      FEED  X0.0000 Y0.0000 Z-0.1000  F20.0
+L6      FEED  X25.0000 Y0.0000 Z-0.1000  F20.0
+L7      RAPID X25.0000 Y0.0000 Z0.1000
+L8      END   M2
+WARN    the program moves X over 25.0000 in; the machine has 22.2000 of travel (params 17-18)
+------- summary
+moves   4 (rapid 0.3000, feed 25.2000 in)
+extent  X0.0000 Y0.0000 Z-0.1000 .. X25.0000 Y0.0000 Z0.1000
+final   X25.0000 Y0.0000 Z0.1000  (G90, G0, T0)
+warnings 2

@@ -32,6 +32,9 @@ static const char *const help[] = {
     "  -keep      keep blanks in blocks (normally removed)",
     "  -del       block delete switch on ('/' blocks skipped)",
     "  -peck V    peck clearance, param 272 (default .05 in)",
+    "  -P FILE    machine parameters: BMDCPRMS.SYS (travel, rapid, spindle), BMDCPRMS.INI",
+    "  -model M   apply section [M] of BMDCPRMS.INI, e.g. -model \"VMC-1000/22\" (repeatable)",
+    "  -zero X,Y,Z  machine position of part zero (in; mm with -m): check the travel limits",
     "  -p8 0|1    machine family flag loaded into P8 by G170-G179 (default 1)",
     "  -e EXPR    evaluate a PPPL expression and exit",
     "  -corpus    list the built-in cycle entry points and exit",
@@ -56,6 +59,60 @@ static int ext(const char *f, const char *e)
     for (i = 0; i < m; i++)
         if (tolower((unsigned char)f[n - m + i]) != tolower((unsigned char)e[i])) return 0;
     return 1;
+}
+
+/* "X-10.,Y-5.,Z-12." or "-10,-5,-12" -> machine position of part zero */
+static int parsezero(const char *a, double *z)
+{
+    int k = 0;
+    while (*a && k < 3) {
+        if (*a == 'X' || *a == 'x') k = 0;
+        else if (*a == 'Y' || *a == 'y') k = 1;
+        else if (*a == 'Z' || *a == 'z') k = 2;
+        if (isalpha((unsigned char)*a)) a++;
+        z[k++] = atof(a);
+        a = strchr(a, ',');
+        if (!a) return 0;
+        a++;
+    }
+    return *a != 0;
+}
+
+/* the machine parameter files, BMDCPRMS.INI next to the first .SYS by default */
+static int loadparm(dxsim *s, char **files, int nfiles, char **models, int nmodels)
+{
+    char err[160], ini[200];
+    const char *e;
+    int i, k;
+    ini[0] = 0;
+    for (i = 0; i < nfiles; i++) {
+        if (ext(files[i], ".ini")) {
+            sprintf(ini, "%.199s", files[i]);
+            continue;
+        }
+        if (!dxpload(files[i], err)) {
+            fprintf(stderr, "dxsim: %s\n", err);
+            return 1;
+        }
+        if (!ini[0] && nmodels) {
+            e = files[i] + strlen(files[i]);
+            while (e > files[i] && e[-1] != '/' && e[-1] != '\\' && e[-1] != ':') e--;
+            k = (int)(e - files[i]);
+            if (k > 180) k = 180;
+            sprintf(ini, "%.*sBMDCPRMS.INI", k, files[i]);
+        }
+    }
+    if (nmodels && !ini[0]) {
+        fprintf(stderr, "dxsim: -model needs a parameter file (-P BMDCPRMS.SYS or BMDCPRMS.INI)\n");
+        return 1;
+    }
+    for (i = 0; i < nmodels; i++)
+        if (!dxpmodel(ini, models[i], err)) {
+            fprintf(stderr, "dxsim: %s\n", err);
+            return 1;
+        }
+    dxpapply(s);
+    return 0;
 }
 
 static int parsevar(const char *a, int *li, int *idx, double *v)
@@ -106,6 +163,8 @@ int main(int argc, char **argv)
     dxsim *s = &sim;
     const char *prog = 0, *trace = 0, *pfile = 0, *expr = 0;
     const char *macf[8];
+    char *pfiles[4], *models[4];
+    int npf = 0, nmodel = 0;
     int nmacf = 0, quiet = 0, dump = 0, mm = 0, cov = 0, check = 0, lint = 0, screen = 0, silent = 0;
     int i, rc, li, idx;
     double v;
@@ -175,6 +234,16 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-keep")) s->strip = 0;
         else if (!strcmp(a, "-del")) s->bdel = 1;
         else if (!strcmp(a, "-peck") && nx) { s->peckclr = atof(nx); i++; }
+        else if (!strcmp(a, "-P") && nx) { if (npf < 4) pfiles[npf++] = argv[i + 1]; i++; }
+        else if (!strcmp(a, "-model") && nx) { if (nmodel < 4) models[nmodel++] = argv[i + 1]; i++; }
+        else if (!strcmp(a, "-zero") && nx) {
+            if (parsezero(nx, s->zero)) {
+                fprintf(stderr, "dxsim: -zero X,Y,Z: machine position of part zero, e.g. -zero 10.,5.,-12.\n");
+                return 1;
+            }
+            s->zset = 1;
+            i++;
+        }
         else if (!strcmp(a, "-p8") && nx) { s->p8 = atoi(nx); i++; }
         else if (!strcmp(a, "-e") && nx) { expr = nx; i++; }
         else if (!strcmp(a, "-corpus")) { corpus(); return 0; }
@@ -207,6 +276,16 @@ int main(int argc, char **argv)
         }
     dxlddone(s);
     s->dunit = (mm || s->metric0) ? 25.4 : 1.0;
+    if (s->zset && !npf && !nmodel) {
+        fprintf(stderr, "dxsim: -zero needs the machine parameters (-P BMDCPRMS.SYS)\n");
+        return 1;
+    }
+    if ((npf || nmodel) && loadparm(s, pfiles, npf, models, nmodel)) return 1;
+    if (s->zset && s->metric0) {
+        s->zero[0] /= 25.4;
+        s->zero[1] /= 25.4;
+        s->zero[2] /= 25.4;
+    }
     if (lint) {
         if (trace && !(tf = fopen(trace, "w"))) {
             fprintf(stderr, "dxsim: cannot write %s\n", trace);
@@ -254,6 +333,7 @@ int main(int argc, char **argv)
         }
     }
     s->trace = quiet ? 0 : tf;
+    dxpdesc(s, s->trace);
     if (screen) {
         plot.pass = 2;
         dxplbeg(s);

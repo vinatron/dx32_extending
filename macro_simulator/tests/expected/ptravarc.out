@@ -1,0 +1,17 @@
+------- machine parameters: P689.SYS
+travel  X 0.0000 .. 22.2000  Y 0.0000 .. 16.2000  Z -20.0000 .. 0.2000 in (params 17-22, machine coordinates)
+zero    part zero at machine X10.0000 Y8.0000 Z-15.0000 in
+rapid   X/Y 472.0 ipm  Z 300.0 ipm (params 7, 8); spindle max 6000 rpm (params 73-76)
+------- program
+L3      RAPID X12.0000 Y0.0000 Z15.0000
+L3      RAPID X12.0000 Y0.0000 Z0.1000
+L4      SPIN  M3 S1000
+L5      FEED  X12.0000 Y0.0000 Z0.0000  F20.0
+L6      ARC3  X12.0000 Y1.0000 Z0.0000  CX12.0000 Y0.5000 R0.5000  +180.000 deg  F20.0
+ERROR   line 6: dpCom: Commanded X Axis Move Too Far Positive
+        N4G3X12.Y1.I12.J.5
+            ^
+------- summary
+moves   4 (rapid 38.3094, feed 1.6708 in)
+extent  X-10.0000 Y-8.0000 Z0.0000 .. X12.1841 Y0.0351 Z15.0000
+final   X12.0000 Y0.0000 Z0.0000  (G90, G3, T0)

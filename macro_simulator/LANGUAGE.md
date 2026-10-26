@@ -376,6 +376,43 @@ M12/M15 closed/open loop spindle, M13/M14 spindle direction (tapping), M19 orien
 M0/M1/M2/M6 with a move to the clear point, M25 quill home, M28/M29 rigid tapping, M51 index table.
 One M per block. `dxsim` traces them; it does not move to the clear point or apply tool length offsets.
 
+## 14a. Travel limits (CONFIRMED, F)
+
+The parser checks the end point of every block that moves, before the move is queued. The block can be in
+the user program or in the built-in cycle text. The check is FUN_000231f0, called from the move finalizer
+at 0x231d2 unless 0x4089 bit 3 is set; nothing found sets that bit (TENTATIVE). It compares the target in
+machine units (0x40b2 X, 0x40be Y, 0x40ca Z, 0x40d6 4th axis, 0x40e2 S) with params 17-26 (0xfd8-0xffc).
+Each violation is a `trap #14` with its message:
+
+| Check | Message (6.89 address) |
+|---|---|
+| X < param 17 / X > param 18 | `Parser: Commanded X Axis Move Too Far Minus` / `... Positive` (0x331fc / 0x33228) |
+| Y < 19 / Y > 20 | `... Y Axis ...` (0x33257 / 0x33283) |
+| Z < 21 / Z > 22 | `... Z Axis ...` (0x332b2 / 0x332de) |
+| 4th axis < 23 / > 24 | `... W Axis ...` (0x3330d / 0x33339) |
+| S axis < 25 / > 26 | `... S Axis ...` (0x33368 / 0x33394) |
+
+* **Z, 4th axis and S are checked only if** the low nibble of 0xaf58 is not 0, or the long at 0x2988 is not
+  0. Both are machine configuration; their source is not traced (TENTATIVE). `dxsim` always checks Z.
+* **Z limit off:** if param 21 is -2147483648 (0x80000000), Z is not checked (0x23280).
+* **Above the Z positive limit,** when 0xaf58's nibble is 0, the move is refused only if it also goes
+  higher than Z already is (0x2758) by more than 254 units, i.e. 0.0001 in (0x232ae). A move at a height
+  that was already reached is allowed.
+* **Between end points:** the parser doesn't look there. The operator's manual (appendix D) lists the
+  same messages with `dpCom:` for a limit the interpolator catches during the move. `dxsim` reports an arc
+  that bulges past a limit that way.
+* **The same check also refuses a block with no feed rate:** `ftst 0x40a6` / `Parser: No Feedrate
+  Specified` (0x333c3).
+* **Units** (`../MOTION_PLANNER.md`):
+  * distances: 1 unit is 10 nm, so 2,540,000 units per inch;
+  * rates: units per 4 ms tick, so 169.333 = 1 ipm. Param 7 is 79,925 = 472 ipm.
+
+**Spindle (F, TENTATIVE in detail).** The spindle-speed code at 0x34620 clamps the commanded speed:
+* down to 0xaf34, whose parameter isn't identified;
+* up to param 75 (0xaf14, range #2 maximum), with a machine message.
+
+`dxsim -P` warns above the highest of params 74-76.
+
 ## 15. Open questions
 
 1. **`?Q7<NE>0W8=1.27!`** (G87 body, block 0x2757b): by context it means W8 = 1.27 when Q7 ≠ 0, but the
@@ -405,3 +442,5 @@ One M per block. `dxsim` traces them; it does not move to the clear point or app
 | X, Y, Z, I, J, A, B handlers | 0x21446, 0x217f4, 0x21ac6, 0x21dba, 0x21e9e, 0x2213a, 0x22070 |
 | end of block: cycle driver call, state dispatch | 0x1c7f0, 0x1c892 (states 0x1c8a0) |
 | cycle text and tables A / B | 0x26926-0x27b2e, 0x26852 / 0x268f6 |
+| travel-limit check, its call in the move finalizer, messages | 0x231f0, 0x231d2, 0x331fc-0x333c3 |
+| spindle speed clamp | 0x34620 |

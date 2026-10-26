@@ -1,0 +1,7 @@
+; travel test: Z above the positive limit (+0.2) is refused only if it also goes
+; higher than Z already is (0x232ae).  Home is machine Z0 = part Z15.
+N1G0G90Z15.
+N2G0X1.Y1.
+N3G0Z15.15
+N4G0Z15.3
+N5M2

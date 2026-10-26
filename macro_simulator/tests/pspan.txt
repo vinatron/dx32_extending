@@ -1,0 +1,8 @@
+; no -zero: only the size of the part is checked (X 25 in > 22.2 in of travel)
+; and S8000 is above this machine's spindle maximum
+N1G0G90X0Y0Z.1
+N2S8000M3
+N3G1Z-.1F20.
+N4G1X25.
+N5G0Z.1
+N6M2

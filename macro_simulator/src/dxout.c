@@ -463,9 +463,16 @@ void dxemit(dxsim *s, const dxseg *g)
     double tol = s->plot && s->plot->tol > 0 ? s->plot->tol : 0.001;
 
     s->nmoves++;
+    dxtravel(s, g->p1, g->p0[2], 0);        /* the block's end point, as the parser checks it */
 #ifdef DX_SCREEN
-    if (s->plot && s->plot->dev == DXP_SCREEN && s->plot->pass == 2)
-        dxscrate(pen ? g->feed * dxunit(s) : 0.0);
+    if (s->plot && s->plot->dev == DXP_SCREEN && s->plot->pass == 2) {
+        double xy = sqrt((g->p1[0] - g->p0[0]) * (g->p1[0] - g->p0[0]) +
+                         (g->p1[1] - g->p0[1]) * (g->p1[1] - g->p0[1]));
+        double dz = fabs(g->p1[2] - g->p0[2]), t = xy / s->rapid;
+        if (dz / s->zrapid > t) t = dz / s->zrapid;
+        /* a rapid takes as long as its slower axis needs (params 7 and 8) */
+        dxscrate(pen ? g->feed * dxunit(s) : t > 0 ? sqrt(xy * xy + dz * dz) / t : s->rapid);
+    }
 #endif
     fmtxyz(s, a, g->p1);
     if (!g->arc) {
@@ -518,6 +525,7 @@ void dxemit(dxsim *s, const dxseg *g)
             q[a1] = g->c[a1] + r * sin(th);
             q[an] = g->p0[an] + (g->p1[an] - g->p0[an]) * i / n;
             if (i == n) memcpy(q, g->p1, sizeof q);
+            else dxtravel(s, q, p[2], 1);   /* between the end points: the interpolator stops it */
             bbox(s, q);
             plline(s, 1, p, q);
             memcpy(p, q, sizeof p);
@@ -534,6 +542,7 @@ void dxsumm(dxsim *s)
     double p[3];
     FILE *fp = s->trace;
     if (!fp) return;
+    dxspan(s, fp);
     fprintf(fp, "------- summary\n");
     fprintf(fp, "moves   %ld (rapid %.4f, feed %.4f %s)\n", s->nmoves,
             s->lrapid * s->dunit, s->lfeed * s->dunit, s->dunit > 1.5 ? "mm" : "in");

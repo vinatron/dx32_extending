@@ -48,6 +48,11 @@ void dxmreset(dxsim *s)
     memset(s->g97, 0, sizeof s->g97);
     s->work = 54;
     memset(s->cur, 0, sizeof s->cur);
+    if (s->zset) {                  /* the machine starts at home: machine 0, 0, 0 */
+        s->cur[0] = -s->zero[0];
+        s->cur[1] = -s->zero[1];
+        s->cur[2] = -s->zero[2];
+    }
     memcpy(s->tgt, s->cur, sizeof s->cur);
     s->feed = 0.0;
     s->dwell = 0.0;

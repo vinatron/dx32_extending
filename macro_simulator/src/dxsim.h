@@ -228,6 +228,12 @@ typedef struct dxsim {
     int    sdir;                /* 3, 4, 5 */
 
     /* ---- options ---- */
+    int    mp;                  /* machine parameters loaded (-P) */
+    double tmin[3], tmax[3];    /* travel limits, machine coordinates (inch), params 17-22 */
+    int    zset;                /* -zero given: limits are checked */
+    double zero[3];             /* machine position of part zero (inch) */
+    double rapid, zrapid;       /* rapid rates (ipm), params 7 and 8 */
+    double smax;                /* spindle maximum (rpm), params 73-76 */
     int    pppl;                /* param 285 bit 4 */
     int    compat;              /* BOSS 4-7 compatibility (0xaef9 bit 2) */
     int    strip;               /* strip blanks when loading */
@@ -322,6 +328,14 @@ void  dxplbeg(dxsim *s);
 void  dxplend(dxsim *s);
 int   dxview(const char *name);
 void  dxsumm(dxsim *s);
+
+/* ---- dxparam.c (machine parameter files) ---- */
+int   dxpload(const char *file, char *err);
+int   dxpmodel(const char *file, const char *section, char *err);
+void  dxpapply(dxsim *s);
+void  dxpdesc(const dxsim *s, FILE *fp);
+void  dxtravel(dxsim *s, const double *p, double zfrom, int runtime);
+void  dxspan(dxsim *s, FILE *fp);
 
 #ifdef DX_SCREEN
 /* ---- dxscreen.c (DOS VGA preview, Open Watcom graph.lib) ---- */

@@ -35,3 +35,9 @@ eerrcyc
 eerrg
 ewarn
 elint -lint
+ptravx -P P689.SYS -zero 10.,8.,-15.
+ptravarc -P P689.SYS -zero 10.,8.,-15.
+ptravcyc -P P689.SYS -zero 10.,8.,-15.
+ptravz -P P689.SYS -zero 10.,8.,-15.
+pspan -P P689.SYS
+pspantc -P PTC22.SYS -model VMC-1000/22

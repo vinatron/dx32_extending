@@ -1,0 +1,19 @@
+------- machine parameters: P689.SYS
+travel  X 0.0000 .. 22.2000  Y 0.0000 .. 16.2000  Z -20.0000 .. 0.2000 in (params 17-22, machine coordinates)
+zero    part zero at machine X10.0000 Y8.0000 Z-15.0000 in
+rapid   X/Y 472.0 ipm  Z 300.0 ipm (params 7, 8); spindle max 6000 rpm (params 73-76)
+------- program
+L4      RAPID X1.0000 Y1.0000 Z15.0000
+L4      RAPID X1.0000 Y1.0000 Z0.5000
+L5      SPIN  M3 S1000
+@275a6  RAPID X2.0000 Y1.0000 Z0.5000
+@273f1  FEED  X2.0000 Y1.0000 Z-3.5000  F10.0
+@273fe  RAPID X2.0000 Y1.0000 Z0.5000
+L9      RAPID X3.0000 Y1.0000 Z0.5000
+@275a6  RAPID X3.5000 Y1.0000 Z0.5000
+ERROR   line 11, in its canned cycle (built-in block @273f1: G1W5F1): Parser: Commanded Z Axis Move Too Far Minus
+        N8X3.5
+------- summary
+moves   8 (rapid 35.2127, feed 4.0000 in)
+extent  X-10.0000 Y-8.0000 Z-3.5000 .. X3.5000 Y1.0000 Z15.0000
+final   X3.5000 Y1.0000 Z0.5000  (G90, G1, T0)

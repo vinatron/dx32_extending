@@ -1,0 +1,7 @@
+; travel test: an arc whose end points are inside but which bulges past X+
+; -> dpCom: Commanded X Axis Move Too Far Positive (the interpolator catches it)
+N1G0G90X12.Y0Z.1
+N2S1000M3
+N3G1Z0F20.
+N4G3X12.Y1.I12.J.5
+N5M2
