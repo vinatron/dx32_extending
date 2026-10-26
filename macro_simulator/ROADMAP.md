@@ -14,6 +14,25 @@ and all the work stays in `macro_simulator/`. The owner can change the order.
 
 A finished feature leaves this file, and its description moves into `README.md` and `LANGUAGE.md`.
 
+### Incoming: probing and machine-function extensions
+
+Another track in this repo is extending probing and some machine functions; see `../GM_EXTENSION_PLAN.md`,
+`../EXT_PROBING.md`, `../EXT_CODES.md` and `../IO_CTL.md`. When those changes are merged, that track's
+agent will hand over the details. They then take priority over the list above:
+
+1. **Validate.** Check each new or changed code against the 6.89 firmware (`BMDC.BIN`, `decompiled/`,
+   `tools/m68k_dis.py`) and against the bench results in `../PHASE1_TEST_PLAN.md`. Label each finding
+   CONFIRMED or TENTATIVE.
+2. **Report disagreements** to that track: firmware against document, or document against bench result.
+   Don't quietly simulate one version.
+3. **Add them to dxsim:**
+   - new G and M codes and M-macros;
+   - the probe cycles: trace the probe moves, and take the touch points from a new option (e.g. the
+     surfaces of a simple box) because dxsim has no model of the part;
+   - machine I/O through the existing `-i` inputs and the `IO` trace lines.
+4. **Write it down and test it:** new sections in `LANGUAGE.md`, test programs with expected traces, and
+   the error and warning messages the control gives for misuse.
+
 ---
 
 ## 1. Machine parameters
@@ -185,9 +204,6 @@ reason. A silent mistranslation on a real machine is the main risk, so fb2dx nev
   on the FANUC control itself, and the report says so, line by line.
 - **Depends on items 1 and 4:** the flow view and the machine parameters. They make the translated
   program's checks (nesting, travel) mean something.
-- **If the machine later moves to LinuxCNC:** its O-word subroutines are closer to Macro B than the DX32
-  is, so a second back end could target them. The front end (parsing and checking the FANUC program)
-  would be shared.
 
 ## 6. z/OS port with GDDM plots
 
