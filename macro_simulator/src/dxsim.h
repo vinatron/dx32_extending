@@ -68,6 +68,8 @@
 #define DXV_XZ      1
 #define DXV_YZ      2
 #define DXV_ISO     3
+#define DXV_ALL     4       /* G17, G18, G19 and iso on one sheet */
+#define DXV_N       4       /* single projections */
 
 typedef struct dxpos { long blk; int off; } dxpos;   /* a place in the text */
 
@@ -89,6 +91,12 @@ typedef struct dxplot {
     int    pass;            /* 1: measure, 2: draw */
     FILE  *fp;
     double minx, miny, maxx, maxy;
+    int    bset;            /* pass 1: extents of each projection */
+    double bminx[DXV_N], bmaxx[DXV_N], bminy[DXV_N], bmaxy[DXV_N];
+    int    nview;           /* pass 2: views on the sheet (1, or 4 for DXV_ALL) */
+    int    vproj[DXV_N];    /* projection of each view */
+    double vsx[DXV_N], vsy[DXV_N];  /* shift added to a projected point */
+    double vlx[DXV_N], vly[DXV_N];  /* top left corner of each view (label) */
     double tol;             /* chord tolerance for arcs (inch) */
     double sc, ox, oy;      /* device scale and origin (pass 2) */
     double mark;            /* half size of a hole marker (device units) */
@@ -312,6 +320,7 @@ void  dxtline(dxsim *s, const char *text);
 void  dxemit(dxsim *s, const dxseg *g);
 void  dxplbeg(dxsim *s);
 void  dxplend(dxsim *s);
+int   dxview(const char *name);
 void  dxsumm(dxsim *s);
 
 #ifdef DX_SCREEN
@@ -322,6 +331,8 @@ void  dxscline(dxsim *s, dxplot *pl, int pen, double x0, double y0, double x1, d
 void  dxscrate(double feedipm);
 void  dxscmove(dxsim *s);
 void  dxscend(dxsim *s);
+void  dxsclabel(dxplot *pl, const char *text, double x, double y);
+void  dxscmark(dxplot *pl, double x, double y);
 #endif
 
 

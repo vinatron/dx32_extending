@@ -14,7 +14,7 @@ static const char *const help[] = {
     "usage: dxsim [options] program.txt",
     "  -o FILE    write the trace to FILE (default: screen); -q no trace",
     "  -p FILE    plot file: .svg, .plt/.hpg (HPGL) or .ps/.eps (PostScript)",
-    "  -v VIEW    plot view: xy (default), xz, yz, iso",
+    "  -v VIEW    view: g17 (XY, default), g18 (XZ), g19 (YZ), iso, or all four on one sheet",
     "  -r         do not draw rapid moves",
     "  -S / -Sf   live preview, paced per move / at the feed rate (DOS VGA, DXSIMW window)",
     "  -M FILE    load M-macro definitions (M<n>: ... |) from FILE",
@@ -129,10 +129,11 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-q")) quiet = 1;
         else if (!strcmp(a, "-p") && nx) { pfile = nx; i++; }
         else if (!strcmp(a, "-v") && nx) {
-            if (!strcmp(nx, "xz")) plot.proj = DXV_XZ;
-            else if (!strcmp(nx, "yz")) plot.proj = DXV_YZ;
-            else if (!strcmp(nx, "iso")) plot.proj = DXV_ISO;
-            else plot.proj = DXV_XY;
+            plot.proj = dxview(nx);
+            if (plot.proj < 0) {
+                fprintf(stderr, "dxsim: unknown view %s (use g17 g18 g19 iso all)\n", nx);
+                return 1;
+            }
             i++;
         }
         else if (!strcmp(a, "-r")) plot.rapids = 0;

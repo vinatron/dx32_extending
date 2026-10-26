@@ -182,7 +182,7 @@ static void blkhook(dxsim *s)
 
 void dxscbeg(dxsim *s, dxplot *pl)
 {
-    double w = pl->maxx - pl->minx, h = pl->maxy - pl->miny, ox, oy, z[3] = { 0, 0, 0 };
+    double w = pl->maxx - pl->minx, h = pl->maxy - pl->miny;
     double sx = (SCW - 8) / w, sy = (SCH - 8) / h;
     pl->sc = sx < sy ? sx : sy;
     pl->ox = (SCW - w * pl->sc) / 2.0;
@@ -190,20 +190,38 @@ void dxscbeg(dxsim *s, dxplot *pl)
     _setvideomode(_VRES16COLOR);
     _clearscreen(_GCLEARSCREEN);
     _setcliprgn(0, 0, SCW - 1, SCH - 1);
-    /* part zero: a small grey cross */
-    ox = (z[0] - pl->minx) * pl->sc + pl->ox;
-    oy = (z[1] - pl->miny) * pl->sc + pl->oy;
-    if (pl->proj == DXV_XY && ox >= 6 && ox < SCW - 6 && oy >= 6 && oy < SCH - 6) {
-        _setcolor(8);
-        _setlinestyle(0xffff);
-        _moveto((short)(ox - 6), (short)(SCH - 1 - oy));
-        _lineto((short)(ox + 6), (short)(SCH - 1 - oy));
-        _moveto((short)ox, (short)(SCH - 1 - oy - 6));
-        _lineto((short)ox, (short)(SCH - 1 - oy + 6));
-    }
     s->blkhook = blkhook;
     s->bt = "";
     status(s, "RUN");
+}
+
+/* part zero of one view: a small grey cross */
+void dxscmark(dxplot *pl, double x, double y)
+{
+    (void)pl;
+    if (x < 6 || x >= SCW - 6 || y < 6 || y >= SCH - 6) return;
+    _setcolor(8);
+    _setlinestyle(0xffff);
+    _moveto((short)(x - 6), (short)(SCH - 1 - y));
+    _lineto((short)(x + 6), (short)(SCH - 1 - y));
+    _moveto((short)x, (short)(SCH - 1 - y - 6));
+    _lineto((short)x, (short)(SCH - 1 - y + 6));
+}
+
+/* a view name with its bottom left corner near device point x, y (8x16 text cells) */
+void dxsclabel(dxplot *pl, const char *text, double x, double y)
+{
+    int row = (int)((SCH - 1 - y) / 16.0), col = (int)(x / 8.0) + 1;
+    char buf[16];
+    (void)pl;
+    if (row < 1) row = 1;
+    if (row > SCH / 16) row = SCH / 16;
+    if (col < 1) col = 1;
+    if (col > 80 - (int)strlen(text)) col = 80 - (int)strlen(text);
+    sprintf(buf, "%.15s", text);
+    _settextcolor(7);
+    _settextposition((short)row, (short)col);
+    _outtext(buf);
 }
 
 static void draw(int pen, double x0, double y0, double x1, double y1)

@@ -8,6 +8,7 @@
  * preview (DOS VGA or a Windows window) through dxscreen.c when built with
  * -DDX_SCREEN.
  */
+#include <ctype.h>
 #include <math.h>
 #include <string.h>
 #include "dxsim.h"
@@ -50,9 +51,9 @@ static void paxes(int plane, int *a0, int *a1, int *an)
 /* ------------------------------------------------------------------ */
 /* projection and devices                                              */
 
-static void proj(const dxplot *pl, const double *p, double *x, double *y)
+static void proj(int kind, const double *p, double *x, double *y)
 {
-    switch (pl->proj) {
+    switch (kind) {
     case DXV_XZ: *x = p[0]; *y = p[2]; break;
     case DXV_YZ: *x = p[1]; *y = p[2]; break;
     case DXV_ISO:
@@ -61,6 +62,110 @@ static void proj(const dxplot *pl, const double *p, double *x, double *y)
         break;
     default: *x = p[0]; *y = p[1]; break;
     }
+}
+
+/*
+ * Views.  G17 is the XY plane seen from above (X right, Y up), G18 the XZ
+ * plane seen from the front (X right, Z up), G19 the YZ plane seen from the
+ * right (Y right, Z up).  "all" puts the three on one sheet as a third-angle
+ * drawing, with the iso view in the free corner:
+ *
+ *      G17 (top)      ISO
+ *      G18 (front)    G19 (right)
+ *
+ * All four share one scale, so X lines up between G17 and G18 and Z between
+ * G18 and G19.
+ */
+static const struct { const char *name; int kind; } vnames[] = {
+    { "xy", DXV_XY }, { "g17", DXV_XY }, { "17", DXV_XY },
+    { "xz", DXV_XZ }, { "zx", DXV_XZ }, { "g18", DXV_XZ }, { "18", DXV_XZ },
+    { "yz", DXV_YZ }, { "g19", DXV_YZ }, { "19", DXV_YZ },
+    { "iso", DXV_ISO }, { "all", DXV_ALL }, { "4", DXV_ALL }
+};
+
+int dxview(const char *name)
+{
+    char b[8];
+    int i;
+    for (i = 0; i < 7 && name[i]; i++) b[i] = (char)tolower((unsigned char)name[i]);
+    b[i] = 0;
+    if (name[i]) return -1;
+    for (i = 0; i < (int)(sizeof vnames / sizeof vnames[0]); i++)
+        if (!strcmp(b, vnames[i].name)) return vnames[i].kind;
+    return -1;
+}
+
+static const char *const vlabel[DXV_N] = { "G17 XY", "G18 XZ", "G19 YZ", "ISO" };
+
+/* a projected point of view v in drawing units */
+static void vproj(const dxplot *pl, int v, const double *p, double *x, double *y)
+{
+    proj(pl->vproj[v], p, x, y);
+    *x += pl->vsx[v];
+    *y += pl->vsy[v];
+}
+
+/* end of pass 1: place the views on the sheet and set the drawing extent */
+static void layout(dxplot *pl)
+{
+    int k;
+    double w[DXV_N], h[DXV_N], m0, W, D, H, IW, IH, g, cw, ch;
+    if (!pl->bset)
+        for (k = 0; k < DXV_N; k++) pl->bminx[k] = pl->bmaxx[k] = pl->bminy[k] = pl->bmaxy[k] = 0.0;
+    for (k = 0; k < DXV_N; k++) {
+        w[k] = pl->bmaxx[k] - pl->bminx[k];
+        h[k] = pl->bmaxy[k] - pl->bminy[k];
+    }
+    if (pl->proj != DXV_ALL) {
+        k = pl->proj;
+        pl->nview = 1;
+        pl->vproj[0] = k;
+        pl->vsx[0] = pl->vsy[0] = 0.0;
+        pl->minx = pl->bminx[k];
+        pl->maxx = pl->bmaxx[k];
+        pl->miny = pl->bminy[k];
+        pl->maxy = pl->bmaxy[k];
+        return;
+    }
+    /* a flat part has no height in G18/G19: give each view a minimum size */
+    m0 = w[DXV_XY];
+    if (h[DXV_XY] > m0) m0 = h[DXV_XY];
+    if (h[DXV_XZ] > m0) m0 = h[DXV_XZ];
+    m0 = m0 > 1e-6 ? m0 * 0.1 : 0.1;
+    W = w[DXV_XY] > m0 ? w[DXV_XY] : m0;
+    D = h[DXV_XY] > m0 ? h[DXV_XY] : m0;
+    H = h[DXV_XZ] > m0 ? h[DXV_XZ] : m0;
+    IW = w[DXV_ISO] > m0 ? w[DXV_ISO] : m0;
+    IH = h[DXV_ISO] > m0 ? h[DXV_ISO] : m0;
+    cw = D > IW ? D : IW;           /* right column */
+    ch = D > IH ? D : IH;           /* top row */
+    g = (W + cw > H + ch ? W + cw : H + ch) * 0.08;
+    pl->nview = 4;
+    /* view 0 (G17) is the one paced in the live preview */
+    pl->vproj[0] = DXV_XY;
+    pl->vsx[0] = (W - w[DXV_XY]) / 2 - pl->bminx[DXV_XY];
+    pl->vsy[0] = H + g + (ch - h[DXV_XY]) / 2 - pl->bminy[DXV_XY];
+    pl->vlx[0] = 0.0;
+    pl->vly[0] = H + g + ch;
+    pl->vproj[1] = DXV_XZ;
+    pl->vsx[1] = pl->vsx[0];        /* same X as G17 */
+    pl->vsy[1] = (H - h[DXV_XZ]) / 2 - pl->bminy[DXV_XZ];
+    pl->vlx[1] = 0.0;
+    pl->vly[1] = H;
+    pl->vproj[2] = DXV_YZ;
+    pl->vsx[2] = W + g + (cw - w[DXV_YZ]) / 2 - pl->bminx[DXV_YZ];
+    pl->vsy[2] = pl->vsy[1];        /* same Z as G18 */
+    pl->vlx[2] = W + g;
+    pl->vly[2] = H;
+    pl->vproj[3] = DXV_ISO;
+    pl->vsx[3] = W + g + (cw - w[DXV_ISO]) / 2 - pl->bminx[DXV_ISO];
+    pl->vsy[3] = H + g + (ch - h[DXV_ISO]) / 2 - pl->bminy[DXV_ISO];
+    pl->vlx[3] = W + g;
+    pl->vly[3] = H + g + ch;
+    pl->minx = 0.0;
+    pl->miny = 0.0;
+    pl->maxx = W + g + cw;
+    pl->maxy = H + g + ch;
 }
 
 static void devx(const dxplot *pl, double x, double y, double *dx, double *dy)
@@ -112,56 +217,134 @@ static void devline(dxplot *pl, int pen, double X0, double Y0, double X1, double
     pl->ly = Y1;
 }
 
+static void extent(dxplot *pl, const double *p)
+{
+    int k;
+    double x, y;
+    for (k = 0; k < DXV_N; k++) {
+        proj(k, p, &x, &y);
+        if (!pl->bset) {
+            pl->bminx[k] = pl->bmaxx[k] = x;
+            pl->bminy[k] = pl->bmaxy[k] = y;
+            continue;
+        }
+        if (x < pl->bminx[k]) pl->bminx[k] = x;
+        if (x > pl->bmaxx[k]) pl->bmaxx[k] = x;
+        if (y < pl->bminy[k]) pl->bminy[k] = y;
+        if (y > pl->bmaxy[k]) pl->bmaxy[k] = y;
+    }
+    pl->bset = 1;
+}
+
 static void plline(dxsim *s, int pen, const double *a, const double *b)
 {
     dxplot *pl = s->plot;
-    double x0, y0, x1, y1, X0, Y0, X1, Y1, h;
+    double x0, y0, x1, y1, X0, Y0, X1, Y1, h, len;
+    int v;
     if (!pl || pl->dev == DXP_NONE) return;
     if (pen == 0 && !pl->rapids) return;
-    proj(pl, a, &x0, &y0);
-    proj(pl, b, &x1, &y1);
     if (pl->pass == 1) {
-        if (pl->nseg == 0) {
-            pl->minx = pl->maxx = x0;
-            pl->miny = pl->maxy = y0;
-        }
-        if (x0 < pl->minx) pl->minx = x0;
-        if (x0 > pl->maxx) pl->maxx = x0;
-        if (y0 < pl->miny) pl->miny = y0;
-        if (y0 > pl->maxy) pl->maxy = y0;
-        if (x1 < pl->minx) pl->minx = x1;
-        if (x1 > pl->maxx) pl->maxx = x1;
-        if (y1 < pl->miny) pl->miny = y1;
-        if (y1 > pl->maxy) pl->maxy = y1;
+        extent(pl, a);
+        extent(pl, b);
         pl->nseg++;
         return;
     }
-    devx(pl, x0, y0, &X0, &Y0);
-    devx(pl, x1, y1, &X1, &Y1);
     pl->nseg++;
-    if (pen && fabs(X1 - X0) + fabs(Y1 - Y0) < 1e-9 && fabs(a[2] - b[2]) > 1e-9) {
-        /* a plunge seen end-on (a drilled hole in the XY view): draw a small x */
-        h = pl->mark;
+    len = sqrt((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1]) +
+               (b[2] - a[2]) * (b[2] - a[2]));
+    (void)len;                  /* only the live preview paces by length */
+    for (v = 0; v < pl->nview; v++) {
+        vproj(pl, v, a, &x0, &y0);
+        vproj(pl, v, b, &x1, &y1);
+        devx(pl, x0, y0, &X0, &Y0);
+        devx(pl, x1, y1, &X1, &Y1);
+        if (fabs(X1 - X0) + fabs(Y1 - Y0) < 1e-9) {
+            if (!pen || fabs(a[2] - b[2]) < 1e-9) continue;
+            /* a plunge seen end-on (a drilled hole in the G17 view): draw a small x */
+            h = pl->mark;
+#ifdef DX_SCREEN
+            if (pl->dev == DXP_SCREEN) {
+                dxscline(s, pl, 1, X0 - h, Y0 - h, X0 + h, Y0 + h, v ? 0.0 : len);
+                dxscline(s, pl, 1, X0 - h, Y0 + h, X0 + h, Y0 - h, 0.0);
+                continue;
+            }
+#endif
+            devline(pl, 1, X0 - h, Y0 - h, X0 + h, Y0 + h);
+            devline(pl, 1, X0 - h, Y0 + h, X0 + h, Y0 - h);
+            continue;
+        }
 #ifdef DX_SCREEN
         if (pl->dev == DXP_SCREEN) {
-            dxscline(s, pl, 1, X0 - h, Y0 - h, X0 + h, Y0 + h, fabs(a[2] - b[2]));
-            dxscline(s, pl, 1, X0 - h, Y0 + h, X0 + h, Y0 - h, 0.0);
-            return;
+            /* only the first view is paced; the others follow at once */
+            dxscline(s, pl, pen, X0, Y0, X1, Y1, v ? 0.0 : len);
+            continue;
         }
 #endif
-        devline(pl, 1, X0 - h, Y0 - h, X0 + h, Y0 + h);
-        devline(pl, 1, X0 - h, Y0 + h, X0 + h, Y0 - h);
-        return;
+        devline(pl, pen, X0, Y0, X1, Y1);
     }
+}
+
+/* view names and part-zero crosses, in device units */
+static void decor(dxplot *pl, double w, double h)
+{
+    int v;
+    double ox, oy, X, Y, t, fs, z[3] = { 0.0, 0.0, 0.0 };
+    t = (w > h ? w : h) * 0.02 * pl->sc;
+    fs = (w > h ? w : h) * 0.022 * pl->sc;
+    if (pl->dev == DXP_SVG)
+        fprintf(pl->fp, "<style>text{font:%.3fpx sans-serif;fill:#555}</style>\n", fs);
+    if (pl->dev == DXP_PS)
+        fprintf(pl->fp, "/Helvetica findfont 9 scalefont setfont\n");
+    for (v = 0; v < pl->nview; v++) {
+        vproj(pl, v, z, &ox, &oy);
+        devx(pl, ox, oy, &X, &Y);
+        switch (pl->dev) {
+        case DXP_SVG:
+            fprintf(pl->fp, "<path class=\"o\" d=\"M%.3f,%.3f h%.3f M%.3f,%.3f v%.3f\"/>\n",
+                    X - t, -Y, 2 * t, X, -Y - t, 2 * t);
+            break;
+        case DXP_PS:
+            fprintf(pl->fp, "0.6 setgray [] 0 setdash %.2f %.2f moveto %.2f 0 rlineto "
+                    "%.2f %.2f moveto 0 %.2f rlineto stroke 0 setgray\n",
+                    X - t, Y, 2 * t, X, Y - t, 2 * t);
+            break;
 #ifdef DX_SCREEN
-    if (pl->dev == DXP_SCREEN) {
-        dxscline(s, pl, pen, X0, Y0, X1, Y1,
-                 sqrt((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1]) +
-                      (b[2] - a[2]) * (b[2] - a[2])));
-        return;
-    }
+        case DXP_SCREEN:
+            dxscmark(pl, X, Y);
+            break;
 #endif
-    devline(pl, pen, X0, Y0, X1, Y1);
+        default:
+            break;
+        }
+        /* the label sits just above the view's top left corner */
+        if (pl->nview > 1) {
+            X = pl->vlx[v];
+            Y = pl->vly[v];
+            devx(pl, X, Y, &X, &Y);
+        } else {
+            devx(pl, pl->minx, pl->maxy, &X, &Y);
+            Y -= fs * 1.4;
+        }
+        switch (pl->dev) {
+        case DXP_SVG:
+            fprintf(pl->fp, "<text x=\"%.3f\" y=\"%.3f\">%s</text>\n", X, -Y - fs * 0.3,
+                    vlabel[pl->vproj[v]]);
+            break;
+        case DXP_PS:
+            fprintf(pl->fp, "%.2f %.2f moveto (%s) show\n", X, Y + 3.0, vlabel[pl->vproj[v]]);
+            break;
+        case DXP_HPGL:
+            fprintf(pl->fp, "SP1;PU%.0f,%.0f;LB%s\003;\n", X, Y + fs * 0.3, vlabel[pl->vproj[v]]);
+            break;
+#ifdef DX_SCREEN
+        case DXP_SCREEN:
+            dxsclabel(pl, vlabel[pl->vproj[v]], X, Y);
+            break;
+#endif
+        default:
+            break;
+        }
+    }
 }
 
 void dxplbeg(dxsim *s)
@@ -169,11 +352,11 @@ void dxplbeg(dxsim *s)
     dxplot *pl = s->plot;
     double w, h, m;
     if (!pl || pl->dev == DXP_NONE || pl->pass != 2) return;
-    if (pl->nseg == 0) pl->minx = pl->maxx = pl->miny = pl->maxy = 0.0;
+    layout(pl);
     w = pl->maxx - pl->minx;
     h = pl->maxy - pl->miny;
-    if (w < 1e-6) w = 1.0;
-    if (h < 1e-6) h = 1.0;
+    if (w < 1e-6) { w = 1.0; pl->minx -= 0.5; pl->maxx += 0.5; }
+    if (h < 1e-6) { h = 1.0; pl->miny -= 0.5; pl->maxy += 0.5; }
     m = (w > h ? w : h) * 0.05;
     pl->minx -= m;
     pl->miny -= m;
@@ -198,13 +381,6 @@ void dxplbeg(dxsim *s)
                 ".o{stroke:#999;stroke-width:%.3f}</style>\n",
                 (w > h ? w : h) * pl->sc / 700.0, (w > h ? w : h) * pl->sc / 120.0,
                 (w > h ? w : h) * pl->sc / 120.0, (w > h ? w : h) * pl->sc / 900.0);
-        {
-            double ox, oy, z[3] = { 0.0, 0.0, 0.0 }, t = (w > h ? w : h) * 0.03;
-            proj(pl, z, &ox, &oy);
-            devx(pl, ox, oy, &ox, &oy);
-            fprintf(pl->fp, "<path class=\"o\" d=\"M%.3f,%.3f h%.3f M%.3f,%.3f v%.3f\"/>\n",
-                    ox - t * pl->sc, -oy, 2 * t * pl->sc, ox, -oy - t * pl->sc, 2 * t * pl->sc);
-        }
         break;
     case DXP_HPGL:
         pl->sc = 1016.0;    /* plotter units per inch */
@@ -232,6 +408,8 @@ void dxplbeg(dxsim *s)
         break;
     }
     pl->mark = (w > h ? w : h) * pl->sc * 0.008;
+    decor(pl, w, h);
+    pl->pen = -1;
 }
 
 void dxplend(dxsim *s)

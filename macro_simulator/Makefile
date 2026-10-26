@@ -29,10 +29,12 @@ dxsim-scstub: $(SRC) src/dxsim.h
 	$(CC) $(CFLAGS) -DDX_SCREEN -DDX_SCSTUB -o $@ $(SRC) -lm
 
 test-screen: dxsim-scstub
-	cd tests && for t in `grep -v '^;' tests.lst`; do \
-	  DXSC_KEYS= ../dxsim-scstub $$t.txt -Sf >/dev/null 2>&1; \
-	  printf '%-8s %s\n' $$t "`tail -1 dxscreen.log`"; \
-	  tail -1 dxscreen.log | grep -q ' offscreen 0 ' || exit 1; \
+	cd tests && for t in `grep -v '^;' tests.lst | cut -d' ' -f1`; do \
+	  for v in g17 all; do \
+	    DXSC_KEYS= ../dxsim-scstub $$t.txt -Sf -v $$v >/dev/null 2>&1; \
+	    printf '%-8s %-4s %s\n' $$t $$v "`tail -1 dxscreen.log`"; \
+	    tail -1 dxscreen.log | grep -q ' offscreen 0 ' || exit 1; \
+	  done; \
 	done; rm -f dxscreen.log
 
 .PHONY: test test-screen clean

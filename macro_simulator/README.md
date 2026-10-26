@@ -65,7 +65,7 @@ unique in 8 characters ignoring case.
 dxsim [options] program.txt
   -o FILE    trace to FILE (default: screen)       -q    no trace
   -p FILE    plot: FILE.svg, FILE.plt (HPGL), FILE.ps (PostScript)
-  -v VIEW    plot view xy (default), xz, yz, iso   -r    do not draw rapids
+  -v VIEW    view g17 (default), g18, g19, iso, all -r    do not draw rapids
   -S / -Sf   live preview, paced per move / at the feed rate (DOS builds, DXSIMW.EXE)
   -s         trace variable assignments             -b/-B echo program blocks / also built-in blocks
   -d         dump the variables set, at the end     -cov  list the built-in blocks executed
@@ -98,6 +98,26 @@ The first column is the source: `L7` is line 7 of the program, `@26986` a block 
 (its offset in `BMDC.BIN`, see `corpus_689.txt`). Coordinates are base part coordinates (after G92, G97,
 G73, mirror). `ARC2`/`ARC3` give the end point, centre, radius and signed sweep; `SPIRL` a polar spiral.
 Errors and warnings are described in the next section.
+
+**Views** (`-v`, for plot files and the live preview):
+
+| View | Plane | Seen from | Axes on the sheet |
+|---|---|---|---|
+| `g17` (default; also `xy`) | XY | above | X right, Y up |
+| `g18` (also `xz`) | XZ | the front | X right, Z up |
+| `g19` (also `yz`) | YZ | the right | Y right, Z up |
+| `iso` | | front right, above | isometric |
+| `all` | all three planes and iso on one sheet | | third-angle layout below |
+
+```
+G17 (top)      ISO
+G18 (front)    G19 (right)
+```
+
+In `all` the four views share one scale: X lines up between G17 and G18, and Z between G18 and G19. Each
+view is labelled and has a grey cross at part zero. A flat part (no Z movement) still gets G18 and G19
+views of a minimum height. In the live preview the G17 view is the one paced at the feed rate, and the other
+three are drawn at the same time.
 
 Programs: one block per line, as on the control. The manual writes the end of block as `;`, which is also
 the comment character, so `N10G1X1.F10.; feed` is fine.
@@ -168,12 +188,12 @@ DXSIM -Sf PROGRAM.TXT        draw at the programmed feed rate (rapids at 472 ipm
 | ESC | stop |
 
 The status lines show the block, the position, the feed and the pacing. Rapids are drawn red and dashed,
-feeds cyan, drilled holes as a small x. The view is chosen with `-v xy|xz|yz|iso` and the whole part is fitted to
+feeds cyan, drilled holes as a small x. The view is chosen with `-v g17|g18|g19|iso|all` (see Running) and the whole part is fitted to
 the screen (a quick first pass measures it). The trace goes to a file only with `-o`, so it does not
 write over the graphics. The DOS timer ticks 18.2 times a second, so feed-rate pacing is approximate.
 
 `make test-screen` (Linux) runs `dxscreen.c` with `graph.lib`, the keyboard and `delay()` replaced by a logger
-(`-DDX_SCSTUB`). It checks that every test program stays inside the 640×448 drawing area and reports the
+(`-DDX_SCSTUB`). It checks that every test program stays inside the 640×448 drawing area, in the G17 view and in `-v all`, and reports the
 paced time.
 
 ## Testing
