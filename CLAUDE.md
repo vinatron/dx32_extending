@@ -64,7 +64,7 @@ long TX/RX with AUF. `dx32_proto.py` is the reference implementation of all of t
 | `PHASE1_TEST_PLAN.md` | Machine bench test for the Phase 1 findings, with fill-in result tables. Results that come back go into `IO_CTL.md`/`EXT_CODES.md` and flip TENTATIVE items to CONFIRMED |
 | `my_tc22_files/`, `TC22_VALIDATION.md` | The TC22's own files (BMDC.BIN rev 6.73, older BXX/MAINTPG, its BMDCPRMS.SYS) and their comparison with the repo-root originals (rev 6.89). Firmware work for that machine must use `my_tc22_files/BMDC.BIN`; addresses differ from `decompiled/BMDC.*` |
 | `VERSIONS.md` | 6.73 vs 6.89 comparison with an address-equivalence table and the TC22 upgrade checklist (BMDCPRMS.SYS conversion: 156/161 × 256, 194-201 gear-shift timers). The TC22 is moving to 6.89, after which the 6.89 research applies directly |
-| `macro_simulator/` | Separate project: simulator for the macro language. `manual/` holds the programmer's manual PDF; the firmware's built-in cycles (6.89 text at 0x26852-0x27b2e) are its test corpus |
+| `macro_simulator/` | Separate project: `dxsim`, a C89 simulator for the 6.89 part-program and macro language (DOS/Windows 98). `LANGUAGE.md` is the language reference, `ROADMAP.md` the planned features, `HANDOFF.md` the inbox for findings from the G/M-code track (see "Coordination with the macro simulator" below). `manual/` holds the manuals; the firmware's built-in cycles (6.89 text at 0x26852-0x27b2e) are its test corpus |
 | `dx32_proto.py` | Python protocol library (pyserial) |
 | `test_auf.py`, `test_tlauf.py`, `test_sniff.py` | Bench scripts: poll a board, send pocket commands, sniff/decode the bus |
 | `dx32_pktuart.comp`, `LINUXCNC_COMPONENT_PROMPT.md` | LinuxCNC HAL component and its full specification |
@@ -132,3 +132,25 @@ sudo halcompile --install dx32_pktuart.comp
 - MAINTPG.EXE + MAINTPG1.DAT are the ground truth for human-readable I/O bit names (they display
   the same status/command words the firmware uses). Cross-check new bit names against them.
 - This repo contains binaries and generated C; don't try to "build" or lint it as a software project.
+
+## Coordination with the macro simulator
+
+`macro_simulator/` (dxsim) simulates the language that the G/M-code track (`GM_EXTENSION_PLAN.md`,
+`EXT_CODES.md`, `EXT_PROBING.md`, `IO_CTL.md`) extends. They are worked on by separate agents and must
+stay in agreement.
+
+- **When:** the G/M-code track starts its extension work (probing and machine functions) after the first
+  dxsim PR has been merged and the owner has filled in the bench results in `PHASE1_TEST_PLAN.md`.
+- **Handover:** whenever that track merges something that changes what a part program can do, add an
+  entry to `macro_simulator/HANDOFF.md` in the same PR, in the format given at the top of that file. That
+  covers new or changed G/M codes, M-macros, probing cycles, I/O, parameters, error messages and firmware
+  patches. The dxsim agent validates each entry against the firmware and the bench results, adds it to
+  the simulator, and records the outcome in the same file. The owner tells the dxsim agent when new
+  entries are waiting.
+- **Disagreements:** if the dxsim agent finds that the firmware, the document and the bench result
+  disagree, it says so in the entry's outcome. The G/M-code track resolves it in its own documents. Neither
+  side quietly picks one version.
+- **dxsim as a check:** new M-macros and probing programs can be tried on a PC first with
+  `macro_simulator/dxsim` (`make` in that directory, or `wmake -f src/makefile.wat` on DOS). See
+  `macro_simulator/README.md`.
+
