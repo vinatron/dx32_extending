@@ -14,13 +14,14 @@ machine.
   optional **plot** (SVG, HPGL or PostScript). There is no machine I/O and no timing; motion is geometric.
 
 `LANGUAGE.md` is the language reference: the manual cross-checked against the firmware, with
-CONFIRMED/TENTATIVE marks and firmware addresses.
+CONFIRMED/TENTATIVE marks and firmware addresses. `ROADMAP.md` lists the features planned next.
 
 ## Layout
 
 | Path | Contents |
 |---|---|
 | `LANGUAGE.md` | Language reference (manual + firmware 6.89), canned-cycle variable rules, open questions |
+| `ROADMAP.md` | Planned features: machine parameters, cutter compensation, fillets, program flow view, z/OS |
 | `manual/` | Programmer's manual (1994), operator's manual (1997), work-shift appendix (PDF) |
 | `src/` | The simulator (C89): `dxmain.c` command line, `dxinterp.c` interpreter and flow control, `dxexpr.c` numbers, variables and PPPL expressions, `dxmotion.c` geometry, `dxout.c` trace and plots, `dxprog.c` program text, `dxcorpus.c` built-in cycles (generated), `dxscreen.c` live preview (DOS VGA; Windows window via `dxwin.c`/`dxgraph.h`) |
 | `src/makefile.wat` | Open Watcom: DOS 16-bit, DOS/4GW, Win32 console |
@@ -211,4 +212,4 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
 Cutter diameter compensation (G41/G42: the plot shows the programmed path), fillets (G22/G23: cut as a
 straight line to the corner), spherical coordinates (E), constant surface feed and feed per revolution
 (recorded only), tool length offsets and clear-point moves (traced, not applied), feed timing. `dxsim`
-prints a warning the first time a program uses one of them.
+prints a warning the first time a program uses one of them. `ROADMAP.md` has the plan for each.
