@@ -6,13 +6,15 @@ change the order.
 | # | Feature | Status |
 |---|---|---|
 | 1 | Machine parameters (`-P BMDCPRMS.SYS`) | **done** (PR #5): `README.md` "Machine parameters", `LANGUAGE.md` 14a |
-| 2 | Cutter diameter compensation (G41/G42) | planned |
+| 2 | Cutter diameter compensation (G41/G42) | **in progress**: phase 0 (plan) done, see `features/CUTCOMP.md` |
 | 3 | Fillets and corner radii (G22/G23) | planned |
 | 4 | Program flow view: main program → macros → cycles | planned (design below) |
 | 5 | FANUC Macro B to DX32 translator (`fb2dx`) | proposed (assessment below) |
 | 6 | z/OS port with GDDM plots | deferred ("way down the road") |
 
-A finished feature leaves this file, and its description moves into `README.md` and `LANGUAGE.md`.
+A feature being built has its own document in `features/` (index and conventions in `features/README.md`),
+kept up to date with each commit. When it is finished, its description moves into `README.md` and
+`LANGUAGE.md`.
 
 ### Incoming: probing and machine-function extensions
 
@@ -48,10 +50,13 @@ plan:
 
 ## 2. Cutter diameter compensation (G41/G42)
 
-- Offset the programmed path by the tool radius, using the control's start-up, corner and cancel rules.
-  The rules come from the programmer's manual, cross-checked against the firmware.
-- Report the control's errors, such as an arc smaller than the tool radius or an interference.
-- The plot shows both the programmed path and the tool-centre path.
+The full plan is in `features/CUTCOMP.md`:
+- what the manual and the 6.89 firmware say, including the G-code handlers, the 16-state compensation
+  machine at 0x1d03e and its three `Cutter-Comp:` messages;
+- the design: a new `src/dxcomp.c` with a two-block look-ahead, between the transformations and the output;
+- the errors and warnings;
+- the tests, taken from the manual's figures 7-3 and 7-13 to 7-15;
+- six phases, the last one a bench check on the machine.
 
 ## 3. Fillets and corner radii (G22/G23)
 

@@ -21,6 +21,7 @@ CONFIRMED/TENTATIVE marks and firmware addresses. `ROADMAP.md` lists the feature
 | Path | Contents |
 |---|---|
 | `LANGUAGE.md` | Language reference (manual + firmware 6.89), canned-cycle variable rules, open questions |
+| `features/` | One design document per feature being built (`features/README.md` is the index), e.g. `CUTCOMP.md` for cutter compensation |
 | `ROADMAP.md` | Planned features: machine parameters, cutter compensation, fillets, program flow view, z/OS |
 | `manual/` | Programmer's manual (1994), operator's manual (1997), work-shift appendix (PDF) |
 | `src/` | The simulator (C89): `dxmain.c` command line, `dxinterp.c` interpreter and flow control, `dxexpr.c` numbers, variables and PPPL expressions, `dxmotion.c` geometry, `dxout.c` trace and plots, `dxprog.c` program text, `dxcorpus.c` built-in cycles (generated), `dxscreen.c` live preview (DOS VGA; Windows window via `dxwin.c`/`dxgraph.h`) |
