@@ -9,7 +9,8 @@ and all the work stays in `macro_simulator/`. The owner can change the order.
 | 2 | Cutter diameter compensation (G41/G42) | planned |
 | 3 | Fillets and corner radii (G22/G23) | planned |
 | 4 | Program flow view: main program → macros → cycles | planned (design below) |
-| 5 | z/OS port with GDDM plots | deferred ("way down the road") |
+| 5 | FANUC Macro B to DX32 translator (`fb2dx`) | proposed (assessment below) |
+| 6 | z/OS port with GDDM plots | deferred ("way down the road") |
 
 A finished feature leaves this file, and its description moves into `README.md` and `LANGUAGE.md`.
 
@@ -119,7 +120,76 @@ The map also gives new warnings, in the same format as the existing ones:
 
 Suggested order: 4a first (smallest, and the other two use its records), then 4c, then 4b.
 
-## 5. z/OS port with GDDM plots
+## 5. FANUC Macro B to DX32 translator (`fb2dx`)
+
+A separate C89 program in this directory. It reads a FANUC Macro B program (main program, `O` subprograms
+and `G65` custom macros) and writes a DX32 program that uses PPPL, `#n` macros and `M<n>:` macros. It
+translates what it can prove to mean the same thing, and **refuses the rest** with the line number and the
+reason. A silent mistranslation on a real machine is the main risk, so fb2dx never guesses.
+
+### What maps across
+
+| FANUC | DX32 | Notes |
+|---|---|---|
+| `#1`-`#33` locals, `#100`-`#199`, `#500`-`#999` | letter variables, e.g. `D20`-`D50` | Allocated from a free pool that avoids the variables the built-in cycles use (`LANGUAGE.md` section 3). Locals are global on the DX32, so each call depth gets its own set |
+| `G65 P9010 A1. B2.` | `=#n` with `*` values, or an `M<n>:` macro | Arguments are passed in a fixed order. Assigning `*` to a variable at macro entry needs checking in the firmware first |
+| `M98 P1000 L3` / `M99` | `#n ... $` called 3 times, or an `=N` loop | |
+| `[...]`, `+ - * /` | PPPL expression | The same precedence |
+| `SIN COS TAN ATAN SQRT ABS` (degrees) | `SIN COS TAN ATN SQR ABS` (degrees) | FANUC `ATAN[a]/[b]` has a full-circle result, so the quadrant has to be fixed up |
+| `AND OR XOR` (bitwise) | `AND LOR XOR` | |
+| `IF [cond] THEN #i=...` | `?var<op>value` ... `!` | A DX32 condition compares one variable with a number or a variable, so expressions go into a temporary variable first |
+| `IF [cond] GOTO n` going forward | `?` ... `!` around the skipped blocks | The inverse condition, with nested `?` for `AND`/`OR` |
+| `GOTO n` going back, `WHILE [..] DO m ... END m` | label `Ln` and `=Ln` | 9 labels (29 inside an M-macro) |
+
+### What doesn't map across (refused, with the reason)
+
+- **System variables:**
+  - `#1000`+ I/O and `#2000`+ tool offsets;
+  - `#3000` alarms, `#3001` timers;
+  - `#4000`+ modal information;
+  - `#5000`+ positions, including the probe skip positions `#5061`+.
+
+  Most FANUC probing macros (Renishaw and others) are built on these, so they won't translate. Where an
+  equivalent exists, e.g. `WRI`/`RDI` for some I/O or `EXT_PROBING.md` for probing, it is offered as a
+  marked suggestion for a person to check, not inserted automatically.
+- **Vacant `#0`** and argument-presence tests (`IF [#1 EQ #0]`). The DX32 has no "empty" value. A flag
+  variable can stand in only when the caller is translated too.
+- **`ROUND FIX FUP MOD BCD BIN`** are not in the 6.89 function table. Whether `FIX` can be built from the
+  32-bit functions (`LSR(0,x)`) has to be traced in the firmware first.
+- **Real recursion**, more than 8 nested calls, or jumps that don't form loops or skips (forward
+  `GOTO` into the middle of a loop).
+- **The FANUC motion side** where it differs from BOSS:
+  - canned cycles (`G73 G76 G81`-`G89` with `R`/`Q`/`G98`/`G99` against the DX32's own forms);
+  - `G68` rotation (DX32 `G73`);
+  - `G43`/`G49` tool length;
+  - `G28`/`G30`, `G10`, `G52`.
+
+  The common ones (`G81` drilling, `G83` pecking, `G2`/`G3` with `R`) get a translation. The rest are
+  reported.
+
+### How it is checked
+
+- fb2dx runs `dxsim -lint` on its output.
+- It then runs both programs and compares the tool paths. This needs a small FANUC Macro B evaluator in
+  fb2dx. It can be smaller than dxsim, because it only evaluates expressions and control flow and
+  emits the same move records.
+- A difference is reported with both line numbers.
+- Test programs: hand-written ones covering every row of the tables above, plus public FANUC macro
+  examples (bolt circles, pockets, families of parts).
+
+### Assessment
+
+- **Worth it for parametric part programs:** bolt circles, pocket and slot macros, families of parts,
+  engraving. These use variables, arithmetic, `IF`/`WHILE` and `G65`/`M98`, and they translate well.
+- **Not worth it for macros built on system variables:** probing, tool management, alarms. Those depend
+  on the FANUC control itself, and the report says so, line by line.
+- **Depends on items 1 and 4:** the flow view and the machine parameters. They make the translated
+  program's checks (nesting, travel) mean something.
+- **If the machine later moves to LinuxCNC:** its O-word subroutines are closer to Macro B than the DX32
+  is, so a second back end could target them. The front end (parsing and checking the FANUC program)
+  would be shared.
+
+## 6. z/OS port with GDDM plots
 
 Deferred by the owner until the DOS/Windows 98 version is settled. The plot-device layer (`src/dxout.c`)
 is where a GDDM device would go. Everything else is already portable C89, including the EBCDIC-safe letter
