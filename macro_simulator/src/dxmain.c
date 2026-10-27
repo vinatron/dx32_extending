@@ -45,6 +45,7 @@ static const char *const help[] = {
     "  -silent    no error or warning summary on the console (the trace has them)",
     "  -flow      program flow only: calls, returns, cycles, loops, jumps, skipped blocks",
     "  -flow+     the same flow lines inside the full trace, every loop pass",
+    "  -map FILE  call map: FILE.svg as a diagram, otherwise an indented text tree",
     0
 };
 
@@ -168,6 +169,7 @@ int main(int argc, char **argv)
     const char *prog = 0, *trace = 0, *pfile = 0, *expr = 0;
     const char *macf[8];
     char *pfiles[4], *models[4];
+    const char *mapf = 0;
     int npf = 0, nmodel = 0;
     int nmacf = 0, quiet = 0, dump = 0, mm = 0, cov = 0, check = 0, self = 0, lint = 0, screen = 0, silent = 0;
     int i, rc, li, idx;
@@ -258,6 +260,7 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-silent")) silent = 1;
         else if (!strcmp(a, "-flow")) s->flow = 1;
         else if (!strcmp(a, "-flow+")) s->flow = 2;
+        else if (!strcmp(a, "-map") && nx) { mapf = nx; s->mapon = 1; i++; }
         else { usage(); return 1; }
     }
 
@@ -358,6 +361,7 @@ int main(int argc, char **argv)
     dxreset(s);
     rc = dxrun(s);
     dxflowend(s);
+    if (mapf && dxmapout(s, mapf)) fprintf(stderr, "dxsim: cannot write %s\n", mapf);
     if (pfile || screen) dxplend(s);
     if (pf) fclose(pf);
     if (rc) {

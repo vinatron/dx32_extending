@@ -1243,6 +1243,7 @@ static void endblock(dxsim *s)
                 s->fcycb = s->start.blk;
             }
             if (!s->sdepth) s->sseq = s->seqno;
+            if (!s->sdepth && s->mapon) dxmapcall(s, dxsrc(s), 2000L + s->cycg);
             syscall(s, s->sdepth ? nextpos(s) : nextcall(s), s->cycdrv - 1);
             return;
         }
@@ -1262,6 +1263,7 @@ static void endblock(dxsim *s)
     case DXS_NEXT:    s->start = nextpos(s); break;
     case DXS_CALLSUB:
         if (s->starg >= 1 && s->starg < DX_NSUB && s->subset[s->starg]) flowcall(s, s->starg);
+        if (s->mapon) dxmapcall(s, dxsrc(s), s->stmac ? 1000L + s->stmnum : (long)s->starg);
         gosub(s, nextcall(s), s->starg);
         break;
     case DXS_RETSUB:  subret(s, s->starg); break;
@@ -1340,6 +1342,7 @@ int dxrun(dxsim *s)
 {
     if (setjmp(s->err)) return 2;
     prescan(s);
+    if (s->mapon) dxmapscan(s);
     setpos(&s->start, 0, 0);
     while (!s->stop) {
         if (s->start.blk >= s->nuser && s->start.blk < s->corp0) {

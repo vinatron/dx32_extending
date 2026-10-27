@@ -81,6 +81,7 @@ dxsim [options] program.txt
   -lint      check every line without running it    -silent    no error/warning lines on the console
   -flow      program flow only (calls, returns, cycles, loops, jumps, skips)   -flow+  flow lines in the full trace
   -pc        colour feed moves by the macro or canned cycle that made them, with a key
+  -map FILE  call map: FILE.svg as a diagram, otherwise a text tree, with map warnings
   -P FILE    machine parameters (BMDCPRMS.SYS, BMDCPRMS.INI)   -model M   apply [M] of BMDCPRMS.INI
   -zero X,Y,Z  machine position of part zero: check the travel limits (needs -P)
   -e EXPR    evaluate a PPPL expression and exit    -corpus / -check   list / parse the built-in cycles
@@ -142,8 +143,16 @@ lines into the full trace, every pass included.
 
 `-pc` colours the feed moves in plots and in the live preview by the macro, M-macro or canned cycle that
 made them, with a key under the drawing. In the preview the status line shows the call stack
-(`MAIN 21 > #1 5`), and in block-by-block mode O steps over a call. Details and the next step (a call map)
-are in `features/FLOW.md`.
+(`MAIN 21 > #1 5`), and in block-by-block mode O steps over a call.
+
+`-map FILE` draws the program's call structure:
+- **What it shows:** boxes for the main program, each macro, M-macro and canned cycle; arrows labelled with
+  the calling lines and how often the run made each call. Calls never reached are dashed.
+- **Format:** an SVG diagram if FILE ends in `.svg`, otherwise a text tree.
+- **Warnings:** macros never called, calls to undefined macros, recursion, nesting deeper than 8, and
+  L8/L9 used together with canned cycles.
+
+Details are in `features/FLOW.md`.
 
 ```
 L20     CALL  #1 "Hole pair" at line 5

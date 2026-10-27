@@ -176,6 +176,7 @@ typedef struct dxsim {
     int    stmnum;              /* its M number */
     /* ---- -flow (features/FLOW.md) ---- */
     int    flow;                /* 1: structure only, loop passes folded; 2: with the full trace */
+    int    mapon;               /* -map: count calls for the call map */
     int    inflow;              /* a flow line is being printed */
     int    lpass[DX_LOOPS];     /* =N loops: pass number */
     long   fskip;               /* block where a false condition began skipping */
@@ -382,6 +383,9 @@ void  dxplend(dxsim *s);
 void  dxprog(dxsim *s, const dxseg *g);
 int   dxview(const char *name);
 void  dxsumm(dxsim *s);
+void  dxmapscan(dxsim *s);
+void  dxmapcall(dxsim *s, long from, long to);
+int   dxmapout(dxsim *s, const char *file);
 long  dxsrc(const dxsim *s);
 void  dxsrcname(dxsim *s, long id, char *out);
 void  dxflowend(dxsim *s);

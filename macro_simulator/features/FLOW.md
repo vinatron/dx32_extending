@@ -10,7 +10,7 @@ Roadmap item 4: show how a program moves between its parts. The parts are the ma
 |---|---|---|
 | 4a | `-flow` / `-flow+` text trace | **done** |
 | 4c | Moves coloured by the macro or cycle that made them; the call stack on the preview's status line; step into / step over in block-by-block mode | **done** |
-| 4b | Call map (`-map`): boxes and arrows, calls never taken drawn dashed, extra warnings | not started |
+| 4b | Call map (`-map`): boxes and arrows, calls never taken drawn dashed, extra warnings | **done** |
 
 This is a dxsim feature, not a control feature, so there is no firmware trace or bench check. It reports
 what the interpreter does, at the same call, return, loop, jump and skip points that drive the run.
@@ -102,18 +102,49 @@ the control does. Test `encall`.
 | `flowpc -pc` | `dxtest` checks the SVG key: **3 entries, including "canned cycle G81 in #1"**; `make test-screen` runs it on the preview stub. Step into/over checked by hand with the stub's scripted keys |
 | `encall` | the `N20=#1` warning and the control's error |
 
-## 5. Next
+## 5. Phase 4b: the call map (as built)
 
-- **4b:** the call map, from a pre-scan of the program (all calls, including the ones never taken) plus
-  the counts from the run, drawn as SVG or as an indented text tree. It also warns about:
-  - unused macros;
-  - nesting over 8 levels;
-  - recursion;
-  - L8/L9 used where the canned cycles use them.
+`-map FILE` writes the map after the run: an SVG diagram if FILE ends in `.svg`, otherwise an indented
+text tree. `src/dxmap.c` builds it from two sources:
+- **A scan of the program text** (`dxmapscan`), which finds:
+  - every `#n` and `M<n>:` definition;
+  - every call site (`=#n`, or `M<n>` of a defined M-macro) and every canned-cycle G code, each with the
+    part of the program it sits in (the main program, or the body of a definition);
+  - labels L8/L9.
+- **The run** (`dxmapcall`, at the same call points as `-flow`): how often each call was made, and the
+  deepest nesting.
+
+**Text:**
+```
+main program
+  #1 "Hole pair"  (line 20): 2 times
+    #2 "One hole"  (lines 6, 7): 4 times
+  M100 "Spot"  (lines 26, 30): 2 times
+  canned cycle G81  (line 31): 2 times
+deepest nesting in this run: 2 levels (6.89 allows 8)
+```
+
+**SVG:**
+- **Layout:** the main program on the left, callees in columns by their shortest call depth.
+- **Arrows:** labelled with the count and the calling lines. A call never reached is dashed; a macro that
+  calls itself gets a loop.
+- **Boxes:** a red box for a macro that is called but never defined, a grey dashed box for one that is
+  never called. The warnings are listed under the diagram.
+
+**Warnings** (in the map, not in the trace):
+- a macro defined but never called;
+- a call to a macro that is never defined;
+- recursion, a chain of calls in the text that comes back to itself;
+- nesting deeper than 8 in the text;
+- label L8 or L9 in a program that uses canned cycles, which use those labels too (manual ch.10).
+
+**Limitation:** the counts are per caller and callee, not per call line. M100 above shows lines 26 and 30
+with 2 calls, both from line 30 (line 26 is in a skipped branch).
 
 ## 6. Change log
 
 | Date | Commit | Change |
 |---|---|---|
 | 2026-10-27 | 4dfddc0 | Phase 4a: `-flow` / `-flow+` with CALL, RET, CYCLE, LOOP, JUMP, SKIP lines, folding, macro names from the definition comment; loop passes on call blocks counted at the return; tests `flow`, `flowall`, event-count check (95 passed) |
-| 2026-10-27 | (this commit) | Phase 4c: `-pc` colours by source with a key (SVG, PS, HPGL, preview); call stack on the preview's status line; O = step over, I = step into; the `N..=#` warning; tests `flowpc`, `encall`, key check (98 passed) |
+| 2026-10-27 | 3e1cfae | Phase 4c: `-pc` colours by source with a key (SVG, PS, HPGL, preview); call stack on the preview's status line; O = step over, I = step into; the `N..=#` warning; tests `flowpc`, `encall`, key check (98 passed) |
+| 2026-10-27 | (this commit) | Phase 4b: `-map` call map, text tree or SVG diagram, from a scan of the text and the run's counts; map warnings (never called, never defined, recursion, depth, L8/L9 with cycles); tests `fmapw` and two map checks (101 passed). Item 4 is complete |

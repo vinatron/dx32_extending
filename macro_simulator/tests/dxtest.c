@@ -494,6 +494,35 @@ static void manual(void)
         check(nkey == 3 && incyc, "-pc key: main program, canned cycle G81 in #1, M100");
     }
 
+    /* -map (features/FLOW.md 4b): the text map of flow.txt and the warnings of fmapw.txt */
+    {
+        char line[256];
+        int okc = 0, nw = 0, rec = 0, nev = 0;
+        FILE *fp;
+        remove("dxt.map");
+        dx("flow.txt -map dxt.map");
+        fp = fopen("dxt.map", "r");
+        if (fp) {
+            while (fgets(line, sizeof line, fp))
+                if (strstr(line, "#2 \"One hole\"  (lines 6, 7): 4 times")) okc = 1;
+            fclose(fp);
+        }
+        check(okc, "-map: #2 called from lines 6 and 7, 4 times in the run");
+        remove("dxt.map");
+        dx("fmapw.txt -map dxt.map");
+        fp = fopen("dxt.map", "r");
+        if (fp) {
+            while (fgets(line, sizeof line, fp)) {
+                if (!strncmp(line, "WARN", 4)) nw++;
+                if (strstr(line, "(recursive call)")) rec = 1;
+                if (strstr(line, "#7  (line 18): never reached")) nev = 1;
+            }
+            fclose(fp);
+        }
+        remove("dxt.map");
+        check(nw == 4 && rec && nev, "-map warnings: never called, never defined, recursion, L8 with cycles");
+    }
+
     /* fillets G22/G23 (features/FILLET.md), worked out by hand */
     {
         static const double f1[] = { 2.366200, .5, 2.574200, .611300 };
