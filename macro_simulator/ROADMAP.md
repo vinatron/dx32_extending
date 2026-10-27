@@ -6,7 +6,7 @@ change the order.
 | # | Feature | Status |
 |---|---|---|
 | 1 | Machine parameters (`-P BMDCPRMS.SYS`) | **done** (PR #5): `README.md` "Machine parameters", `LANGUAGE.md` 14a |
-| 2 | Cutter diameter compensation (G41/G42) | **in progress**: phases 0-1 (plan, firmware trace) done, see `features/CUTCOMP.md` |
+| 2 | Cutter diameter compensation (G41/G42) | **in progress**: phases 0-2 (plan, firmware trace, geometry) done, see `features/CUTCOMP.md` |
 | 3 | Fillets and corner radii (G22/G23) | planned |
 | 4 | Program flow view: main program → macros → cycles | planned (design below) |
 | 5 | FANUC Macro B to DX32 translator (`fb2dx`) | proposed (assessment below) |

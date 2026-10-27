@@ -39,6 +39,7 @@ static const char *const help[] = {
     "  -e EXPR    evaluate a PPPL expression and exit",
     "  -corpus    list the built-in cycle entry points and exit",
     "  -check     parse every built-in cycle block and exit",
+    "  -selftest  check the cutter-compensation geometry against hand results and exit",
     "  -lint      check every line of the program without running it; list all errors",
     "  -silent    no error or warning summary on the console (the trace has them)",
     0
@@ -165,7 +166,7 @@ int main(int argc, char **argv)
     const char *macf[8];
     char *pfiles[4], *models[4];
     int npf = 0, nmodel = 0;
-    int nmacf = 0, quiet = 0, dump = 0, mm = 0, cov = 0, check = 0, lint = 0, screen = 0, silent = 0;
+    int nmacf = 0, quiet = 0, dump = 0, mm = 0, cov = 0, check = 0, self = 0, lint = 0, screen = 0, silent = 0;
     int i, rc, li, idx;
     double v;
     FILE *tf = stdout, *pf = 0;
@@ -248,19 +249,20 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-e") && nx) { expr = nx; i++; }
         else if (!strcmp(a, "-corpus")) { corpus(); return 0; }
         else if (!strcmp(a, "-check")) check = 1;
+        else if (!strcmp(a, "-selftest")) self = 1;
         else if (!strcmp(a, "-lint")) lint = 1;
         else if (!strcmp(a, "-silent")) silent = 1;
         else { usage(); return 1; }
     }
 
-    if (check || expr) {                /* both honour -o, for test scripts */
+    if (check || expr || self) {                /* both honour -o, for test scripts */
         if (trace && !(tf = fopen(trace, "w"))) {
             fprintf(stderr, "dxsim: cannot write %s\n", trace);
             return 1;
         }
         dxlddone(s);
         dxreset(s);
-        rc = check ? (dxcheck(s, tf) ? 2 : 0) : evalexpr(s, tf, expr);
+        rc = self ? (dxcself(tf) ? 2 : 0) : check ? (dxcheck(s, tf) ? 2 : 0) : evalexpr(s, tf, expr);
         if (tf != stdout) fclose(tf);
         return rc;
     }

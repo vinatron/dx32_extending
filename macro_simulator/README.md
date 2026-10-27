@@ -256,7 +256,8 @@ RUNTESTS                                    results on screen and in RESULTS.TXT
 files it writes (`-o`), so it needs neither shell redirection nor exit codes, which COMMAND.COM does not
 return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
 
-1. `dxsim -check` parses all 652 blocks of the built-in cycle text (628 non-empty).
+1. `dxsim -check` parses all 652 blocks of the built-in cycle text (628 non-empty). `dxsim -selftest` checks
+   the cutter-compensation geometry against 31 results worked out by hand (`features/CUTCOMP.md`).
    (The tests run `dxsim` with `-silent`, so the expected errors don't clutter the console.)
 2. Every program in `tests.lst` (a name, then optional `dxsim` options) must reproduce
    `expected/<name>.out`, warnings and error reports included; `e*.txt` are the error and warning tests. Numbers may differ by one unit in

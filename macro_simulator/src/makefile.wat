@@ -9,7 +9,7 @@
 # Checked with Open Watcom 1.9: all build with -za (strict ANSI) and no warnings.
 # The DOS targets link graph.lib for the live VGA preview (dxsim -S, dxscreen.c).
 
-SRCW = dxmain.c dxinterp.c dxexpr.c dxmotion.c dxprog.c dxout.c dxcorpus.c dxscreen.c dxparam.c
+SRCW = dxmain.c dxinterp.c dxexpr.c dxmotion.c dxprog.c dxout.c dxcorpus.c dxscreen.c dxparam.c dxcomp.c
 SRC = $(SRCW) dxwin.c
 OPT = -za -wx -ox -q
 

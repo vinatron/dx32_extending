@@ -11,7 +11,7 @@ Roadmap item 2. Sources:
 |---|---|---|
 | 0 | Research: manual chapter 7, firmware map, design, test list (this document) | **done** |
 | 1 | Firmware trace of the geometry engine (0x2412e ...) and the state machine (0x1d03e): settle the open questions in section 7 | **done**: sections 2.2-2.4 |
-| 2 | `src/dxcomp.c` geometry: offset line/arc, intersections, blend arcs, with unit tests | not started |
+| 2 | `src/dxcomp.c` geometry: offset line/arc, intersections, blend arcs, with unit tests | **done**: 31 checks in `dxsim -selftest`, run by `dxtest` |
 | 3 | Look-ahead pipeline: turn-on, approach, corners, exit, Z-only moves, G48/G49; trace and plot both paths | not started |
 | 4 | Rules, errors and warnings; errors reported at the right line despite the look-ahead | not started |
 | 5 | G45 constant surface feed, the live preview, `README.md` / `LANGUAGE.md` | not started |
@@ -101,6 +101,7 @@ TENTATIVE marks an interpretation that the code does not settle on its own.
 | **Coordinates:** the records take the block targets 0x4010.. after G73 rotation and mirror. That fits the side swap under mirror: compensation works in the transformed path | 0x1d822 | CONFIRMED (inference from the mirror swap) |
 | `Parser: Cannot Comp "C" Axis` (0x32f46) is raised by the C-word handler while 0x32f5 ≠ 0. That is a different state byte from 0x32f4, so this message is **not** about cutter compensation | 0x1f1f6 | CONFIRMED |
 | The built-in canned-cycle text never uses G41/G42; the G170 cycles offset by R1 themselves | `../corpus_689.txt` | CONFIRMED |
+| **Motion mode while compensating:** the approach move and every compensated element are made as feed moves: 0x32f1 = 1, 2 or 3, never 0 (rapid). They use the record's feed, the modal F when the block was read. **A G0 block inside compensation is therefore cut at the feed rate.** Only the G40 move gets the programmed mode back (0x1d6d0: 0x32f1 = 0x32f0) | 0x1d16a, 0x1d244, 0x1d6d0 | CONFIRMED (code) |
 
 **Block records.**
 - **Size:** 0x84 bytes, copied with `dbra` over 33 longs.
@@ -349,8 +350,15 @@ the existing manual figures.
 | `ccwarn` | each warning in section 4 once | the warning lines |
 | `cczero` | G41 with diameter 0 | warning; programmed path |
 
-Unit checks in `dxtest.c`: the geometry functions with known answers (offset, intersections, blend
-direction).
+**Unit checks (phase 2, done):**
+- `dxsim -selftest` runs `dxcself()` in `src/dxcomp.c`. It checks 31 results worked out by hand:
+  - line offsets, both sides and oblique;
+  - arc offsets inside and outside, and the negative-radius case;
+  - corner types;
+  - line-line, line-circle (two points, tangent, none) and circle-circle intersections;
+  - the choice of intersection point;
+  - the G45 factors, including ×1.5 on blends.
+- `dxtest` runs it, so it also runs on DOS and Windows 98 through `RUNTESTS`.
 
 ## 6. Phases (checklist)
 
@@ -367,9 +375,9 @@ direction).
 - [x] Record the results in section 2.2 and close section 7's items.
 
 **Phase 2: geometry**
-- [ ] `src/dxcomp.c` with offset, classify, intersect and blend functions; add it to `Makefile` and
+- [x] `src/dxcomp.c` with offset, classify, intersect and blend functions; add it to `Makefile` and
   `makefile.wat`.
-- [ ] Unit checks in `dxtest.c`.
+- [x] Unit checks in `dxtest.c`.
 
 **Phase 3: pipeline**
 - [ ] `dxcel` ring, turn-on/approach/running/exit, Z-only carry, G48/G49.
@@ -413,4 +421,5 @@ Still open:
 | Date | Commit | Change |
 |---|---|---|
 | 2026-10-26 | 100c783 | Phase 0: manual chapter 7 summarised; firmware map (G40-G49 handlers, side bit and mirror XOR, zero radius = off, state machine 0x1d03e, record builder 0x1d6e4, Z-only carry, the three `Cutter-Comp:` messages); design, test list and phases |
-| 2026-10-27 | (this commit) | Phase 1: geometry engine and state machine traced. G41 sets the side bit (left); negative radius flips the side; line/arc offset formulas; corner classification; the intersection/blend table including G48 (arc → arc always blended); intersection choice; the three error conditions; G45 ×(R±r)/R and ×1.5 on blends; automatic G99 on tangent corners; the Z-only carry made as its own move; the full state sequence for turn-on, approach, running and exit. `Cannot Comp "C" Axis` is not about cutter compensation |
+| 2026-10-27 | 1c9e4e1 | Phase 1: geometry engine and state machine traced. G41 sets the side bit (left); negative radius flips the side; line/arc offset formulas; corner classification; the intersection/blend table including G48 (arc → arc always blended); intersection choice; the three error conditions; G45 ×(R±r)/R and ×1.5 on blends; automatic G99 on tangent corners; the Z-only carry made as its own move; the full state sequence for turn-on, approach, running and exit. `Cannot Comp "C" Axis` is not about cutter compensation |
+| 2026-10-27 | (this commit) | Phase 2: `src/dxcomp.c` geometry (`dxcoffl`, `dxcoffa`, `dxccorn`, `dxcxll`, `dxcxla`, `dxcxaa`, `dxcpick`, `dxcg45`), written from the firmware formulas; `dxsim -selftest` with 31 hand-checked results, run by `dxtest`. Also found: G0 inside compensation is cut at feed (2.2) |

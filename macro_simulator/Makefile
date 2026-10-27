@@ -4,7 +4,7 @@
 CC      ?= cc
 CFLAGS  ?= -std=c89 -pedantic -Wall -Wextra -O2
 SRC      = src/dxmain.c src/dxinterp.c src/dxexpr.c src/dxmotion.c src/dxprog.c \
-           src/dxout.c src/dxcorpus.c src/dxscreen.c src/dxparam.c
+           src/dxout.c src/dxcorpus.c src/dxscreen.c src/dxparam.c src/dxcomp.c
 
 dxsim: $(SRC) src/dxsim.h
 	$(CC) $(CFLAGS) -o $@ $(SRC) -lm

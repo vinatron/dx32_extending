@@ -329,6 +329,20 @@ void  dxplend(dxsim *s);
 int   dxview(const char *name);
 void  dxsumm(dxsim *s);
 
+/* ---- dxcomp.c (cutter compensation) ---- */
+void  dxcoffl(const double *p0, const double *p1, double r, int left, double *q0, double *q1,
+              double *cf);
+double dxcoffa(const double *p0, const double *p1, const double *ctr, double rad, int cw,
+               double r, int left, double *q0, double *q1);
+int   dxccorn(const double *be, const double *cs, const double *pc, int left);
+int   dxcxll(const double *cb, const double *cc, double *x);
+int   dxcxla(const double *cf, const double *ctr, double rad, double *x1, double *x2);
+int   dxcxaa(const double *cb, double rb, const double *cc, double rc, double *x1, double *x2);
+int   dxcpick(const double *x1, const double *x2, const double *ref, const double *other,
+              const double *ctr, int cw);
+double dxcg45(double rad, double r, int left, int cw);
+int   dxcself(FILE *fp);
+
 /* ---- dxparam.c (machine parameter files) ---- */
 int   dxpload(const char *file, char *err);
 int   dxpmodel(const char *file, const char *section, char *err);

@@ -4,7 +4,8 @@
  *
  *   dxtest [-u] [path-to-dxsim]        run from the tests directory
  *
- * 1. "dxsim -check" must parse every block of the built-in cycle text.
+ * 1. "dxsim -check" must parse every block of the built-in cycle text, and
+ *    "dxsim -selftest" must pass its cutter-compensation geometry checks.
  * 2. Each program in TESTS.LST (a name, then optional dxsim options) must
  *    reproduce EXPECTED\<name>.OUT, warnings and error reports included.  Numbers may
  *    differ by one digit in the last place (C libraries round halfway cases
@@ -438,6 +439,26 @@ int main(int argc, char **argv)
     lastline(line, sizeof line);
     sprintf(what, "-check: %.80s", line);
     check(strstr(line, ", 0 failed") != 0, what);
+
+    /* the cutter-compensation geometry against results worked out by hand (dxcomp.c) */
+    dx("-selftest");
+    {
+        FILE *fp = fopen(TMPOUT, "r");
+        int nok2 = 0, nbad = 0;
+        if (fp) {
+            while (fgets(line, sizeof line, fp)) {
+                if (!strncmp(line, "ok", 2)) nok2++;
+                else if (!strncmp(line, "FAIL", 4)) {
+                    chop(line);
+                    printf("  %s\n", line);
+                    nbad++;
+                }
+            }
+            fclose(fp);
+        }
+        sprintf(what, "-selftest: cutter-compensation geometry, %d checks, %d failed", nok2 + nbad, nbad);
+        check(nok2 >= 31 && nbad == 0, what);
+    }
 
     lst = fopen("tests.lst", "r");
     if (!lst) {
