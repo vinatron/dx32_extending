@@ -1,0 +1,228 @@
+# FANUC Macro B to DX32 translator (`fb2dx`)
+
+Roadmap item 5. A separate C89 program in this directory. It reads a FANUC Macro B program and writes a DX32
+(BMDC 6.89) program that means the same thing, or refuses, with the line and the reason. A silent
+mistranslation on a real machine is the main risk, so **fb2dx never guesses**. The scope and the mapping
+tables are in `../ROADMAP.md` section 5. This document holds the detail.
+
+## 1. Status
+
+| Phase | What | Status |
+|---|---|---|
+| 0 | Firmware checks the design depends on | **done** (section 2) |
+| 1 | FANUC front end: reader, expression parser, statement list, small evaluator | not started |
+| 2 | Variables and expressions: allocation, PPPL output, numbers always with a point | not started |
+| 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | not started |
+| 4 | Calls: `M98`/`M99`, `G65` to `#n` macros with caller-side assignments | not started |
+| 5 | Motion subset: G0-G3 (with `R`), G81, G83, G90/G91, F, S, T, M | not started |
+| 6 | Checking: `dxsim -lint` on the output, then both programs run and the tool paths compared | not started |
+
+## 2. What the control does (facts the translation relies on)
+
+| # | Fact | Source | Confidence | Consequence for fb2dx |
+|---|---|---|---|---|
+| 1 | **`*` cannot be used in an expression.** The PPPL factor dispatch table at 0x262a6 sends `*` (0x2a) to the error entry 0x24fba, so `A21=*` is an error. `*` only works as a word value (`Z*`) | F | CONFIRMED | `G65 P.. A1. B2.` cannot become `=#n A*1. B*2.` with `A21=*` in the body. The arguments are **assigned by the caller** before `=#n` (section 3.4) |
+| 2 | **The 32-bit functions round their arguments.** `NOT` (0x25aa6), `LSR` (0x25d66) and the others convert with `fmove.l fp,dn`. FPCR is only written inside library routines (0x374d6+, saved and restored; 0x37c4a sets 0), so the mode is the default, round to nearest with ties to even. dxsim was changed to match (`../LANGUAGE.md` section 4, `OPENQ.md` L8) | F | TENTATIVE until `../bench/BFIX.TXT` is run | `FIX` cannot be `LSR(0,x)` alone; it needs a correction step (section 3.3) |
+| 3 | The function table (0x26302, 40 entries) has no `ROUND FIX FUP MOD BCD BIN` | F | CONFIRMED | They are built from other functions (section 3.3) or refused |
+| 4 | A bare 1-2 digit integer after a letter is a **variable reference** (`X5` is variable X5) | M ch.10, F 0x23eb2 | CONFIRMED | Every number fb2dx writes has a decimal point (`5.`, `0.`) |
+| 5 | A block is an assignment only when its 3rd or 4th character is `=` | F 0x1ed88 | CONFIRMED | An assignment is a block of its own, with no N number in front |
+| 6 | A condition compares **one variable** with a number or a variable; no expressions | F 0x1ffc6-0x2021c | CONFIRMED | Expressions in a condition go into temporaries first |
+| 7 | Labels are **one global table** (0x3c74): 1-9, 10-29 inside an M-macro; the built-in cycles use L8 and L9 | M ch.10, F 0x1f48e | CONFIRMED | Labels are allocated over the whole output, not per macro (section 3.5) |
+| 8 | All variables are global; `#n` macros nest 8 deep in 6.89 (4 in the manuals) | F 0x200c4 | CONFIRMED | FANUC locals `#1-#33` get one set per call depth |
+| 9 | The built-in cycles use and change a long list of variables (`../LANGUAGE.md` section 3) | M table 10-1, C | CONFIRMED | Those are never allocated |
+| 10 | Assignments in a user program need the PPPL option (param 285 bit 4); inside an M-macro they don't | F 0x1edbc | CONFIRMED | The report says when the output needs PPPL; `-mmacro` puts the translated body in an M-macro |
+| 11 | `ATN` gives -90..+90 degrees | M, F | CONFIRMED | FANUC `ATAN[a]/[b]` (0..360) needs a quadrant fix-up |
+| 12 | A word can take a variable only **of its own letter**: `X21` is the value of variable X21. A word can't take an expression or another letter's variable | M ch.10, F 0x23eb2 | CONFIRMED | `X[#1+2.]` becomes `X21=D21+2.` and then `X21` in the block (3.6) |
+| 13 | **Arc centres:** with G75 and G90, `I J K` are the absolute centre; with G91, the distance from the start point. FANUC `I J K` are always the distance from the start point | M ch.3, F 0x21dba | CONFIRMED | In G90, fb2dx writes the absolute centre (3.6) |
+| 14 | **Radius arcs** are always the short arc (≤ 179.998°) | F 0x1f992 | CONFIRMED | A FANUC arc with negative `R` (the long arc) is written with its centre instead |
+| 15 | G70/G71 select inch/metric input; the control works in inches inside (2 540 000 counts per inch) and variables hold program units | M table 3-1, F 0x23fe0 | CONFIRMED | FANUC G20/G21 → G70/G71 |
+| 16 | In **BOSS 4-7 compatibility mode** (0xaef9 bit 2) a number without a point is scaled (/10000 inch, /1000 metric) and variable references are off | F 0x23cf8, 0x23eb8 | CONFIRMED | fb2dx output needs that mode **off**; the report says so |
+
+## 3. Design
+
+### 3.1 Program shape
+
+```
+fb2dx [options] in.nc [out.txt]
+  -report file     the line-by-line report (default: stderr)
+  -inch | -mm      what a number without a point means (see 3.6); without it such a number is refused
+  -mmacro n        put the main program in M-macro n (no PPPL licence needed)
+  -check           run dxsim -lint on the output and compare the tool paths (phase 6)
+```
+
+Source files `src/fb*.c` and `src/fb2dx.h`. It shares nothing with dxsim at link time, so each can be built
+alone with Watcom for DOS. `-check` runs dxsim as a separate program.
+
+### 3.2 Variables
+
+| FANUC | DX32 |
+|---|---|
+| `#1`-`#33` (locals) | one block of DX32 variables per call depth that the program reaches. Only the locals that are actually used get a variable |
+| `#100`-`#199`, `#500`-`#999` (commons) | one DX32 variable each, used ones only |
+| temporaries for expressions and flags | a separate pool |
+
+- **The pool:** the letters and indices 1-50 that the built-in cycles don't touch (fact 9), and never G, H, L,
+  M, N, S, T (the manual's rule). Indices 20-50 exist only for A C D F I J K R X Y Z (`../LANGUAGE.md`
+  section 3), so the pool is mainly `D20`-`D50`, `K20`-`K50`, `C20`-`C50`... A program that needs more than
+  the pool is refused.
+- **The map is printed** at the top of the output as comments (`; #1 -> D20`), so a person can follow it.
+- **Vacant `#0`** has no equivalent. A program that reads `#0` or compares with it is refused at that line.
+  FANUC treats an unset local as vacant; fb2dx's evaluator tracks this and refuses a read of a local that may
+  be unset, instead of letting it become 0.
+
+### 3.3 Expressions
+
+- `+ - * /`, brackets and the trigonometric functions map one to one (`../ROADMAP.md` table). FANUC `[ ]`
+  become `( )`.
+- `SQRT` → `SQR`, `ABS` → `ABS`, `SIN COS TAN` → the same names (both work in degrees), `ASIN ACOS` → `ASN ACS`.
+- `ATAN[a]/[b]`: the result is in 0..360 on FANUC. fb2dx writes `T=ATN(a/b)` plus fix-ups with `?` on the
+  signs of a and b. The `b = 0` case is its own branch (90 or 270), so there is no division by 0.
+- `AND OR XOR` between values → `AND LOR XOR`. These work on 32-bit integers on both controls, but the DX32
+  rounds non-integers (fact 2). FANUC's behaviour with non-integers depends on the model, so a non-integer
+  argument is refused.
+- **`FIX`, `FUP`, `ROUND`** are built from `LSR(0,x)` = x rounded (fact 2), with a correction:
+  ```
+  ; T = FIX(X)  for X >= 0      (FANUC FIX truncates towards 0)
+  T=LSR(0,X)
+  ?T<GT>X
+  T=T-1.!
+  ```
+  For a value that may be negative, the same on `ABS(X)` and the sign put back with another `?`. `FUP` is
+  `FIX` plus 1 when the result is less than the absolute value; `ROUND` is `FIX(ABS(X)+.5)` with the sign
+  put back (FANUC rounds halves away from 0). These avoid any constant like `.4999999`, so they are exact
+  for every value the 32-bit conversion can hold (|x| < 2³²). LSR's result is read as unsigned (0..2³²−1);
+  a larger |x| is refused. TENTATIVE until `BFIX.TXT` confirms fact 2.
+- `MOD` (on controls that have it) → `a-b*FIX(a/b)` for a, b > 0; otherwise refused. `BCD BIN` are refused.
+- **Precision:** FANUC works in about 8-9 significant digits on older controls; the DX32 in 68882 extended
+  precision. Results can differ in the last digits. The comparison in phase 6 uses a tolerance, and
+  comparisons with `EQ` on computed values are flagged in the report ("care should be taken when testing
+  for <EQ>", M ch.10).
+
+### 3.4 Calls
+
+- **`M98 P1000 L3`** → `=#n` three times, or `=N` around one call when the call block is the only block in the
+  loop. `M99` → `$`. `M99 P..` (return to a given block) is refused.
+- **`G65 P9010 A1. B2. K3.`**: the arguments are assigned in the caller, then the macro is called:
+  ```
+  D21=1.            ; #1 (A) at depth 1
+  D22=2.            ; #2 (B)
+  D26=3.            ; #6 (K)
+  =#2
+  ```
+  `*` can't carry them (fact 1). An argument that isn't given leaves its local vacant on FANUC; fb2dx
+  checks with the evaluator that the macro never reads it, and refuses otherwise (3.2).
+- **Argument specification II** (`I J K` repeated) is handled by its own `#n` numbering; specification I is
+  the default.
+- **`G66`/`G67` modal calls** and user G/M codes that call a macro (parameters 6050-6089) are refused, with a
+  note that `M<n>:` macros are the DX32 way to do the second.
+- **Depth:** the evaluator follows the calls; deeper than 8 is refused, and deeper than 4 gets a warning (the
+  manuals' limit, `OPENQ.md` L2). Recursion is refused.
+- Each FANUC `O` program becomes one `#n` macro. `#n` numbers are given in order of first call and printed in
+  the map.
+
+### 3.5 Control flow
+
+FANUC jumps are turned into DX32 structures; anything that doesn't fit one of them is refused.
+
+| FANUC | DX32 | Condition |
+|---|---|---|
+| `IF [c] THEN #i=e` | `?` (c) `#i=e` `!` | |
+| `IF [c] GOTO n`, n further down | `?` (not c) around the blocks up to n, then `!` | the region doesn't overlap a loop or another skip in a crossing way |
+| `GOTO n`, n further up | label `Lk` at n, `=Lk` | |
+| `IF [c] GOTO n`, n further up | `?` (c) `=Lk` `!` | |
+| `WHILE [c] DO m ... END m` | `Lk` + `?` (c) ... `=Lk` `!` | |
+| `GOTO n` further down, unconditional | `?` on a constant false flag around the skipped blocks | |
+
+- **Conditions** compare one variable with a variable or number (fact 6). A condition `[e1 op e2]` is written
+  as `T1=e1`, `T2=e2`, `?T1<op>T2`. `AND`/`OR` between conditions, and any negation, go through a flag
+  variable:
+  ```
+  ; F1 = [#1 GT 0] AND [#2 LT 5]
+  F1=0.
+  ?D21<GT>0.
+  ?D22<LT>5.
+  F1=1.!
+  !
+  ?F1<EQ>1.
+  ```
+- **Labels:** one global table (fact 7). fb2dx numbers them over the whole output: L1-L7 (L8, L9 only when the
+  program uses no canned cycle), and L10-L29 inside an M-macro. A program with more backward targets than that
+  is refused. A label is never reused, because a macro that sets L1 changes the caller's L1 too.
+- **`?`/`!` nesting:** the skip counter counts `?` up and `!` down across blocks (`../LANGUAGE.md` section 5),
+  so each region has to be balanced. A region that would contain an unmatched `?` or `!` is refused.
+
+### 3.6 Motion and words
+
+- **Numbers:** always written with a point (fact 4). A FANUC number without a point means different things by
+  model and parameter (whole units, or least increments such as 0.001 mm). It is refused unless `-inch` or
+  `-mm` says how to read it.
+- **Word values from variables or expressions** (fact 12): each one goes into a variable of the word's own
+  letter, assigned in the block before: `G1 X[#1+2.] Y#2` →
+  ```
+  X21=D21+2.
+  Y21=D22
+  G1X21Y21
+  ```
+  So the pool also keeps carrier variables per word letter (X21-X50, Y21-Y50, I21-..., F21-...). Words with
+  constant values are written as numbers.
+- **Units:** G20/G21 → G70/G71 (fact 15).
+- **G0, G1, G90, G91, F, S, T, M3-M5, M8, M9, M30**: one to one.
+- **Arcs** (facts 13, 14): fb2dx keeps the current position in carrier variables (`X20`, `Y20`, `Z20`, set
+  after each move whose end depends on a variable). In G91 a FANUC arc is written as it is. In G90 the centre
+  is written as an absolute centre, `I20=X20+(i)` and so on, then `G2X..Y..I20J20`; the block before the arc
+  must be G75 (single-quadrant G74 is never used). `R` arcs with positive R are written as they are; negative
+  R (the long arc) is written with the computed centre.
+- **G81, G83** are translated to the DX32 forms (`../LANGUAGE.md` section 13), with the `R` plane and
+  `G98`/`G99` turned into explicit moves when they don't match. Other cycles, `G68`, `G43`/`G49`, `G28`/`G30`,
+  `G10`, `G52` and system variables are refused (`../ROADMAP.md` section 5).
+
+## 4. Errors and warnings (the report)
+
+One line per finding: input line, output line, kind, text.
+
+| Kind | Examples |
+|---|---|
+| `REFUSED` | `#5061 (probe skip position): system variables don't translate`; `#0 vacant: no DX32 equivalent`; `GOTO 20 jumps into a WHILE loop`; `8 backward targets, 7 labels free (canned cycles use L8, L9)`; `X10 without a decimal point: give -inch or -mm` |
+| `NOTE` | `the output needs BOSS 4-7 compatibility mode off`; `FIX built from LSR and a correction (TENTATIVE, bench/BFIX.TXT)`; `EQ on a computed value`; `the output needs the PPPL option (param 285 bit 4)` |
+| `MAP` | variable and macro numbers |
+
+A refused line stops the translation of that program. Nothing is written for it, so there is no half-translated
+output.
+
+## 5. Tests
+
+- Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
+  the expected DX32 output and an expected report.
+- One program per `REFUSED` reason.
+- Public FANUC examples: bolt circles, rectangular pockets, a family-of-parts program, an engraving macro.
+- `FIX`/`ROUND`/`FUP` checked over a table of values (whole numbers, halves, negatives, the values next to
+  them) by running the output in dxsim.
+- Phase 6 runs all of them through `dxsim -lint` and the path comparison.
+
+## 6. Phases (checklist)
+
+- **0** ☑ `*` in expressions (fact 1) ☑ rounding of the 32-bit functions (fact 2, dxsim changed, `BFIX.TXT`)
+  ☑ arcs, word values, units, BOSS 4-7 mode (facts 12-16, from `../LANGUAGE.md`)
+- **1** ☐ reader (blocks, `( )` comments, `/` block delete, `%`, `O` numbers) ☐ expression parser ☐ statements
+  ☐ evaluator with vacant tracking
+- **2** ☐ variable pool and map ☐ PPPL writer ☐ `FIX`/`FUP`/`ROUND`/`ATAN` expansions
+- **3** ☐ flow graph ☐ structure check ☐ `?`/`!` and label writer
+- **4** ☐ `M98`/`M99` ☐ `G65` ☐ depth and recursion checks
+- **5** ☐ motion words ☐ G81/G83
+- **6** ☐ `-check`
+
+## 7. Open questions
+
+| ID | Question | How to answer |
+|---|---|---|
+| Q1 | Fact 2 on the machine | **B:** `../bench/BFIX.TXT` (`OPENQ.md` L8) |
+| Q2 | What LSR returns for a negative argument: unsigned 0..2³²−1 (dxsim) or signed | **F:** what 0x25d66 does with d1 after the shift (the conversion back to a float). Only matters for refused values today |
+| Q3 | Does G70/G71 convert the values already in variables, or only the numbers read after it? | **F:** the G table entries 70 and 71. Matters only for a program that changes units in the middle, which fb2dx refuses until then |
+| Q4 | What happens to a full circle with `R`, or an `R` arc over 179.998° | **F:** 0x1f992. fb2dx writes those with the centre anyway |
+| Q5 | Which FANUC models to target first (0i, 16/18, 30i) | The owner: the examples they want translated |
+
+## 8. Change log
+
+| Date | Commit | Change |
+|---|---|---|
+| 2026-10-27 | (this commit) | Document created. Phase 0: `*` invalid in PPPL (0x262a6 → 0x24fba); the 32-bit functions round (fmove.l, default FPCR), dxsim changed from truncation, `bench/BFIX.TXT`, test `bfix`; exact `FIX`/`FUP`/`ROUND` built on `LSR` with a correction; word values need same-letter variables, G90 arc centres are absolute |

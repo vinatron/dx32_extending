@@ -203,9 +203,23 @@ static int epeek(ev *e)
     return p < e->end ? toupper((unsigned char)*p) : 0;
 }
 
+/* The 6.89 integer functions (NOT 0x25aa6, LSR 0x25d66, ...) convert with
+   fmove.l fp,dn under the 68882's default FPCR, i.e. round to nearest with
+   ties to even, not truncation (TENTATIVE until bench/BFIX.TXT is run). */
+static double rneven(double v)
+{
+    double f = floor(v), d = v - f;
+    if (d > 0.5 || (d == 0.5 && fmod(f, 2.0) != 0.0)) f += 1.0;
+    return f;
+}
+
 static unsigned long tou32(double v)
 {
-    if (v < 0) return (unsigned long)(long)v & 0xffffffffUL;
+    v = rneven(v);
+    if (v < 0) {
+        v = fmod(-v, 4294967296.0);
+        return (0UL - (unsigned long)v) & 0xffffffffUL;
+    }
     if (v >= 4294967296.0) v = fmod(v, 4294967296.0);
     return (unsigned long)v & 0xffffffffUL;
 }

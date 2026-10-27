@@ -36,6 +36,7 @@ code if it changes behaviour.
 | L5 | The `MRG` mask (0x764c) and the RDI/WRI channel map | `MRG` results; I/O in macros | **F:** 0x764c appears only in a data table at 0x265a2, next to the dual-port RAM address 0x01200554, so it is probably written by the PC through the mailbox: find the code that indexes that table, and the mailbox command (`../../PROTOCOL_NOTES.md`). **X:** BXX's writes to it. The channel map belongs to the G/M-code track (`../../IO_CTL.md`); ask through `../HANDOFF.md` |
 | L6 | What BXX does to a program on load: blanks, CR/LF, `%` leaders | Whether `X1 = 5.` with blanks is an assignment | **B:** `bench/BBLANKS.TXT`. Look at the block in the editor, and X1 at M0: 5 = the blanks were removed (dxsim's default), 0 = kept (dxsim `-keep`). **X:** BXX's program loader |
 | L7 | In `?Q1<LT>5`, is the 5 a number or variable Q5? (The variable rule with the left-hand letter) | Conditions written without a decimal point | **B:** `bench/BVARRULE.TXT`: Q9 = 0 at M0 means variable (dxsim), 1 means number |
+| L8 | Do the 32-bit functions (`LSR NOT AND`...) round their arguments or truncate them? The firmware converts with `fmove.l` and never sets FPCR outside library routines, so round to nearest, ties to even | `FIX` for the FANUC translator (`FB2DX.md`); bit tests on non-integer values | **B:** `bench/BFIX.TXT`. At M0: A1=2 A2=4 A3=3 A4=2 A5=1 means rounding (dxsim), A2=3 A3=2 A5=0 means truncation |
 
 ### Machine parameters (`../LANGUAGE.md` 14a)
 
@@ -83,6 +84,7 @@ The cutter-compensation and fillet sheets (`CUTCOMP.md` and `FILLET.md`, section
 | `BNEST.TXT` | L2 | error when `=#9` calls the 9th level | |
 | `BBLANKS.TXT` | L6 | X1 = 5 (blanks removed on load) | |
 | `BZMOVE.TXT` | F1 | Z goes to .5 with the line into the corner | |
+| `BFIX.TXT` | L8 | A1=2 A2=4 A3=3 A4=2 A5=1 | |
 
 **Preconditions:**
 - The assignment programs need the **PPPL option** (param 285 bit 4). If the control stops with
@@ -93,5 +95,6 @@ The cutter-compensation and fillet sheets (`CUTCOMP.md` and `FILLET.md`, section
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-27 | (next commit) | F2 identified as G9 corner blending; C5 narrowed to the parse step |
+| 2026-10-27 | (this commit) | L8 added: the 32-bit functions round (fmove.l, default FPCR); dxsim changed from truncation; `bench/BFIX.TXT` |
+| 2026-10-27 | 4dfddc0 | F2 identified as G9 corner blending; C5 narrowed to the parse step |
 | 2026-10-27 | 226fc92 | Register created. A1-A5 answered from the firmware; A2 and A3 change dxsim (Z check per params 98/62, no travel check in a G54-G59 block). Bench programs `bench/*.TXT` for L1, L2, L6, L7, F1 |

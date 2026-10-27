@@ -8,8 +8,8 @@ change the order.
 | 1 | Machine parameters (`-P BMDCPRMS.SYS`) | **done** (PR #5): `README.md` "Machine parameters", `LANGUAGE.md` 14a |
 | 2 | Cutter diameter compensation (G41/G42) | **simulated** (phases 0-5); bench check on the machine pending, see `features/CUTCOMP.md` |
 | 3 | Fillets and corner radii (G22/G23) | **simulated**; bench check pending, see `features/FILLET.md` |
-| 4 | Program flow view: main program → macros → cycles | **done**: `-flow`, `-pc`, preview call stack and step over, `-map`; see `features/FLOW.md`, see `features/FLOW.md` |
-| 5 | FANUC Macro B to DX32 translator (`fb2dx`) | proposed (assessment below) |
+| 4 | Program flow view: main program → macros → cycles | **done**: `-flow`, `-pc`, preview call stack and step over, `-map`; see `features/FLOW.md` |
+| 5 | FANUC Macro B to DX32 translator (`fb2dx`) | **in progress**: phase 0 (firmware checks) done, see `features/FB2DX.md` |
 | 6 | z/OS port with GDDM plots | deferred ("way down the road") |
 | - | G9 P corner blending (the control inserts short sub-segments at corners) | candidate, low priority (`features/OPENQ.md` F2) |
 
@@ -130,7 +130,7 @@ reason. A silent mistranslation on a real machine is the main risk, so fb2dx nev
 | FANUC | DX32 | Notes |
 |---|---|---|
 | `#1`-`#33` locals, `#100`-`#199`, `#500`-`#999` | letter variables, e.g. `D20`-`D50` | Allocated from a free pool that avoids the variables the built-in cycles use (`LANGUAGE.md` section 3). Locals are global on the DX32, so each call depth gets its own set |
-| `G65 P9010 A1. B2.` | `=#n` with `*` values, or an `M<n>:` macro | Arguments are passed in a fixed order. Assigning `*` to a variable at macro entry needs checking in the firmware first |
+| `G65 P9010 A1. B2.` | assignments in the caller, then `=#n` | `*` can't be used in an expression (`A21=*` is an error, 0x262a6), so the caller assigns the arguments (`features/FB2DX.md` 3.4) |
 | `M98 P1000 L3` / `M99` | `#n ... $` called 3 times, or an `=N` loop | |
 | `[...]`, `+ - * /` | PPPL expression | The same precedence |
 | `SIN COS TAN ATAN SQRT ABS` (degrees) | `SIN COS TAN ATN SQR ABS` (degrees) | FANUC `ATAN[a]/[b]` has a full-circle result, so the quadrant has to be fixed up |
@@ -152,8 +152,8 @@ reason. A silent mistranslation on a real machine is the main risk, so fb2dx nev
   marked suggestion for a person to check, not inserted automatically.
 - **Vacant `#0`** and argument-presence tests (`IF [#1 EQ #0]`). The DX32 has no "empty" value. A flag
   variable can stand in only when the caller is translated too.
-- **`ROUND FIX FUP MOD BCD BIN`** are not in the 6.89 function table. Whether `FIX` can be built from the
-  32-bit functions (`LSR(0,x)`) has to be traced in the firmware first.
+- **`BCD BIN`** are not in the 6.89 function table. `FIX FUP ROUND` (and `MOD` for positive values) are
+  built from `LSR(0,x)`, which rounds to nearest, plus a correction step (`features/FB2DX.md` 3.3).
 - **Real recursion**, more than 8 nested calls, or jumps that don't form loops or skips (forward
   `GOTO` into the middle of a loop).
 - **The FANUC motion side** where it differs from BOSS:

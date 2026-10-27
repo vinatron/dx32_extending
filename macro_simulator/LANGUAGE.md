@@ -153,6 +153,7 @@ DTF and #PI; 6.89 has 36.
 | `XOR AND LOR (a,b)` | 32-bit xor, and, or | CONFIRMED (F) |
 | `LSR LSL ROR ROL (n,v)` | shift/rotate **v by n**: the first argument is the count (FP7/FP6 order at 0x253c8) | CONFIRMED (F) |
 | `SET CLR TST (n,v)` | set / clear / test bit n of v | CONFIRMED (F) |
+| (all 32-bit functions) | arguments are converted with `fmove.l fp,dn` under the default FPCR: **rounded to nearest, ties to even**, not truncated (`LSR(0,2.7)` = 3, `LSR(0,2.5)` = 2, `NOT(-1.5)` = 1). Values ≥ 2³¹ have 2³¹ taken off first (LSR 0x25d66, NOT 0x25aa6); FPCR is only changed inside library routines (0x374d6+) | TENTATIVE (F); `bench/BFIX.TXT` |
 | `MRG(a,b)` | (a and mask) or (b and not mask), mask at 0x764c (nothing found that sets it). `dxsim`: a or b | TENTATIVE |
 | `RDI(n) GET(n)` | read user input n (0-150) / input word; "User IO but User AUF not operating" (O) | TENTATIVE; `dxsim -i n=v` supplies values |
 | `RDP(n) WRP(n,v)` | read / write user byte n at 0xac06[n-1] | CONFIRMED (F) |
