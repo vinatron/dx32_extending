@@ -8,7 +8,7 @@ change the order.
 | 1 | Machine parameters (`-P BMDCPRMS.SYS`) | **done** (PR #5): `README.md` "Machine parameters", `LANGUAGE.md` 14a |
 | 2 | Cutter diameter compensation (G41/G42) | **simulated** (phases 0-5); bench check on the machine pending, see `features/CUTCOMP.md` |
 | 3 | Fillets and corner radii (G22/G23) | **simulated**; bench check pending, see `features/FILLET.md` |
-| 4 | Program flow view: main program → macros → cycles | **in progress**: 4a (`-flow`) done, see `features/FLOW.md` |
+| 4 | Program flow view: main program → macros → cycles | **in progress**: 4a (`-flow`) and 4c (`-pc`, preview call stack, step over) done, see `features/FLOW.md` |
 | 5 | FANUC Macro B to DX32 translator (`fb2dx`) | proposed (assessment below) |
 | 6 | z/OS port with GDDM plots | deferred ("way down the road") |
 | - | G9 P corner blending (the control inserts short sub-segments at corners) | candidate, low priority (`features/OPENQ.md` F2) |

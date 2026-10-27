@@ -28,6 +28,7 @@
 #define DX_GOSUB    8       /* =# / M-macro nesting (0x32fc stack) */
 #define DX_SYSSTK   5       /* =% nesting (0x3c1c stack) */
 #define DX_LOOPS    4       /* =N loops (manual: 4 levels) */
+#define DX_NSRC     12      /* colours for -pc (the 12th is shared) */
 #define DX_NPARAM   64      /* '*' macro parameters (0x3368 area) */
 #define DX_NMAC     120     /* M<n>: definitions (0x3b44 list) */
 #define DX_NTOOL    25      /* tools 1..24 */
@@ -118,6 +119,10 @@ typedef struct dxplot {
     int    pen;             /* current pen: -1 up, 0 rapid, 1 feed */
     double lx, ly;          /* last device point */
     int    rapids;          /* draw rapid moves */
+    int    bysrc;           /* -pc: feed moves coloured by the macro or cycle that made them */
+    int    nsrc;            /* sources seen in pass 1, in order of first use */
+    long   srcid[DX_NSRC];
+    int    ci, lci;         /* colour index of the move being drawn / of the open path */
     long   nseg;
 } dxplot;
 
@@ -164,6 +169,8 @@ typedef struct dxsim {
     int    gprm0[DX_GOSUB];     /* parameter frame start of each call */
     int    grprm[DX_GOSUB];     /* parameter read pointer of the caller */
     int    gmac[DX_GOSUB];      /* 1 if the call was an M-macro */
+    int    gslot[DX_GOSUB];     /* the macro slot called */
+    int    gmnum[DX_GOSUB];     /* its M number (M-macros) */
     int    newframe;            /* parameter frame of the call in this block */
     int    stmac;               /* the pending call is an M-macro */
     int    stmnum;              /* its M number */
@@ -375,6 +382,8 @@ void  dxplend(dxsim *s);
 void  dxprog(dxsim *s, const dxseg *g);
 int   dxview(const char *name);
 void  dxsumm(dxsim *s);
+long  dxsrc(const dxsim *s);
+void  dxsrcname(dxsim *s, long id, char *out);
 void  dxflowend(dxsim *s);
 
 /* ---- dxcomp.c (cutter compensation) ---- */
@@ -414,6 +423,7 @@ void  dxscmove(dxsim *s);
 void  dxscend(dxsim *s);
 void  dxsclabel(dxplot *pl, const char *text, double x, double y);
 void  dxscmark(dxplot *pl, double x, double y);
+void  dxsclegend(int row, int colour, const char *text);
 #endif
 
 

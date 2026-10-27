@@ -16,6 +16,7 @@ static const char *const help[] = {
     "  -p FILE    plot file: .svg, .plt/.hpg (HPGL) or .ps/.eps (PostScript)",
     "  -v VIEW    view: g17 (XY, default), g18 (XZ), g19 (YZ), iso, or all four on one sheet",
     "  -r         do not draw rapid moves",
+    "  -pc        colour feed moves by the macro or canned cycle that made them, with a key",
     "  -S / -Sf   live preview, paced per move / at the feed rate (DOS VGA, DXSIMW window)",
     "  -M FILE    load M-macro definitions (M<n>: ... |) from FILE",
     "  -s         trace variable assignments",
@@ -199,6 +200,7 @@ int main(int argc, char **argv)
             i++;
         }
         else if (!strcmp(a, "-r")) plot.rapids = 0;
+        else if (!strcmp(a, "-pc")) plot.bysrc = 1;
         else if (!strcmp(a, "-S")) screen = 1;
         else if (!strcmp(a, "-Sf")) screen = 2;
         else if (!strcmp(a, "-M") && nx) { if (nmacf < 8) macf[nmacf++] = nx; i++; }

@@ -178,6 +178,32 @@ static void devx(const dxplot *pl, double x, double y, double *dx, double *dy)
     *dy = (y - pl->miny) * pl->sc + pl->oy;
 }
 
+/* -pc: colours of the sources (main program first), SVG/PS as RGB, HPGL pens, VGA colours */
+static const char *const srgb[DX_NSRC] = {
+    "#1f4fbf", "#e07b00", "#8e44ad", "#00897b", "#c2185b", "#6d4c41",
+    "#7cb342", "#3949ab", "#f9a825", "#00acc1", "#5d4037", "#757575"
+};
+
+static void psrgb(dxplot *pl, int ci)
+{
+    unsigned r, g, b;
+    sscanf(srgb[ci] + 1, "%2x%2x%2x", &r, &g, &b);
+    fprintf(pl->fp, "%.3f %.3f %.3f setrgbcolor\n", r / 255.0, g / 255.0, b / 255.0);
+}
+
+/* colour index of a source: registered in pass 1, looked up in pass 2 */
+static int srcidx(dxplot *pl, long id)
+{
+    int i;
+    for (i = 0; i < pl->nsrc; i++)
+        if (pl->srcid[i] == id) return i;
+    if (pl->pass == 1 && pl->nsrc < DX_NSRC) {
+        pl->srcid[pl->nsrc] = id;
+        return pl->nsrc++;
+    }
+    return DX_NSRC - 1;
+}
+
 static void svgclose(dxplot *pl)
 {
     if (pl->pen >= 0) fprintf(pl->fp, "\"/>\n");
@@ -189,18 +215,23 @@ static void devline(dxplot *pl, int pen, double X0, double Y0, double X1, double
 {
     switch (pl->dev) {
     case DXP_SVG:
-        if (pl->pen != pen || fabs(X0 - pl->lx) > 1e-6 || fabs(Y0 - pl->ly) > 1e-6) {
+        if (pl->pen != pen || (pen == 1 && pl->lci != pl->ci) || fabs(X0 - pl->lx) > 1e-6 ||
+            fabs(Y0 - pl->ly) > 1e-6) {
             svgclose(pl);
-            fprintf(pl->fp, "<path class=\"%s\" d=\"M%.3f,%.3f", pen == 2 ? "p" : pen ? "f" : "r",
-                    X0, -Y0);
+            fprintf(pl->fp, "<path class=\"%s\"", pen == 2 ? "p" : pen ? "f" : "r");
+            if (pen == 1 && pl->ci > 0) fprintf(pl->fp, " style=\"stroke:%s\"", srgb[pl->ci]);
+            fprintf(pl->fp, " d=\"M%.3f,%.3f", X0, -Y0);
             pl->pen = pen;
+            pl->lci = pl->ci;
         }
         fprintf(pl->fp, " L%.3f,%.3f", X1, -Y1);
         break;
     case DXP_HPGL:
-        if (pl->pen != pen) {
-            fprintf(pl->fp, "SP%d;%s\n", pen == 2 ? 3 : pen ? 1 : 2, pen ? "LT;" : "LT2,1;");
+        if (pl->pen != pen || (pen == 1 && pl->lci != pl->ci)) {
+            fprintf(pl->fp, "SP%d;%s\n", pen == 2 ? 3 : pen == 1 && pl->ci > 0 ? 4 + (pl->ci - 1) % 5 :
+                    pen ? 1 : 2, pen ? "LT;" : "LT2,1;");
             pl->pen = pen;
+            pl->lci = pl->ci;
             pl->lx = pl->ly = -1e30;
         }
         if (fabs(X0 - pl->lx) > 0.5 || fabs(Y0 - pl->ly) > 0.5)
@@ -208,10 +239,14 @@ static void devline(dxplot *pl, int pen, double X0, double Y0, double X1, double
         fprintf(pl->fp, "PD%.0f,%.0f;\n", X1, Y1);
         break;
     case DXP_PS:
-        if (pl->pen != pen || fabs(X0 - pl->lx) > 1e-4 || fabs(Y0 - pl->ly) > 1e-4) {
+        if (pl->pen != pen || (pen == 1 && pl->lci != pl->ci) || fabs(X0 - pl->lx) > 1e-4 ||
+            fabs(Y0 - pl->ly) > 1e-4) {
             if (pl->pen >= 0) fprintf(pl->fp, "stroke\n");
-            fprintf(pl->fp, "%s %.2f %.2f moveto\n", pen == 2 ? "P" : pen ? "F" : "R", X0, Y0);
+            fprintf(pl->fp, "%s ", pen == 2 ? "P" : pen ? "F" : "R");
+            if (pen == 1 && pl->ci > 0) psrgb(pl, pl->ci);
+            fprintf(pl->fp, "%.2f %.2f moveto\n", X0, Y0);
             pl->pen = pen;
+            pl->lci = pl->ci;
         }
         fprintf(pl->fp, "%.2f %.2f lineto\n", X1, Y1);
         break;
@@ -248,6 +283,7 @@ static void plline(dxsim *s, int pen, const double *a, const double *b)
     int v;
     if (!pl || pl->dev == DXP_NONE) return;
     if (pen == 0 && !pl->rapids) return;
+    pl->ci = pl->bysrc && pen == 1 ? srcidx(pl, dxsrc(s)) : 0;
     if (pl->pass == 1) {
         extent(pl, a);
         extent(pl, b);
@@ -269,8 +305,8 @@ static void plline(dxsim *s, int pen, const double *a, const double *b)
             h = pl->mark;
 #ifdef DX_SCREEN
             if (pl->dev == DXP_SCREEN) {
-                dxscline(s, pl, 1, X0 - h, Y0 - h, X0 + h, Y0 + h, v ? 0.0 : len);
-                dxscline(s, pl, 1, X0 - h, Y0 + h, X0 + h, Y0 - h, 0.0);
+                dxscline(s, pl, 10 + pl->ci, X0 - h, Y0 - h, X0 + h, Y0 + h, v ? 0.0 : len);
+                dxscline(s, pl, 10 + pl->ci, X0 - h, Y0 + h, X0 + h, Y0 - h, 0.0);
                 continue;
             }
 #endif
@@ -281,7 +317,7 @@ static void plline(dxsim *s, int pen, const double *a, const double *b)
 #ifdef DX_SCREEN
         if (pl->dev == DXP_SCREEN) {
             /* only the first view is paced; the others (and the programmed path) at once */
-            dxscline(s, pl, pen, X0, Y0, X1, Y1, v || pen == 2 ? 0.0 : len);
+            dxscline(s, pl, pen == 1 ? 10 + pl->ci : pen, X0, Y0, X1, Y1, v || pen == 2 ? 0.0 : len);
             continue;
         }
 #endif
@@ -352,6 +388,41 @@ static void decor(dxplot *pl, double w, double h)
     }
 }
 
+/* -pc: the key, one line per source, in the strip dxplbeg keeps under the drawing */
+static void legend(dxsim *s, dxplot *pl, double w, double h)
+{
+    int i;
+    char name[100];
+    double X, Y, fs = (w > h ? w : h) * 0.022 * pl->sc;
+    devx(pl, pl->minx, pl->miny, &X, &Y);
+    Y += (pl->nsrc + 0.5) * fs * 1.4;
+    for (i = 0; i < pl->nsrc; i++) {
+        dxsrcname(s, pl->srcid[i], name);
+        if (i == DX_NSRC - 1 && pl->nsrc == DX_NSRC) strcat(name, " and others");
+        Y -= fs * 1.4;
+        switch (pl->dev) {
+        case DXP_SVG:
+            fprintf(pl->fp, "<text x=\"%.3f\" y=\"%.3f\" style=\"fill:%s\">%s</text>\n", X, -Y, srgb[i],
+                    name);
+            break;
+        case DXP_PS:
+            psrgb(pl, i);
+            fprintf(pl->fp, "%.2f %.2f moveto (%s) show 0 setgray\n", X, Y, name);
+            break;
+        case DXP_HPGL:
+            fprintf(pl->fp, "SP%d;PU%.0f,%.0f;LB%s\003;\n", i ? 4 + (i - 1) % 5 : 1, X, Y, name);
+            break;
+#ifdef DX_SCREEN
+        case DXP_SCREEN:
+            dxsclegend(28 - pl->nsrc + 1 + i, i, name);
+            break;
+#endif
+        default:
+            break;
+        }
+    }
+}
+
 void dxplbeg(dxsim *s)
 {
     dxplot *pl = s->plot;
@@ -369,6 +440,11 @@ void dxplbeg(dxsim *s)
     pl->maxy += m;
     w += 2 * m;
     h += 2 * m;
+    if (pl->bysrc && pl->nsrc > 1) {    /* room for the key under the drawing */
+        double k = pl->nsrc * 0.032 * (w > h ? w : h);
+        pl->miny -= k;
+        h += k;
+    }
     pl->pen = -1;
     pl->nseg = 0;
     pl->lx = pl->ly = -1e30;
@@ -417,7 +493,9 @@ void dxplbeg(dxsim *s)
     }
     pl->mark = (w > h ? w : h) * pl->sc * 0.008;
     decor(pl, w, h);
+    if (pl->bysrc && pl->nsrc > 1) legend(s, pl, w, h);
     pl->pen = -1;
+    pl->lci = -1;
 }
 
 void dxplend(dxsim *s)

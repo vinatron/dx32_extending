@@ -89,6 +89,7 @@ static void delay(unsigned ms) { stubms += ms; }
 #define TICKMS  55              /* one DOS clock tick */
 
 static const unsigned movems[10] = { 0, 2, 5, 10, 20, 50, 100, 200, 400, 800 };
+static const short vgacol[DX_NSRC] = { 11, 14, 13, 10, 9, 6, 15, 3, 5, 1, 4, 7 };
 
 static struct {
     int    on;
@@ -96,6 +97,7 @@ static struct {
     int    speed;               /* per-move pacing: index into movems */
     double factor;              /* feed-rate pacing: 1 = machine speed */
     int    pause, block, quit;
+    int    over;                /* block by block: stop only at macro depth <= over; -1 = every block */
     double rate;                /* in/min of the move being drawn */
     long   moves;
 } sc;
@@ -108,6 +110,7 @@ void dxscinit(int paced)
     sc.paced = paced;
     sc.speed = paced ? 0 : 4;
     sc.factor = 1.0;
+    sc.over = -1;
 }
 
 /* 0x1b = ESC */
@@ -143,14 +146,36 @@ static void poll(dxsim *s)
     }
 }
 
+/* the call stack, e.g. "MAIN 20 > #1 6 > #2 11": caller lines, then the current line */
+static void stack(dxsim *s, char *out)
+{
+    char part[24];
+    int k;
+    long b;
+    strcpy(out, "MAIN");
+    for (k = 0; k < s->gdepth; k++) {
+        b = s->gret[k].off ? s->gret[k].blk : s->gret[k].blk - 1;
+        if (s->gmac[k]) sprintf(part, " %ld > M%d", dxbline(s, b), s->gmnum[k]);
+        else sprintf(part, " %ld > #%d", dxbline(s, b), s->gslot[k]);
+        if (strlen(out) + strlen(part) < 60) strcat(out, part);
+    }
+    if (s->sdepth > 0) {
+        sprintf(part, " > G%d", s->cycg);
+        if (strlen(out) + strlen(part) < 60) strcat(out, part);
+    } else if (s->start.blk < s->corp0) {
+        sprintf(part, " %ld", dxbline(s, s->start.blk));
+        if (strlen(out) + strlen(part) < 60) strcat(out, part);
+    }
+}
+
 static void status(dxsim *s, const char *msg)
 {
-    char l1[200], l2[200], where[16];
+    char l1[200], l2[200], where[64];
     const char *t = s->bt ? s->bt : "";
     double p[3];
-    dxbwhere(s, s->start.blk, where);
+    stack(s, where);
     dxtopos(s, s->cur, p);
-    sprintf(l1, "%-7s %-50.50s %.60s", where, t, msg ? msg : "");
+    sprintf(l1, "%-.30s  %-34.34s %.40s", where, t, msg ? msg : "");
     if (sc.paced)
         sprintf(l2, "X%9.4f Y%9.4f Z%9.4f F%7.1f  feed x%-6g SPC B F +- ESC",
                 p[0], p[1], p[2], s->feed, sc.factor);
@@ -172,10 +197,15 @@ static void blkhook(dxsim *s)
 {
     if (sc.quit) return;
     poll(s);
-    if (sc.block && s->start.blk < s->corp0) {
+    if (sc.block && s->start.blk < s->corp0 && (sc.over < 0 || s->gdepth <= sc.over)) {
+        int c;
+        sc.over = -1;                       /* O applies to the block it is pressed at */
         s->bt = dxbtext(s, s->start.blk);
-        status(s, "BLOCK - any key: next");
-        key(s, getch());
+        status(s, "BLOCK: key=next I=into O=over");
+        c = getch();
+        if (c == 'o' || c == 'O') sc.over = s->gdepth;      /* skip the calls this block makes */
+        else if (c == 'i' || c == 'I') sc.over = -1;
+        else key(s, c);
         if (sc.pause) poll(s);
     }
 }
@@ -224,10 +254,21 @@ void dxsclabel(dxplot *pl, const char *text, double x, double y)
     _outtext(buf);
 }
 
+/* -pc: a line of the key at text row row */
+void dxsclegend(int row, int colour, const char *text)
+{
+    char buf[40];
+    sprintf(buf, "%.38s", text);
+    _settextcolor(vgacol[colour % DX_NSRC]);
+    _settextposition((short)row, 1);
+    _outtext(buf);
+}
+
 static void draw(int pen, double x0, double y0, double x1, double y1)
 {
-    /* light cyan feed, light red rapid, green programmed path (cutter compensation) */
-    _setcolor((short)(pen == 2 ? 2 : pen ? 11 : 12));
+    /* light red rapid, green programmed path (cutter compensation); feeds 10+i: colour i of -pc,
+       light cyan for the main program */
+    _setcolor((short)(pen == 2 ? 2 : pen >= 10 ? vgacol[(pen - 10) % DX_NSRC] : pen ? 11 : 12));
     _setlinestyle((unsigned short)(pen ? 0xffff : 0xf0f0));
     _moveto((short)floor(x0 + 0.5), (short)(SCH - 1 - floor(y0 + 0.5)));
     _lineto((short)floor(x1 + 0.5), (short)(SCH - 1 - floor(y1 + 0.5)));

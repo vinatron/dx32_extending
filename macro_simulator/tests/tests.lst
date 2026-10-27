@@ -62,3 +62,5 @@ pzon -P P689.SYS -P PZTEST.INI -model ZLOW -zero 10.,8.,-15.
 pg54 -P P689.SYS -zero 10.,8.,-15.
 flow -flow
 flowall -flow+
+flowpc -pc
+encall

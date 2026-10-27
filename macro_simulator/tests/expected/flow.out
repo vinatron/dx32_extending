@@ -16,7 +16,7 @@ L25     SKIP  condition false: lines 25-27 skipped
 L28     LOOP  =N30/2: blocks up to N30, 2 passes
 L30     CALL    M100 "Spot" at line 14
 L17     RET       back to the call at line 30
-L31     LOOP    passes 2-2 not shown (-flow+ shows every pass)
+L31     LOOP    pass 2 not shown (-flow+ shows every pass)
 L31     LOOP    end of the =N loop, 2 passes
 L32     CYCLE canned cycle G81 (firmware text, driver A20)
 L33     CYCLE canned cycle G81 (firmware text, driver A20)

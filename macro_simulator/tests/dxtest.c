@@ -474,6 +474,26 @@ static void manual(void)
         check(ok, what);
     }
 
+    /* -pc: the key of flowpc.txt names the three sources in order of first use */
+    {
+        char line[256];
+        int nkey = 0, incyc = 0;
+        FILE *fp;
+        remove("dxt.svg");
+        dx("flowpc.txt -pc -p dxt.svg");
+        fp = fopen("dxt.svg", "r");
+        if (fp) {
+            while (fgets(line, sizeof line, fp))
+                if (strstr(line, "<text") && strstr(line, "style=\"fill:")) {
+                    nkey++;
+                    if (strstr(line, "canned cycle G81 in #1")) incyc = 1;
+                }
+            fclose(fp);
+        }
+        remove("dxt.svg");
+        check(nkey == 3 && incyc, "-pc key: main program, canned cycle G81 in #1, M100");
+    }
+
     /* fillets G22/G23 (features/FILLET.md), worked out by hand */
     {
         static const double f1[] = { 2.366200, .5, 2.574200, .611300 };

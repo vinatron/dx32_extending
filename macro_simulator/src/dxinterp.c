@@ -32,6 +32,7 @@ static void vz(dxsim *s, int l, int n, double v)
 }
 
 static void flowskip(dxsim *s);
+static void flowname(dxsim *s, long blk, char *out);
 static dxpos loopend(dxsim *s, dxpos next);
 
 /* ------------------------------------------------------------------ */
@@ -940,6 +941,9 @@ static void exblock(dxsim *s)
             first = 0;
             if (c != '$' && c != ';' && p[1] && p[2] && (p[2] == '=' || p[3] == '=')) {
                 s->wstart = s->p;
+                if (c == 'N' && dxuser(s) && (p[2] == '=' ? p[3] : p[4]) == '#')
+                    dxwarn(s, 0, "a block that starts N..=# is an assignment to variable N.., not a "
+                           "macro call: write the call as =#n at the start of the block (no N number)");
                 if (!s->intext && !s->pppl)
                     dxerror(s, "PPPL option (param 285 bit 4) not enabled");
                 dxassgn(s);
@@ -1001,6 +1005,40 @@ void dxflowend(dxsim *s)
     flowrep(s);
 }
 
+/* what is making moves now: 0 main program, n macro #n, 1000+m M-macro, 2000+g canned cycle */
+long dxsrc(const dxsim *s)
+{
+    int k;
+    long m = 0;
+    if (s->gdepth > 0) {
+        k = s->gdepth - 1;
+        m = s->gmac[k] ? 1000L + s->gmnum[k] : (long)s->gslot[k];
+    }
+    /* a canned cycle: 2000 + G, plus 10000 * (1 + the macro that called it) */
+    if (s->sdepth > 0) return 2000L + s->cycg + (s->gdepth > 0 ? 10000L * (1 + m) : 0);
+    return m;
+}
+
+void dxsrcname(dxsim *s, long id, char *out)
+{
+    char name[48];
+    int i;
+    name[0] = 0;
+    if (id == 0) strcpy(out, "main program");
+    else if (id >= 10000) {
+        dxsrcname(s, id / 10000 - 1, name);
+        sprintf(out, "canned cycle G%ld in %.48s", id % 10000 - 2000, name);
+    } else if (id >= 2000) sprintf(out, "canned cycle G%ld", id - 2000);
+    else if (id >= 1000) {
+        i = findmac(s, (int)(id - 1000));
+        if (i >= 0) flowname(s, s->sub[macslot(i)].blk, name);
+        sprintf(out, "M%ld%s", id - 1000, name);
+    } else {
+        if (id < DX_NSUB && s->subset[id]) flowname(s, s->sub[id].blk, name);
+        sprintf(out, "#%ld%s", id, name);
+    }
+}
+
 /* the comment on a macro's definition line, as its name */
 static void flowname(dxsim *s, long blk, char *out)
 {
@@ -1047,6 +1085,8 @@ static void gosub(dxsim *s, dxpos ret, int slot)
     if (s->gdepth >= DX_GOSUB) dxerror(s, "Parser: #1 Internal Addressing Error");
     s->gret[s->gdepth] = ret;
     s->gseq[s->gdepth] = s->seqno;
+    s->gslot[s->gdepth] = slot;
+    s->gmnum[s->gdepth] = s->stmac ? s->stmnum : 0;
     s->gprm0[s->gdepth] = s->frame0;
     s->grprm[s->gdepth] = s->rprm;
     s->gmac[s->gdepth] = s->stmac;

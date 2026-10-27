@@ -80,6 +80,7 @@ dxsim [options] program.txt
   -p8 0|1    P8 for G170-G179 (machine family flag, default 1)
   -lint      check every line without running it    -silent    no error/warning lines on the console
   -flow      program flow only (calls, returns, cycles, loops, jumps, skips)   -flow+  flow lines in the full trace
+  -pc        colour feed moves by the macro or canned cycle that made them, with a key
   -P FILE    machine parameters (BMDCPRMS.SYS, BMDCPRMS.INI)   -model M   apply [M] of BMDCPRMS.INI
   -zero X,Y,Z  machine position of part zero: check the travel limits (needs -P)
   -e EXPR    evaluate a PPPL expression and exit    -corpus / -check   list / parse the built-in cycles
@@ -137,8 +138,12 @@ the comment character, so `N10G1X1.F10.; feed` is fine.
 - the lines a false condition skipped.
 
 Lines are indented by macro and loop depth, and later loop passes are folded. `-flow+` puts the same
-lines into the full trace, every pass included. Details and the next steps (colours by macro in the
-plot, a call map) are in `features/FLOW.md`.
+lines into the full trace, every pass included.
+
+`-pc` colours the feed moves in plots and in the live preview by the macro, M-macro or canned cycle that
+made them, with a key under the drawing. In the preview the status line shows the call stack
+(`MAIN 21 > #1 5`), and in block-by-block mode O steps over a call. Details and the next step (a call map)
+are in `features/FLOW.md`.
 
 ```
 L20     CALL  #1 "Hole pair" at line 5
@@ -301,12 +306,13 @@ DXSIM -Sf PROGRAM.TXT        draw at the programmed feed rate (rapids at 472 ipm
 | Key | Action |
 |---|---|
 | SPACE | pause / continue |
-| B | block by block on/off: stops before each program block and shows it (a canned cycle runs as one block) |
+| B | block by block on/off: stops before each program block, macro bodies included, and shows it (a canned cycle runs as one block) |
+| O | at a block-by-block stop: step over, i.e. run the macro this block calls without stopping in it |
 | + / - | faster / slower: pause per move 0-800 ms, or feed-rate factor ×1/64…×64 |
 | F | switch between per-move and feed-rate pacing |
 | ESC | stop |
 
-The status lines show the block, the position, the feed and the pacing. Rapids are drawn red and dashed,
+The status lines show the call stack (`MAIN 21 > #1 5`), the block, the position, the feed and the pacing. Rapids are drawn red and dashed,
 feeds cyan, drilled holes as a small x. The view is chosen with `-v g17|g18|g19|iso|all` (see Running) and the whole part is fitted to
 the screen (a quick first pass measures it). The trace goes to a file only with `-o`, so it does not
 write over the graphics. The DOS timer ticks 18.2 times a second, so feed-rate pacing is approximate.

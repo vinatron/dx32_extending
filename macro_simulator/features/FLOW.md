@@ -9,7 +9,7 @@ Roadmap item 4: show how a program moves between its parts. The parts are the ma
 | Phase | What | Status |
 |---|---|---|
 | 4a | `-flow` / `-flow+` text trace | **done** |
-| 4c | Moves coloured by the macro or cycle that made them; the call stack on the preview's status line; step into / step over in block-by-block mode | not started |
+| 4c | Moves coloured by the macro or cycle that made them; the call stack on the preview's status line; step into / step over in block-by-block mode | **done** |
 | 4b | Call map (`-map`): boxes and arrows, calls never taken drawn dashed, extra warnings | not started |
 
 This is a dxsim feature, not a control feature, so there is no firmware trace or bench check. It reports
@@ -57,20 +57,53 @@ L31     LOOP    end of the =N loop, 2 passes
 L32     CYCLE canned cycle G81 (firmware text, driver A20)
 ```
 
-## 3. Tests
+## 3. Phase 4c (as built)
+
+**`-pc`: colour by source.** Feed moves are coloured by what made them. The innermost source counts:
+
+| Source | Key text |
+|---|---|
+| main program | `main program` |
+| a `#n` macro | `#n "name"` (the name is the definition line's comment) |
+| an M-macro | `M100 "name"` |
+| a canned cycle | `canned cycle G81`, or `canned cycle G81 in #1 "name"` when a macro called it |
+
+- **Colours:** pass 1 of the plot registers the sources in order of first use (12 colours; the 12th is
+  shared by any further sources). Pass 2 draws with them.
+- **The key:** printed in a strip under the drawing that `dxplbeg()` keeps free.
+- **Unchanged:** rapids stay red and dashed; the programmed path under cutter compensation stays green.
+- **Devices:**
+
+| Device | Colours | Key |
+|---|---|---|
+| SVG | `style="stroke:..."` | coloured text |
+| PostScript | `setrgbcolor` | coloured text |
+| HPGL | pens 4-8 | `LB` labels |
+| Live preview | 12 VGA colours | text rows above the status lines |
+
+**Live preview:**
+- **Status line:** shows the call stack, e.g. `MAIN 21 > #1 5` (inside macro #1, called at line 21, now at
+  its line 5) or `MAIN 23 > M100 12`. Inside a cycle it ends in `> G81`.
+- **Block by block** (B): it stops at every program block, macro bodies included ("step into").
+  - **O** at a stop runs the calls that block makes without stopping ("step over"). It applies to that
+    block only.
+  - **I**, or any other key, goes on to the next block.
+
+**Also added:** a warning for `N20=#1`. On the control it is an assignment to variable N20 (the `=` is
+the 4th character), not a macro call. The run then stops with `Parser: #16 Internal Addressing Error`, as
+the control does. Test `encall`.
+
+## 4. Tests
 
 | Test | Checked |
 |---|---|
 | `flow -flow` | the expected trace; `dxtest` also counts the events against a hand count: **CALL 7, RET 7, JUMP 1, SKIP 2, LOOP 3, CYCLE 2** |
 | `flowall -flow+` | the same program with the full trace and every pass |
+| `flowpc -pc` | `dxtest` checks the SVG key: **3 entries, including "canned cycle G81 in #1"**; `make test-screen` runs it on the preview stub. Step into/over checked by hand with the stub's scripted keys |
+| `encall` | the `N20=#1` warning and the control's error |
 
-## 4. Next
+## 5. Next
 
-- **4c:**
-  - The move records get the call stack at the time of the move. The plot colours moves by the innermost
-    macro or cycle, with a key.
-  - The preview's status line shows `MAIN 12 > #3 41 > G83`.
-  - Block-by-block mode gets `I` (step into) and `O` (step over).
 - **4b:** the call map, from a pre-scan of the program (all calls, including the ones never taken) plus
   the counts from the run, drawn as SVG or as an indented text tree. It also warns about:
   - unused macros;
@@ -78,8 +111,9 @@ L32     CYCLE canned cycle G81 (firmware text, driver A20)
   - recursion;
   - L8/L9 used where the canned cycles use them.
 
-## 5. Change log
+## 6. Change log
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-27 | (this commit) | Phase 4a: `-flow` / `-flow+` with CALL, RET, CYCLE, LOOP, JUMP, SKIP lines, folding, macro names from the definition comment; loop passes on call blocks counted at the return; tests `flow`, `flowall`, event-count check (95 passed) |
+| 2026-10-27 | 4dfddc0 | Phase 4a: `-flow` / `-flow+` with CALL, RET, CYCLE, LOOP, JUMP, SKIP lines, folding, macro names from the definition comment; loop passes on call blocks counted at the return; tests `flow`, `flowall`, event-count check (95 passed) |
+| 2026-10-27 | (this commit) | Phase 4c: `-pc` colours by source with a key (SVG, PS, HPGL, preview); call stack on the preview's status line; O = step over, I = step into; the `N..=#` warning; tests `flowpc`, `encall`, key check (98 passed) |
