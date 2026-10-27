@@ -5,7 +5,7 @@ documents here hold the detail.
 
 | File | Feature | Roadmap | Status |
 |---|---|---|---|
-| `FB2DX.md` | FANUC Macro B to DX32 translator | item 5 | **In progress**: phase 0 (firmware checks) done; phase 1 next |
+| `FB2DX.md` | FANUC Macro A/B to DX32 translator, all FANUC series | item 5 | **In progress**: phase 0 (firmware checks) and the dialect design done; phase 1 next |
 | `FLOW.md` | Program flow view (`-flow`, colours by caller, call map) | item 4 | **Done**: `-flow`, `-pc`, preview call stack and step over, `-map` call map |
 | `OPENQ.md` | **Open questions register**: every open question, with how to answer it (firmware trace, bench test, BXX trace); the bench session | all | kept current |
 | `FILLET.md` | Fillets (G22/G23) | item 3 | **Simulated** (phases 0-3 done); bench check waits for the owner |

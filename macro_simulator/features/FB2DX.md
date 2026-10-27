@@ -1,7 +1,7 @@
 # FANUC Macro B to DX32 translator (`fb2dx`)
 
-Roadmap item 5. A separate C89 program in this directory. It reads a FANUC Macro B program and writes a DX32
-(BMDC 6.89) program that means the same thing, or refuses, with the line and the reason. A silent
+Roadmap item 5. A separate C89 program in this directory. It reads a FANUC custom macro program (Macro A or
+Macro B, from any FANUC series, section 3.7) and writes a DX32 (BMDC 6.89) program that means the same thing, or refuses, with the line and the reason. A silent
 mistranslation on a real machine is the main risk, so **fb2dx never guesses**. The scope and the mapping
 tables are in `../ROADMAP.md` section 5. This document holds the detail.
 
@@ -10,7 +10,7 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 | Phase | What | Status |
 |---|---|---|
 | 0 | Firmware checks the design depends on | **done** (section 2) |
-| 1 | FANUC front end: reader, expression parser, statement list, small evaluator | not started |
+| 1 | FANUC front end: dialect table, series detection and `-series`, reader, expression parser, statement list, small evaluator | not started |
 | 2 | Variables and expressions: allocation, PPPL output, numbers always with a point | not started |
 | 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | not started |
 | 4 | Calls: `M98`/`M99`, `G65` to `#n` macros with caller-side assignments | not started |
@@ -45,7 +45,11 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 ```
 fb2dx [options] in.nc [out.txt]
   -report file     the line-by-line report (default: stderr)
-  -inch | -mm      what a number without a point means (see 3.6); without it such a number is refused
+  -series KEY      the FANUC series the program was written for (section 3.7); otherwise detected
+  -fparam N=V      a FANUC parameter setting that changes what the program means (3.7); repeatable
+  -fparam default  take the factory setting for every such parameter, and say so in the report
+  -inch | -mm      the unit system when the program has no G20/G21 (see 3.6)
+  -series list     print the dialect table and stop
   -mmacro n        put the main program in M-macro n (no PPPL licence needed)
   -check           run dxsim -lint on the output and compare the tool paths (phase 6)
 ```
@@ -111,6 +115,9 @@ alone with Watcom for DOS. `-check` runs dxsim as a separate program.
   ```
   `*` can't carry them (fact 1). An argument that isn't given leaves its local vacant on FANUC; fb2dx
   checks with the evaluator that the macro never reads it, and refuses otherwise (3.2).
+- **`M98` and locals:** a subprogram called with `M98` uses its caller's locals; only `G65` (and `G66`) gets a
+  new set. fb2dx follows that: an `M98` subprogram reads and writes the caller's DX32 block, so the same
+  subprogram called from two depths is written twice (once per depth), or refused if that overflows the pool.
 - **Argument specification II** (`I J K` repeated) is handled by its own `#n` numbering; specification I is
   the default.
 - **`G66`/`G67` modal calls** and user G/M codes that call a macro (parameters 6050-6089) are refused, with a
@@ -154,8 +161,9 @@ FANUC jumps are turned into DX32 structures; anything that doesn't fit one of th
 ### 3.6 Motion and words
 
 - **Numbers:** always written with a point (fact 4). A FANUC number without a point means different things by
-  model and parameter (whole units, or least increments such as 0.001 mm). It is refused unless `-inch` or
-  `-mm` says how to read it.
+  series and parameter (whole units, or least increments such as 0.001 mm). It is refused unless `-fparam dpi=`
+  (and `is=` for increments) says how to read it (3.7). The unit system comes from G20/G21 in the program, or
+  from `-inch`/`-mm`.
 - **Word values from variables or expressions** (fact 12): each one goes into a variable of the word's own
   letter, assigned in the block before: `G1 X[#1+2.] Y#2` →
   ```
@@ -176,13 +184,102 @@ FANUC jumps are turned into DX32 structures; anything that doesn't fit one of th
   `G98`/`G99` turned into explicit moves when they don't match. Other cycles, `G68`, `G43`/`G49`, `G28`/`G30`,
   `G10`, `G52` and system variables are refused (`../ROADMAP.md` section 5).
 
+### 3.7 FANUC series and dialects
+
+FANUC's macro language changed over the series. fb2dx handles all of them with one table of dialects
+(`src/fbdial.c`). The table is data: a cell found wrong in a FANUC manual is corrected in one place.
+
+**The series** (`-series KEY`):
+
+| Key | Controls | Macro |
+|---|---|---|
+| `a` | Custom Macro A, on any series that has it (0, 6, 10/11, 15, early 16/18) | `G65 Hm P#i Q#j R#k` operations |
+| `0` | Series 0 (0-M, 0-T, 0-MC, 0-TC, 0-MF), Power Mate | Macro B |
+| `6` | Series 6 (6M, 6T) | Macro B |
+| `10` | Series 10, 11, 12 | Macro B |
+| `15` | Series 15, 150 | Macro B |
+| `16` | Series 16, 18, 20, 21, 160/180/210, their i and is models, Power Mate i | Macro B |
+| `0i` | 0i-A to 0i-D, 0i Mate | Macro B |
+| `30i` | 30i, 31i, 32i, 35i (A and B), 0i-F, 0i-F Plus | Macro B with the newer additions |
+
+The cells below come from FANUC's operator manuals as far as they are known here, without a manual in this
+repo to check against. They are all **TENTATIVE**: `?` marks a cell that is not known at all.
+
+**Two kinds of difference.** They are handled differently:
+
+1. **What exists.** A construct is there on some series and not on others. This only matters for detection.
+   Where a construct exists, it means the same thing, so it is translated the same way. A wrong or `?` cell
+   here can't cause a wrong translation, only a wrong detection message.
+
+   | Construct | a | 0 | 6 | 10 | 15 | 16 | 0i | 30i |
+   |---|---|---|---|---|---|---|---|---|
+   | `G65 Hm` operations (H01-H99) | yes | - | - | - | - | - | - | - |
+   | `#i=expr`, `[ ]`, `SIN COS TAN ATAN SQRT ABS ROUND FIX FUP BIN BCD`, `IF..GOTO`, `WHILE..DO1-3`, `G65 P` with arguments, `#[expr]` | - | yes | yes | yes | yes | yes | yes | yes |
+   | `IF [c] THEN statement` | - | no | no | ? | ? | yes | yes | yes |
+   | `ASIN ACOS` | - | no | no | ? | ? | ? | yes | yes |
+   | `LN EXP` | - | no | no | ? | ? | ? | ? | yes |
+   | `POW ADP`, `ATAN[a,b]`, one-argument `ATAN[x]`, `MOD` | - | no | no | no | no | no | ? | yes |
+   | `AND OR` between conditions: `IF [[#1 GT 0] AND [#2 LT 5]]` | - | no | no | no | no | no | ? | yes |
+   | Named variables: system names `#_ABC`, common names set with `SETVN` | - | no | no | no | no | no | ? | yes |
+   | `IF..THEN` / `ELSE` / `ENDIF` over several blocks | - | no | no | no | no | no | no | ? |
+   | Common variables beyond `#100-#149`, `#500-#531` | - | option | option | ? | ? | option | option | yes |
+   | `G65` nesting | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 5 |
+
+2. **What it means.** The same text gives a different result by series, or by a parameter of the machine.
+   These are the ones that can cause a silent mistranslation:
+
+   | Item | Differs by | fb2dx needs |
+   |---|---|---|
+   | A number without a decimal point (`X10`) | parameter DPI (3401 bit 0 on 16/0i/30i; other series: `?`). 0 = least increments, 1 = whole mm/inch | `-fparam dpi=0\|1`, plus `is=b\|c` (the increment system: IS-B 0.001 mm / 0.0001 in; IS-C ten times finer) when dpi=0 |
+   | `ATAN` result range | 0..360 everywhere; on 0i/30i parameter NAT (6004 bit 0) can make it -180..180 | `-fparam nat=0\|1` when the series may be 0i or 30i |
+   | `ROUND` inside an address (`X[ROUND[#1]]`) | on 16/0i/30i it rounds to the least increment of that address, not to a whole number (`?` on older series) | the series, and `is=` |
+   | `G65 H.. P#..` | Macro A: an operation. Macro B: a call, with H passed as argument `#11` | the series (`a` or not) when the program could be either |
+   | Constants in Macro A operations | integers; how coordinates and angles scale (least increment, 0.001°) is `?` | refused in an angle or a coordinate until the Macro A manual is checked |
+   | Significant digits | about 8 on the older series, more on 30i | nothing: a `NOTE` with `EQ` on computed values (3.3) |
+
+**Detection.** Without `-series`, fb2dx works the series out from the program:
+
+1. Each construct in the first table that the program uses gives the set of series it exists on. fb2dx
+   takes the intersection of those sets. A `yes` or `?` cell counts as "exists"; `no`, `-` and `option`
+   count as given.
+2. **An empty intersection** means the program mixes series. It is refused, naming both lines: `line 12 uses
+   ATAN[a,b] (30i only), line 40 uses G65 H02 (Macro A only)`.
+3. **With `-series`**, a construct that doesn't exist on that series is refused at its line.
+4. For each item of the second table that the program uses, every candidate series has to give the same
+   meaning. Otherwise fb2dx stops and says which option settles it: `line 7: ATAN may give -180..180 on 0i
+   and 30i (parameter NAT); give -series or -fparam nat=`.
+5. A parameter can't be seen in the program, so a parameter-dependent item always needs its `-fparam`, or
+   `-fparam default` to accept the factory setting on purpose.
+6. The report's first line says what was decided and why: `DIALECT  16, 0i, 30i (THEN at line 12); no
+   construct used depends on which`.
+
+Most programs use only the common Macro B core. For them, detection settles on "any Macro B series" and
+no option is needed, except `dpi` if they have numbers without a point.
+
+**Macro A** (`-series a`, or detected from `G65 Hm`). Each operation is one block, with P the destination,
+and Q and R the operands:
+
+| H | Operation | H | Operation |
+|---|---|---|---|
+| 01 | `#i = #j` | 22 | `#i = ABS[#j]` |
+| 02, 03 | `#i = #j + #k`, `- #k` | 23 | remainder of `#j / #k` |
+| 04, 05 | `#i = #j * #k`, `/ #k` | 26 | `#i = #i * #j / #k` |
+| 11, 12, 13 | OR, AND, XOR | 27, 28 | `SQRT[#j² + #k²]`, `SQRT[#j² - #k²]` |
+| 21 | `#i = SQRT[#j]` | 31, 32, 33 | `#i = #j * SIN/COS/TAN[#k]` |
+| 34 | `#i = ATAN[#j / #k]` | 80 | `GOTO n` (P n) |
+| 81-86 | `IF #j = ≠ > < ≥ ≤ #k GOTO n` (P n) | 99 | alarm: refused |
+| 24, 25 | BCD, BIN: refused | | |
+
+These become the same internal statements as Macro B, so everything after the reader is shared.
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
 
 | Kind | Examples |
 |---|---|
-| `REFUSED` | `#5061 (probe skip position): system variables don't translate`; `#0 vacant: no DX32 equivalent`; `GOTO 20 jumps into a WHILE loop`; `8 backward targets, 7 labels free (canned cycles use L8, L9)`; `X10 without a decimal point: give -inch or -mm` |
+| `DIALECT` | the series decided on and why, or the option that would settle it (3.7) |
+| `REFUSED` | `line 40 uses G65 H02 (Macro A only), line 12 uses ATAN[a,b] (30i only)`; `#5061 (probe skip position): system variables don't translate`; `#0 vacant: no DX32 equivalent`; `GOTO 20 jumps into a WHILE loop`; `8 backward targets, 7 labels free (canned cycles use L8, L9)`; `X10 without a decimal point: give -fparam dpi= (3.7)` |
 | `NOTE` | `the output needs BOSS 4-7 compatibility mode off`; `FIX built from LSR and a correction (TENTATIVE, bench/BFIX.TXT)`; `EQ on a computed value`; `the output needs the PPPL option (param 285 bit 4)` |
 | `MAP` | variable and macro numbers |
 
@@ -191,6 +288,12 @@ output.
 
 ## 5. Tests
 
+- **Dialects:**
+  - one program per construct in the first table of 3.7, checked to detect the right set of series;
+  - one program per meaning item in the second table, checked to stop without its option and to
+    translate with each setting;
+  - a mixed program, and `G65 H.. P#..` without `-series`;
+  - a Macro A program for each H operation.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
@@ -203,7 +306,7 @@ output.
 
 - **0** ☑ `*` in expressions (fact 1) ☑ rounding of the 32-bit functions (fact 2, dxsim changed, `BFIX.TXT`)
   ☑ arcs, word values, units, BOSS 4-7 mode (facts 12-16, from `../LANGUAGE.md`)
-- **1** ☐ reader (blocks, `( )` comments, `/` block delete, `%`, `O` numbers) ☐ expression parser ☐ statements
+- **1** ☐ dialect table `src/fbdial.c` and `-series list` ☐ detection, `-series`, `-fparam` ☐ Macro A reader ☐ reader (blocks, `( )` comments, `/` block delete, `%`, `O` numbers) ☐ expression parser ☐ statements
   ☐ evaluator with vacant tracking
 - **2** ☐ variable pool and map ☐ PPPL writer ☐ `FIX`/`FUP`/`ROUND`/`ATAN` expansions
 - **3** ☐ flow graph ☐ structure check ☐ `?`/`!` and label writer
@@ -219,10 +322,12 @@ output.
 | Q2 | What LSR returns for a negative argument: unsigned 0..2³²−1 (dxsim) or signed | **F:** what 0x25d66 does with d1 after the shift (the conversion back to a float). Only matters for refused values today |
 | Q3 | Does G70/G71 convert the values already in variables, or only the numbers read after it? | **F:** the G table entries 70 and 71. Matters only for a program that changes units in the middle, which fb2dx refuses until then |
 | Q4 | What happens to a full circle with `R`, or an `R` arc over 179.998° | **F:** 0x1f992. fb2dx writes those with the centre anyway |
-| Q5 | Which FANUC models to target first (0i, 16/18, 30i) | The owner: the examples they want translated |
+| Q5 | ~~Which FANUC models to target first~~ | **Answered by the owner:** all of them, with the series detected or given (section 3.7) |
+| Q6 | Every `?` cell and every TENTATIVE cell of the two tables in 3.7, including the parameter numbers | The FANUC operator manuals ("Custom Macro" chapter) for each series. Put the PDFs in `../manual/`, or programs known to run on a given series |
 
 ## 8. Change log
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-27 | (this commit) | Document created. Phase 0: `*` invalid in PPPL (0x262a6 → 0x24fba); the 32-bit functions round (fmove.l, default FPCR), dxsim changed from truncation, `bench/BFIX.TXT`, test `bfix`; exact `FIX`/`FUP`/`ROUND` built on `LSR` with a correction; word values need same-letter variables, G90 arc centres are absolute |
+| 2026-10-27 | (this commit) | All FANUC series (owner's request): section 3.7, dialect table, series detection, `-series`, `-fparam`, Macro A; M98 shares the caller's locals; Q5 answered, Q6 added |
+| 2026-10-27 | ebcc885 | Document created. Phase 0: `*` invalid in PPPL (0x262a6 → 0x24fba); the 32-bit functions round (fmove.l, default FPCR), dxsim changed from truncation, `bench/BFIX.TXT`, test `bfix`; exact `FIX`/`FUP`/`ROUND` built on `LSR` with a correction; word values need same-letter variables, G90 arc centres are absolute |

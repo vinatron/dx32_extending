@@ -120,8 +120,9 @@ Suggested order: 4a first (smallest, and the other two use its records), then 4c
 
 ## 5. FANUC Macro B to DX32 translator (`fb2dx`)
 
-A separate C89 program in this directory. It reads a FANUC Macro B program (main program, `O` subprograms
-and `G65` custom macros) and writes a DX32 program that uses PPPL, `#n` macros and `M<n>:` macros. It
+A separate C89 program in this directory. It reads a FANUC custom macro program (main program, `O`
+subprograms and `G65` custom macros), in Macro A or Macro B from any FANUC series: the series is detected from
+the program or given with `-series` (`features/FB2DX.md` 3.7) and writes a DX32 program that uses PPPL, `#n` macros and `M<n>:` macros. It
 translates what it can prove to mean the same thing, and **refuses the rest** with the line number and the
 reason. A silent mistranslation on a real machine is the main risk, so fb2dx never guesses.
 
