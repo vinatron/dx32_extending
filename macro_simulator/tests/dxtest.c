@@ -24,9 +24,11 @@
 
 #if defined(__DOS__) || defined(__NT__) || defined(_WIN32) || defined(MSDOS)
 #define DEFEXE  "..\\src\\DXSIM.EXE"
+#define DEFFB   "..\\src\\FB2DX.EXE"
 #define EXPDIR  "expected\\"
 #else
 #define DEFEXE  "../dxsim"
+#define DEFFB   "../fb2dx"
 #define EXPDIR  "expected/"
 #endif
 
@@ -36,6 +38,7 @@
 #define PI      3.14159265358979323846
 
 static const char *dxsim = DEFEXE;
+static const char *fb2dx = DEFFB;
 static int nfail, nok, update;
 
 typedef struct mv {
@@ -552,6 +555,93 @@ static void exprs(void)
     }
 }
 
+
+/* ------------------------------------------------------------------ */
+/* fb2dx, the FANUC macro translator: FB.LST lists its test programs   */
+
+static void fb(const char *args)
+{
+    char cmd[256];
+    remove(TMPOUT);
+    sprintf(cmd, "%.80s %.100s -silent -o %s", fb2dx, args, TMPOUT);
+    if (system(cmd)) {
+        /* the report file is what counts */
+    }
+}
+
+static void runfb(const char *name, const char *prog, const char *opts)
+{
+    char args[160], exp[96], why[120], what[300];
+    sprintf(args, "%.20s.nc %.100s", prog, opts);
+    fb(args);
+    sprintf(exp, "%s%.20s.out", EXPDIR, name);
+    if (update) copyfile(TMPOUT, exp);
+    sprintf(what, "fb2dx %s.nc %s matches %s", prog, opts, exp);
+    if (!compare(TMPOUT, exp, why)) {
+        strcat(what, ": ");
+        strcat(what, why);
+        check(0, what);
+    } else check(1, what);
+}
+
+/* the X, Y (and Z) of the NC lines in the fb2dx trace */
+static int fbxy(double *x, double *y, double *z, int max)
+{
+    char line[256];
+    int n = 0;
+    FILE *fp = fopen(TMPOUT, "r");
+    if (!fp) return 0;
+    while (fgets(line, sizeof line, fp) && n < max) {
+        char *px, *py, *pz;
+        if (!strstr(line, " NC ")) continue;
+        px = strstr(line, " X");
+        py = strstr(line, " Y");
+        pz = strstr(line, " Z");
+        if (!px) continue;
+        x[n] = atof(px + 2);
+        y[n] = py ? atof(py + 2) : 0;
+        z[n] = pz ? atof(pz + 2) : 0;
+        n++;
+    }
+    fclose(fp);
+    return n;
+}
+
+static void fbhand(void)
+{
+    double x[16], y[16], z[16];
+    int n, i, ok;
+    char what[120];
+
+    /* bolt circle: centre 10,20, R30, 6 holes from 15 degrees */
+    fb("fbbolt.nc -eval");
+    n = fbxy(x, y, z, 16);
+    ok = n == 7;
+    for (i = 1; i < n && ok; i++) {
+        double a = (15.0 + 60.0 * (i - 1)) * PI / 180.0;
+        ok = near(x[i], 10 + 30 * cos(a), 1e-5) && near(y[i], 20 + 30 * sin(a), 1e-5);
+    }
+    check(ok, "fb2dx bolt circle: 6 holes on R30 about X10 Y20, 60 degrees apart from 15");
+
+    /* Macro A loop: X0..X40 in 10 mm steps, from 10000 least increments */
+    fb("fbmacroa.nc -eval -series a -fparam avar=0 -fparam is=b");
+    n = fbxy(x, y, z, 16);
+    ok = n == 5;
+    for (i = 0; i < n && ok; i++) ok = near(x[i], 10.0 * i, 1e-9);
+    check(ok, "fb2dx Macro A: H01/H02/H84 loop gives X0 to X40 in 10 mm steps");
+
+    /* argument specification II: I J K groups go to #4-#6, #7-#9, #10 */
+    fb("fbspec2.nc -eval");
+    n = fbxy(x, y, z, 16);
+    check(n == 1 && x[0] == 2 && y[0] == 5 && z[0] == 8, "fb2dx G65 specification II: #4=2 #7=5 #10=8");
+
+    /* M98 P30100: three passes, the subprogram adds 1 to the caller's #1 */
+    fb("fbm98.nc -eval -series 0");
+    n = fbxy(x, y, z, 16);
+    sprintf(what, "fb2dx M98 P30100 on series 0: 3 passes share #1, X%g", n ? x[0] : -1.0);
+    check(n == 1 && x[0] == 3, what);
+}
+
 int main(int argc, char **argv)
 {
     char line[256], name[80], what[100];
@@ -560,6 +650,7 @@ int main(int argc, char **argv)
 
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-u")) update = 1;
+        else if (!strcmp(argv[i], "-fb") && i + 1 < argc) fb2dx = argv[++i];
         else dxsim = argv[i];
     }
     printf("dxtest: using %s\n", dxsim);
@@ -606,6 +697,35 @@ int main(int argc, char **argv)
 
     manual();
     exprs();
+
+    lst = fopen("fb.lst", "r");
+    if (lst) {
+        FILE *exe = fopen(fb2dx, "rb");
+        if (!exe) {
+            printf("skip  the fb2dx tests: %s not found (build it, or give -fb path)\n", fb2dx);
+            fclose(lst);
+            lst = 0;
+        } else fclose(exe);
+    }
+    if (lst) {
+        while (fgets(name, sizeof name, lst)) {
+            char *prog, *opts;
+            chop(name);
+            if (!name[0] || name[0] == ';') continue;
+            prog = strchr(name, ' ');
+            if (!prog) continue;
+            *prog++ = 0;
+            while (*prog == ' ') prog++;
+            opts = strchr(prog, ' ');
+            if (opts) {
+                *opts++ = 0;
+                while (*opts == ' ') opts++;
+            }
+            runfb(name, prog, opts ? opts : "");
+        }
+        fclose(lst);
+        fbhand();
+    }
 
     sprintf(what, "built-in cycle coverage: %d of 628 non-empty blocks executed", ncov);
     check(ncov >= 600, what);

@@ -1,0 +1,41 @@
+FILE     fbbolt.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 8)
+L3     NC     G21 G90 G17
+L4     NC     G0 X0. Y0. Z5.
+L5     CALL   G65 O9010 #1=15. #2=6. #6=-2. #18=30. #24=10. #25=20.
+L8     SET    #10 = 0.
+L10    SET    #11 = 15.
+L11    NC     X38.977775 Y27.764571
+L12    NC     G1 Z-2. F100.
+L13    NC     G0 Z5.
+L14    SET    #10 = 1.
+L10    SET    #11 = 75.
+L11    NC     X17.764571 Y48.977775
+L12    NC     G1 Z-2. F100.
+L13    NC     G0 Z5.
+L14    SET    #10 = 2.
+L10    SET    #11 = 135.
+L11    NC     X-11.213203 Y41.213203
+L12    NC     G1 Z-2. F100.
+L13    NC     G0 Z5.
+L14    SET    #10 = 3.
+L10    SET    #11 = 195.
+L11    NC     X-18.977775 Y12.235429
+L12    NC     G1 Z-2. F100.
+L13    NC     G0 Z5.
+L14    SET    #10 = 4.
+L10    SET    #11 = 255.
+L11    NC     X2.235429 Y-8.977775
+L12    NC     G1 Z-2. F100.
+L13    NC     G0 Z5.
+L14    SET    #10 = 5.
+L10    SET    #11 = 315.
+L11    NC     X31.213203 Y-1.213203
+L12    NC     G1 Z-2. F100.
+L13    NC     G0 Z5.
+L14    SET    #10 = 6.
+L16    RET
+L6     NC     M30
+END    M30
+NOTE     the DX32 output comes with phases 2-5 (features/FB2DX.md)
+RESULT   ok

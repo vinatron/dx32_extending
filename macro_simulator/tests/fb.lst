@@ -1,0 +1,18 @@
+; fb2dx tests, one per line:
+;   NAME (expected/NAME.out), PROG (PROG.nc), options
+fbbolt   fbbolt   -eval
+fbboltp  fbbolt   -parse
+fbthen   fbthen   -eval
+fb30i    fb30i    -eval
+fb30in   fb30i    -eval -fparam nat=0
+fb30i16  fb30i    -eval -series 16 -fparam nat=0
+fbma     fbmacroa -eval
+fbmaa    fbmacroa -eval -series a -fparam avar=0 -fparam is=b
+fbdpi    fbdpi    -eval
+fbdpion  fbdpi    -eval -bdel on -fparam dpi=0 -fparam is=b
+fbdpidef fbdpi    -eval -bdel off -fparam default
+fbvac    fbvac    -eval
+fbm98    fbm98    -eval
+fbm98s0  fbm98    -eval -series 0
+fbspec2  fbspec2  -eval
+fberr    fberr    -eval

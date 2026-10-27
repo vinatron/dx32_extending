@@ -1,0 +1,11 @@
+FILE     fb30i.nc (from line 1)
+DIALECT  series 0i 30i (Macro B at line 2, POW/ADP/ATAN[a,b]/ATAN[x]/MOD at line 2, AND/OR of conditions at line 5)
+L2     SET    #1 = 225.
+L3     SET    #2 = 1024.
+L4     SET    #3 = 2.
+L5     JUMP   GOTO 10 -> line 7
+L7     SET    #5 = 135.
+L8     NC     M30
+END    M30
+NOTE     the DX32 output comes with phases 2-5 (features/FB2DX.md)
+RESULT   ok

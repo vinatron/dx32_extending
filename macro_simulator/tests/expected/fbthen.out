@@ -1,0 +1,9 @@
+FILE     fbthen.nc (from line 1)
+DIALECT  series 10 15 16 0i 30i (Macro B at line 2, THEN at line 3)
+L2     SET    #1 = 3.
+L3     SET    #2 = 5.
+L5     NC     G21 G0 X5.
+L6     NC     M30
+END    M30
+NOTE     the DX32 output comes with phases 2-5 (features/FB2DX.md)
+RESULT   ok

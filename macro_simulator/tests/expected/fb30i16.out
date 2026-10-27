@@ -1,0 +1,4 @@
+FILE     fb30i.nc (from line 1)
+REFUSED  line 2: POW, ADP, ATAN[a,b], ATAN[x], MOD: not on series 16
+REFUSED  line 5: AND OR between conditions: not on series 16
+RESULT   stopped: see REFUSED/STOP above

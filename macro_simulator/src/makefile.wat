@@ -3,6 +3,8 @@
 #   wmake -f makefile.wat dos32    32-bit DOS extender (DOS/4GW)      -> DXSIM4G.EXE  (with -S preview)
 #   wmake -f makefile.wat win32    Windows 95/98/NT console           -> DXSIM32.EXE
 #   wmake -f makefile.wat win32w   same, with the -S preview window   -> DXSIMW.EXE
+#   wmake -f makefile.wat fb       FANUC macro translator, DOS        -> FB2DX.EXE
+#   wmake -f makefile.wat fb32     FANUC macro translator, Windows    -> FB2DX.EXE
 #   wmake -f makefile.wat tests    test runner for DOS                -> ..\tests\DXTEST.EXE
 #   wmake -f makefile.wat tests32  test runner for Windows            -> ..\tests\DXTEST.EXE
 # then: cd ..\tests and RUNTESTS (see RUNTESTS.BAT).
@@ -11,6 +13,7 @@
 
 SRCW = dxmain.c dxinterp.c dxexpr.c dxmotion.c dxprog.c dxout.c dxcorpus.c dxscreen.c dxparam.c dxcomp.c dxmap.c
 SRC = $(SRCW) dxwin.c
+FBSRC = fbmain.c fbread.c fbdial.c fbeval.c
 OPT = -za -wx -ox -q
 
 all: dos win32 .SYMBOLIC
@@ -28,6 +31,12 @@ win32: .SYMBOLIC
 win32w: .SYMBOLIC
 	wcc386 -bt=nt -wx -ox -q -DDX_SCREEN -DDX_WIN -fo=dxwin.obj dxwin.c
 	wcl386 -bt=nt -l=nt $(OPT) -DDX_SCREEN -DDX_WIN -fe=DXSIMW.EXE $(SRCW) dxwin.obj
+
+fb: .SYMBOLIC
+	wcl -bt=dos -ml $(OPT) -fe=FB2DX.EXE $(FBSRC)
+
+fb32: .SYMBOLIC
+	wcl386 -bt=nt -l=nt $(OPT) -fe=FB2DX.EXE $(FBSRC)
 
 tests: .SYMBOLIC
 	wcl -bt=dos -ml $(OPT) -fe=..\tests\DXTEST.EXE ..\tests\dxtest.c

@@ -1,0 +1,9 @@
+FILE     fbdpi.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+NOTE     -fparam default: the factory settings are assumed
+L2     NC     G21 G0 X.01 Y-2.5 Z5.
+L3     NC     G1 Z-1. F100.
+L4     NC     M30
+END    M30
+NOTE     the DX32 output comes with phases 2-5 (features/FB2DX.md)
+RESULT   ok

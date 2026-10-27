@@ -26,6 +26,7 @@ CONFIRMED/TENTATIVE marks and firmware addresses. `ROADMAP.md` lists the feature
 | `ROADMAP.md` | Planned features: machine parameters, cutter compensation, fillets, program flow view, z/OS |
 | `manual/` | Programmer's manual (1994), operator's manual (1997), work-shift appendix (PDF) |
 | `src/` | The simulator (C89): `dxmain.c` command line, `dxinterp.c` interpreter and flow control, `dxexpr.c` numbers, variables and PPPL expressions, `dxmotion.c` geometry, `dxout.c` trace and plots, `dxprog.c` program text, `dxcorpus.c` built-in cycles (generated), `dxscreen.c` live preview (DOS VGA; Windows window via `dxwin.c`/`dxgraph.h`) |
+| `src/fbmain.c`, `fbread.c`, `fbdial.c`, `fbeval.c`, `fb2dx.h` | `fb2dx`, the FANUC custom macro translator (in progress, `features/FB2DX.md`): command line, FANUC reader, series table and detection, evaluator |
 | `src/makefile.wat` | Open Watcom: DOS 16-bit, DOS/4GW, Win32 console |
 | `Makefile` | gcc / clang on Linux, macOS, Cygwin |
 | `tests/` | Test programs (`*.txt`, 8.3 names, most from the manual's figures, listed in `tests.lst`), expected traces, `dxtest.c` runner, `RUNTESTS.BAT` |
@@ -39,13 +40,14 @@ CONFIRMED/TENTATIVE marks and firmware addresses. `ROADMAP.md` lists the feature
 The source is plain C89 with no POSIX calls, so any C compiler should do.
 
 ```
-make                                  # Linux/macOS: gcc or clang, produces ./dxsim
+make                                  # Linux/macOS: gcc or clang, produces ./dxsim and ./fb2dx
 
 cd src                                # Open Watcom 1.9 or 2.0
 wmake -f makefile.wat dos             # DXSIM.EXE    16-bit DOS, large model (8086 and up), with -S preview
 wmake -f makefile.wat dos32           # DXSIM4G.EXE  DOS/4GW extender, with -S preview
 wmake -f makefile.wat win32           # DXSIM32.EXE  console, Windows 95/98/NT and later
 wmake -f makefile.wat win32w          # DXSIMW.EXE   same, with the -S preview in a window
+wmake -f makefile.wat fb              # FB2DX.EXE    the FANUC macro translator, DOS (fb32 for Windows)
 wmake -f makefile.wat tests           # ..\tests\DXTEST.EXE test runner (tests32 for Windows)
 
 bcc -ml -A dxmain.c dxinterp.c dxexpr.c dxmotion.c dxprog.c dxout.c dxcorpus.c   # Borland/Turbo C++ (untested)
@@ -338,8 +340,8 @@ The test runner `tests/dxtest.c` is C89 like the simulator, so the tests run whe
 make test                                   Linux/macOS (also runs tools/check_grammar.py)
 
 cd src                                      DOS / Windows 98 with Open Watcom
-wmake -f makefile.wat dos tests             DXSIM.EXE + ..\tests\DXTEST.EXE (16-bit DOS)
-wmake -f makefile.wat win32 tests32         DXSIM32.EXE + DXTEST.EXE (Windows console)
+wmake -f makefile.wat dos fb tests          DXSIM.EXE + FB2DX.EXE + ..\tests\DXTEST.EXE (16-bit DOS)
+wmake -f makefile.wat win32 fb32 tests32    the same for the Windows console
 cd ..\tests
 RUNTESTS                                    results on screen and in RESULTS.TXT
 ```
@@ -370,6 +372,28 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
 7. `f*.txt` are the fillet tests: fig. 3-7, horizontal/vertical lines with the variable dump, the
    warnings, and fillets inside compensation; fig. 3-7's first fillet and the square's tangent points are
    checked against hand values.
+8. `fb*.nc` are FANUC programs for `fb2dx`, listed in `tests/fb.lst` (expected file, program, options).
+   They cover series detection, the `-fparam` stops, Macro A, vacant variables, `M98`, argument
+   specification II and read errors. The bolt circle, the Macro A loop, specification II and `M98 P30100`
+   are also checked against values worked out by hand. `DXTEST -fb path` names the `fb2dx` to use. Without
+   one, these tests are skipped with a message.
+
+## FANUC macro translator (`fb2dx`, in progress)
+
+`fb2dx` will translate FANUC custom macro programs (Macro A and Macro B, any series) into DX32 programs.
+`features/FB2DX.md` has the design. Phase 1 is built: it reads the program, decides the FANUC series and
+evaluates the program. The DX32 output comes with the next phases.
+
+```
+fb2dx -series list                    the series, what exists on which, the -fparam settings
+fb2dx -eval PROG.NC [SUB.NC ...]      decide the series and trace the program as the FANUC control runs it
+fb2dx -parse PROG.NC                  list the statements as read
+```
+
+The series is detected from what the program uses, or given with `-series a|0|6|10|15|16|0i|30i`. Where
+the meaning of a block depends on the series or on a machine parameter, `fb2dx` stops and says which
+option settles it (`-series`, `-fparam dpi=`, `nat=`, `is=`, `o8=`, `avar=`, or `-fparam default` for the
+factory settings). It never guesses.
 
 ## Not simulated (yet)
 

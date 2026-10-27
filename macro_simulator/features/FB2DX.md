@@ -10,7 +10,7 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 | Phase | What | Status |
 |---|---|---|
 | 0 | Firmware checks the design depends on | **done** (section 2) |
-| 1 | FANUC front end: dialect table, series detection and `-series`, reader, expression parser, statement list, small evaluator | not started |
+| 1 | FANUC front end: dialect table, series detection and `-series`, reader, expression parser, statement list, small evaluator | **done** (section 3.8) |
 | 2 | Variables and expressions: allocation, PPPL output, numbers always with a point | not started |
 | 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | not started |
 | 4 | Calls: `M98`/`M99`, `G65` to `#n` macros with caller-side assignments | not started |
@@ -203,7 +203,10 @@ FANUC's macro language changed over the series. fb2dx handles all of them with o
 | `30i` | 30i, 31i, 32i, 35i (A and B), 0i-F, 0i-F Plus | Macro B with the newer additions |
 
 The cells below come from FANUC's operator manuals as far as they are known here, without a manual in this
-repo to check against. They are all **TENTATIVE**: `?` marks a cell that is not known at all.
+repo to check against. They are all **TENTATIVE**: `?` marks a cell that is not known at all. The Macro A
+H-code list matches a FANUC training course's outline ([Mills CNC](https://www.millscnc.co.uk/?p=2578)).
+The online copies of the operator's manuals found so far (0i-D B-64304EN, 16i B-63534EN, 30i-B B-64484EN)
+are on hosts this session's network policy does not reach (Q6).
 
 **Two kinds of difference.** They are handled differently:
 
@@ -272,6 +275,64 @@ and Q and R the operands:
 
 These become the same internal statements as Macro B, so everything after the reader is shared.
 
+### 3.8 Phase 1 as built
+
+`src/fb2dx.h`, `fbmain.c` (command line, report), `fbread.c` (reader and parser), `fbdial.c` (the series
+table, detection, `-fparam`, Macro A), `fbeval.c` (evaluator). `fb2dx -series list` prints the table from
+`fbdial.c`, so the program and this document can be compared.
+
+**Reader.** For each line:
+- **Cleaning:** comments `( )` are removed, the text is upper-cased, blanks are dropped, a trailing `;`
+  (EOB) is dropped, and `%` lines are skipped. `/` (and `/1`-`/9`) marks block delete: `-bdel on|off` must
+  say how the switch is set, or fb2dx stops.
+- **Blocks:** `O`/`:` starts a program. An `N` number may come first.
+- **Statements:** `#i=e`, `IF [c] GOTO n`, `IF [c] THEN #i=e`, `GOTO n`, `WHILE [c] DOm`, `DOm`, `ENDm`.
+  `SETVN BPRNT DPRNT POPEN PCLOS` are read and reported, not translated.
+- **NC blocks:** everything else. A word value is a number, a variable or `[expression]`, with a sign.
+- **Expressions:**
+  - precedence: functions; then `* / AND MOD`; then `+ - OR XOR`; then the comparisons `EQ NE GT GE LT LE`
+    inside brackets.
+  - `AND OR XOR` between two comparisons is the 30i logical form; between values it is bitwise.
+  - `ATAN[a]/[b]` is always the two-argument form, on every series.
+  - Variables: `#n`, `#[e]`, `#_NAME`.
+- **Loops:** `fbpair` matches DO with END in each program, at most 3 deep.
+
+**Detection** (`fbdetect`) is the algorithm in 3.7, with these details:
+- The value 0 without a point (`Y0`) is not a DPI item, because 0 is 0 in any unit.
+- `G65 H..` is settled first; with Macro A (`-series a`), `fbmacroa` rewrites each operation as the
+  Macro B statement it stands for.
+- **Macro A remainder (H23):** written as `Q - FIX[Q/R]*R`, TENTATIVE.
+- **Macro A constant angles (H31-H34 with a constant R):** refused (Q6).
+- **Macro A variables in dimension words** (`X#100`): need `-fparam avar=` (and `is=` for least increments).
+
+**Evaluator** (`fbeval`, `-eval`). It runs the program and prints `SET`, `NC` (word values after DPI
+scaling), `CALL`, `AGAIN`, `RET`, `JUMP` and `END` lines.
+
+- **Variables:**
+  - **Locals:** `#1-#33` per G65 level (5 levels), shared by `M98`.
+  - **Commons:** `#100-#999`.
+  - **System variables:** `#1000` and up, and `#_NAME`, are refused.
+- **Vacant variables:** Macro B's rules.
+  - `#i=#j` keeps a vacant `#j` vacant; in any other expression a vacant variable counts as 0 and gets a
+    `VACANT` line in the report.
+  - `EQ`/`NE` tell vacant from 0; `GT GE LT LE` count it as 0.
+  - A word whose value is a vacant variable is left out of the block.
+- **Calls:**
+  - `G65 P L` with arguments: specification I, or II when I, J or K repeat; mixing the two is refused.
+  - `M98 P L`; `M98 P` with more than 4 digits per the series (count and program, 4 digits each).
+  - `M99` returns, or repeats the call while L passes are left. `M99 P` and `G66`/`G67` are refused.
+- **Jumps:** `GOTO` searches forward to the end of the program, then from its start.
+- **Functions:**
+  - Degrees. `ATAN` and `ASIN` follow `nat`: with nat=0, ATAN gives 0..360 and ASIN 270..90.
+  - `ROUND` in an address rounds to the least increment.
+  - `FIX` cuts towards 0; `FUP` goes away from 0.
+  - `AND OR XOR MOD BIN BCD` only on whole numbers ≥ 0.
+  - `ADP` is refused.
+- **Alarms:** division by 0, SQRT or LN out of range and an unknown variable stop the run with `REFUSED`.
+- **G65 arguments without a point** are scaled like the address letter (TENTATIVE: FANUC treats them as
+  least increments of that address).
+- **Limit:** stops after `-limit` blocks (default 100000).
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
@@ -282,6 +343,8 @@ One line per finding: input line, output line, kind, text.
 | `REFUSED` | `line 40 uses G65 H02 (Macro A only), line 12 uses ATAN[a,b] (30i only)`; `#5061 (probe skip position): system variables don't translate`; `#0 vacant: no DX32 equivalent`; `GOTO 20 jumps into a WHILE loop`; `8 backward targets, 7 labels free (canned cycles use L8, L9)`; `X10 without a decimal point: give -fparam dpi= (3.7)` |
 | `NOTE` | `the output needs BOSS 4-7 compatibility mode off`; `FIX built from LSR and a correction (TENTATIVE, bench/BFIX.TXT)`; `EQ on a computed value`; `the output needs the PPPL option (param 285 bit 4)` |
 | `MAP` | variable and macro numbers |
+| `VACANT` | a vacant variable read where it counts as 0 (evaluator) |
+| `FILE`, `RESULT` | the input files, and `ok` or `stopped` at the end |
 
 A refused line stops the translation of that program. Nothing is written for it, so there is no half-translated
 output.
@@ -297,6 +360,9 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **Phase 1, built:** `tests/fb.lst` and `tests/fb*.nc` (16 runs: detection, each `-fparam` stop, Macro A,
+  vacant variables, `M98`, specification II, a read error), and 4 hand checks in `dxtest` (bolt circle
+  positions, the Macro A loop, specification II numbering, `M98 P30100`).
 - Public FANUC examples: bolt circles, rectangular pockets, a family-of-parts program, an engraving macro.
 - `FIX`/`ROUND`/`FUP` checked over a table of values (whole numbers, halves, negatives, the values next to
   them) by running the output in dxsim.
@@ -306,8 +372,9 @@ output.
 
 - **0** ☑ `*` in expressions (fact 1) ☑ rounding of the 32-bit functions (fact 2, dxsim changed, `BFIX.TXT`)
   ☑ arcs, word values, units, BOSS 4-7 mode (facts 12-16, from `../LANGUAGE.md`)
-- **1** ☐ dialect table `src/fbdial.c` and `-series list` ☐ detection, `-series`, `-fparam` ☐ Macro A reader ☐ reader (blocks, `( )` comments, `/` block delete, `%`, `O` numbers) ☐ expression parser ☐ statements
-  ☐ evaluator with vacant tracking
+- **1** ☑ dialect table `src/fbdial.c` and `-series list` ☑ detection, `-series`, `-fparam` ☑ Macro A reader
+  ☑ reader (blocks, `( )` comments, `/` block delete, `%`, `O` numbers) ☑ expression parser ☑ statements
+  ☑ evaluator with vacant tracking
 - **2** ☐ variable pool and map ☐ PPPL writer ☐ `FIX`/`FUP`/`ROUND`/`ATAN` expansions
 - **3** ☐ flow graph ☐ structure check ☐ `?`/`!` and label writer
 - **4** ☐ `M98`/`M99` ☐ `G65` ☐ depth and recursion checks
@@ -323,11 +390,12 @@ output.
 | Q3 | Does G70/G71 convert the values already in variables, or only the numbers read after it? | **F:** the G table entries 70 and 71. Matters only for a program that changes units in the middle, which fb2dx refuses until then |
 | Q4 | What happens to a full circle with `R`, or an `R` arc over 179.998° | **F:** 0x1f992. fb2dx writes those with the centre anyway |
 | Q5 | ~~Which FANUC models to target first~~ | **Answered by the owner:** all of them, with the series detected or given (section 3.7) |
-| Q6 | Every `?` cell and every TENTATIVE cell of the two tables in 3.7, including the parameter numbers | The FANUC operator manuals ("Custom Macro" chapter) for each series. Put the PDFs in `../manual/`, or programs known to run on a given series |
+| Q6 | Every `?` cell and every TENTATIVE cell of the two tables in 3.7, including the parameter numbers, and the TENTATIVE rules in 3.8 | The FANUC operator manuals ("Custom Macro" chapter) for each series. Copies exist online (3.7) on hosts the session's network policy blocks: allowing them, or PDFs in `../manual/`, settles this |
 
 ## 8. Change log
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-27 | (this commit) | All FANUC series (owner's request): section 3.7, dialect table, series detection, `-series`, `-fparam`, Macro A; M98 shares the caller's locals; Q5 answered, Q6 added |
+| 2026-10-27 | (this commit) | Phase 1 built: `fb2dx` reads, detects the series, evaluates (`-eval`, `-parse`, `-series list`); tests `fb.lst` and 4 hand checks (122 passed) |
+| 2026-10-27 | 9689d77 | All FANUC series (owner's request): section 3.7, dialect table, series detection, `-series`, `-fparam`, Macro A; M98 shares the caller's locals; Q5 answered, Q6 added |
 | 2026-10-27 | ebcc885 | Document created. Phase 0: `*` invalid in PPPL (0x262a6 → 0x24fba); the 32-bit functions round (fmove.l, default FPCR), dxsim changed from truncation, `bench/BFIX.TXT`, test `bfix`; exact `FIX`/`FUP`/`ROUND` built on `LSR` with a correction; word values need same-letter variables, G90 arc centres are absolute |

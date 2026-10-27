@@ -1,0 +1,16 @@
+FILE     fbm98.nc (from line 1)
+DIALECT  series 0 (given)
+L2     NC     G20
+L3     SET    #1 = 0.
+L4     CALL   M98 O100 x3
+L8     SET    #1 = 1.
+L9     AGAIN  the call repeats
+L8     SET    #1 = 2.
+L9     AGAIN  the call repeats
+L8     SET    #1 = 3.
+L9     RET
+L5     NC     G0 X3.
+L6     NC     M30
+END    M30
+NOTE     the DX32 output comes with phases 2-5 (features/FB2DX.md)
+RESULT   ok
