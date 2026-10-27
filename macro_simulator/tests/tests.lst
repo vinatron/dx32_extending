@@ -53,3 +53,7 @@ cczero
 ccmirror -t 1=.5
 ccz -t 1=.5
 ccwarn -t 1=.5
+ffig37
+fsquare -d
+fwarn
+fcomp -t 1=.5

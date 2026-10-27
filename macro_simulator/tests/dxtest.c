@@ -449,6 +449,18 @@ static void manual(void)
              near(sqrt((mvs[i].x - 3) * (mvs[i].x - 3) + (mvs[i].y - 2) * (mvs[i].y - 2)), 1.75, 1e-4);
         check(ok, "cutter comp arc-arc inside corner: the point is on both offset circles (R4.75, R1.75)");
     }
+
+    /* fillets G22/G23 (features/FILLET.md), worked out by hand */
+    {
+        static const double f1[] = { 2.366200, .5, 2.574200, .611300 };
+        static const double sq[] = { 1.5, 0, 2, .5, 2, 1.5, 1.5, 2, 0, 2 };
+        movesx("ffig37", "");
+        for (i = n = 0; i < nmv; i++)
+            if ((mvs[i].k == '2' || mvs[i].k == '3') && near(mvs[i].r, .25, 1e-4)) n++;
+        check(n == 7 && seq("F3", f1), "fig 3-7 fillets: 7 arcs of R.25; fillet 1 from (2.3662,.5) to (2.5742,.6113)");
+        movesx("fsquare", "");
+        check(seq("F3F3F", sq), "fillets on horizontal/vertical lines: tangent points (1.5,0) (2,.5) (2,1.5) (1.5,2)");
+    }
 }
 
 static void exprs(void)

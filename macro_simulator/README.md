@@ -200,6 +200,18 @@ G41 and G42 offset the tool-centre path by the radius of the active tool (`T__D_
   - for the manual's rules (chapter 7);
   - when the path runs backwards, a **gouge** the control does not check for (figs. 7-13, 7-14).
 
+## Fillets (G22/G23)
+
+`G22 X__Y__R__` (CW) or `G23` (CCW) rounds the corner X Y with radius R. The arc is tangent to the line in
+and the line out. The block after the last G22/G23 must be `G1 X__Y__`. `dxsim` uses the 6.89 firmware's
+own arithmetic (`features/FILLET.md`), including what it leaves behind:
+- **Variables:** the control computes the fillet in user variables and leaves them set: X1-X4, Y1-Y4, U1,
+  U2, V1, V2, I1, J1, R2, R3, B1-B3, P2-P4. A program that keeps its own values there loses them at a fillet.
+- **No checks:** a G22/G23 that doesn't match the turn, or a radius too big for the lines, makes the
+  control loop round the outside or back up. dxsim draws it the same way and warns.
+- **Cutter compensation:** fillet moves are compensated like any others.
+- **A misprint in the manual:** fig. 3-7's program writes `F20`, which the control reads as variable F20.
+
 ## Errors and warnings
 
 An **error** stops the run, as on the control. The message is the control's own (operator's manual
@@ -233,7 +245,8 @@ mistake. Warnings are only given for your program's lines, never for the built-i
 | `more than one M code in a block` | manual ch.9 |
 | `S5000 is outside the range 1-4200` | manual table 2-2; with `-P`, the machine's spindle maximum (params 73-76) |
 | `feed move with no M3/M4 programmed` | the control stops with SPINDLE NOT ON CANNOT CUT unless the operator started the spindle |
-| fillets, E words | not simulated (see the end of this file) |
+| E words | not simulated (see the end of this file) |
+| fillets: wrong G22/G23 for the turn, radius too big, parallel lines, missing X/Y | the fillet arithmetic the firmware does without checks (see Fillets) |
 | cutter compensation: co-linear moves, an M code, two Z-only moves, G92/G73/helix while it is on, a gouge, no G40 | the manual's rules, chapter 7 (see Cutter compensation) |
 
 The summary at the end of the trace counts the warnings. When the trace goes to a file, the console also
@@ -312,10 +325,13 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
 6. `cc*.txt` are the cutter-compensation tests: the manual's figures 7-3, 7-13, 7-14 and 7-15, and the
    corner types, negative radius, diameter 0, mirror, Z-only moves and the warnings. The square, the
    triangle, the inside corners and the arc-arc corner are also checked against points worked out by hand.
+7. `f*.txt` are the fillet tests: fig. 3-7, horizontal/vertical lines with the variable dump, the
+   warnings, and fillets inside compensation; fig. 3-7's first fillet and the square's tangent points are
+   checked against hand values.
 
 ## Not simulated (yet)
 
-Fillets (G22/G23: cut as a straight line to the corner), spherical coordinates (E), feed per revolution
+Spherical coordinates (E), feed per revolution
 (recorded only), constant surface feed outside cutter compensation, tool length offsets and clear-point
 moves (traced, not applied), feed timing. `dxsim` prints a warning the first time a program uses one of
 them. `ROADMAP.md` has the plan for each.

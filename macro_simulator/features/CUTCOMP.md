@@ -100,7 +100,8 @@ TENTATIVE marks an interpretation that the code does not settle on its own.
 | **G48 / G49:** 0x32ec bit 7 set / clear (bit 7 = corner rounding **off**) | 0x20db0, 0x20db8 | CONFIRMED |
 | **Tolerance:** 0x4adc = 1270 units = 0.0005 in. It decides tangent corners, coincident points, tangent intersections and parallel lines (determinant) | 0x24144 | CONFIRMED |
 | **Coordinates:** the records take the block targets 0x4010.. after G73 rotation and mirror. That fits the side swap under mirror: compensation works in the transformed path | 0x1d822 | CONFIRMED (inference from the mirror swap) |
-| `Parser: Cannot Comp "C" Axis` (0x32f46) is raised by the C-word handler while 0x32f5 ≠ 0. That is a different state byte from 0x32f4, so this message is **not** about cutter compensation | 0x1f1f6 | CONFIRMED |
+| `Parser: Cannot Comp "C" Axis` (0x32f46) is raised by the C-word handler while 0x32f5 ≠ 0. 0x32f5 is the **fillet** state (`FILLET.md`), so the message means a C word inside a G22/G23 sequence, not cutter compensation | 0x1f1f6 | CONFIRMED |
+| Fillet moves (G22/G23) are handed to the compensation state machine like any others (0x1c55a) | 0x1c55a | CONFIRMED |
 | The built-in canned-cycle text never uses G41/G42; the G170 cycles offset by R1 themselves | `../corpus_689.txt` | CONFIRMED |
 | **Motion mode while compensating:** the approach move and every compensated element are made as feed moves: 0x32f1 = 1, 2 or 3, never 0 (rapid). They use the record's feed, the modal F when the block was read. **A G0 block inside compensation is therefore cut at the feed rate.** Only the G40 move gets the programmed mode back (0x1d6d0: 0x32f1 = 0x32f0) | 0x1d16a, 0x1d244, 0x1d6d0 | CONFIRMED (code) |
 

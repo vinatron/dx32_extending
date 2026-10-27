@@ -223,6 +223,9 @@ typedef struct dxsim {
     double ctp[3];              /* tool centre, base coordinates */
     int    cused;               /* this block gave the compensation an element or a Z move */
     int    cblks;               /* elements since the turn-on (the 5-block rule) */
+    int    fstate;              /* fillet state, firmware 0x32f5: 0 off, 1 G22/G23 block, 2 next block */
+    int    fcw, fcwn, fmore;    /* this fillet CW (0x32e2 bit 3 clear); the next one's; another follows */
+    double fpos[3];             /* where the fillet moves start (program coordinates, inch) */
     int    mirx, miry;          /* G31 / G32 */
     double mirx0, miry0;        /* axis of symmetry */
     int    xform;               /* G73 active */

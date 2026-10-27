@@ -1,0 +1,8 @@
+; fillets on horizontal and vertical lines (the firmware's U=0 / V=0 branches); -d shows the variables the
+; fillet leaves set: corner (2,0): centre (1.5,.5), tangents (1.5,0) (2,.5); corner (2,2): centre (1.5,1.5),
+; tangents (2,1.5) (1.5,2)
+N1G0X0Y0Z0
+N2G23G1X2.Y0R.5F10.
+N3G23X2.Y2.R.5
+N4G1X0Y2.
+N5M2

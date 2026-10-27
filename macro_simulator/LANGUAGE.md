@@ -263,7 +263,7 @@ G45 G49 G70/71 G72 G75 G90 G94 G96. Unknown: `Parser: Illegal G-Code`. Last colu
 | 8 / 9 / 99 | deceleration override off / on (modal) / this block only | recorded |
 | 12 / 13 | helix CW / CCW in polar coordinates: `A` = degrees of travel, `Z` = end depth, `R` = new radius (spiral) | yes |
 | 17 / 18 / 19 | plane XY / ZX / YZ | yes |
-| 22 / 23 | fillet CW / CCW | **no**: cut as a line to the corner, warning |
+| 22 / 23 | fillet CW / CCW at the corner X Y, radius R; the next block must be G1 X Y. **Overwrites X1-X4 Y1-Y4 U1 U2 V1 V2 I1 J1 R2 R3 B1-B3 P2-P4** | yes, as the firmware does it (`features/FILLET.md`) |
 | 30 / 31 / 32 | mirror off / X / Y, about the point where it is programmed | yes |
 | 40 / 41 / 42 | cutter compensation off / left / right | yes, as the 6.89 firmware does it (`features/CUTCOMP.md`) |
 | 44 / 45, 48 / 49 | constant surface feed off / on (reset G45); corner rounding off / on (reset G49; G48 in BOSS 4-7 mode) | yes, with cutter compensation |
@@ -444,3 +444,5 @@ Each violation is a `trap #14` with its message:
 | cycle text and tables A / B | 0x26926-0x27b2e, 0x26852 / 0x268f6 |
 | travel-limit check, its call in the move finalizer, messages | 0x231f0, 0x231d2, 0x331fc-0x333c3 |
 | spindle speed clamp | 0x34620 |
+| fillets: G22/G23, state 0x32f5, arithmetic, moves | 0x20bf6/0x20c18, 0x1c53e-0x1c69c, 0x1d89e/0x1d946, 0x1dc80/0x1dd3e |
+| cutter compensation: G40-G49, states 0x32f4, engine | 0x20d00-0x20db8, 0x1d03e, 0x2412e-0x24e86 |

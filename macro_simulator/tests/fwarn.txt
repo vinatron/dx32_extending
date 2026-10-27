@@ -1,0 +1,8 @@
+; fillet warnings: G22 (CW) programmed on a left turn, then a radius too big for its lines
+N1G0X0Y0Z0
+N2G1G22X2.Y0R.25F10.
+N3G1X2.Y2.
+N4G0X0Y0
+N5G1G23X1.Y0R2.F10.
+N6G1X1.Y1.
+N7M2

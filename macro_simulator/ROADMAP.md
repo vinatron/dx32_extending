@@ -7,7 +7,7 @@ change the order.
 |---|---|---|
 | 1 | Machine parameters (`-P BMDCPRMS.SYS`) | **done** (PR #5): `README.md` "Machine parameters", `LANGUAGE.md` 14a |
 | 2 | Cutter diameter compensation (G41/G42) | **simulated** (phases 0-5); bench check on the machine pending, see `features/CUTCOMP.md` |
-| 3 | Fillets and corner radii (G22/G23) | planned |
+| 3 | Fillets and corner radii (G22/G23) | **simulated**; bench check pending, see `features/FILLET.md` |
 | 4 | Program flow view: main program → macros → cycles | planned (design below) |
 | 5 | FANUC Macro B to DX32 translator (`fb2dx`) | proposed (assessment below) |
 | 6 | z/OS port with GDDM plots | deferred ("way down the road") |
@@ -54,12 +54,11 @@ Simulated in PR #5, following the 6.89 firmware's own compensation code: `README
 with the full record in `features/CUTCOMP.md`. What is left is phase 6, the bench check on the machine.
 The bench sheet is in `features/CUTCOMP.md` section 6.
 
-## 3. Fillets and corner radii (G22/G23)
+## 3. Fillets and corner radii (G22/G23) (simulated)
 
-- Insert the fillet arc between the two moves, instead of cutting straight to the corner as dxsim does
-  today.
-- Report the control's error when the radius doesn't fit.
-- Works together with item 2.
+Simulated in PR #5, following the 6.89 firmware's own fillet code: `features/FILLET.md`. The bench sheet is
+in its section 6. The firmware keeps the fillet's working values in user variables (X1-X4, Y1-Y4, U1, U2, V1,
+V2, I1, J1, R2, R3, B1-B3, P2-P4) and leaves them set. dxsim does the same.
 
 ## 4. Program flow view
 

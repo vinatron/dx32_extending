@@ -63,6 +63,8 @@ void dxmreset(dxsim *s)
     s->acur = 0.0;
     s->spindle = 0.0;
     s->sdir = 5;
+    s->fstate = 0;
+    s->fmore = 0;
     dxcreset(s);
 }
 
@@ -205,6 +207,15 @@ void dxgcode(dxsim *s, int g)
         if ((g == 12 || g == 13) && s->cstate >= 4 && s->cstate <= 10)
             dxwarn(s, 18, "helix (G12/G13) with cutter compensation on (manual p.15 note 1)");
         s->gmot1 = g;
+        if (g == 22 || g == 23) {           /* 0x20bf6 / 0x20c18 */
+            if (s->fstate == 0) {
+                s->fcw = g == 22;
+                s->fstate = 1;
+            } else {
+                s->fcwn = g == 22;
+                s->fmore = 1;
+            }
+        }
         break;
     case 17: case 18: case 19:
         s->plane = g;
@@ -496,8 +507,6 @@ static void arc(dxsim *s)
 static void linear(dxsim *s)
 {
     double mid[3];
-    if (s->gmot1 == 22 || s->gmot1 == 23)
-        dxwarn(s, 5, "fillets (G22/G23) are not simulated: cut as a straight line to the corner");
     if (s->mot == DXM_RAPID && s->gmot1 == 0 && !(s->cstate >= 4 && s->cstate <= 10)) {
         /* G0: Z up first, then XY; or XY first, then Z down (manual chapter 3).
            While compensating a G0 block is one feed move (0x32f1 never 0) */
@@ -536,6 +545,188 @@ void dxmpole(dxsim *s)
     if (s->rset) s->prad = s->rword;
 }
 
+/* ------------------------------------------------------------------ */
+/* fillets G22/G23 (features/FILLET.md): the firmware's own arithmetic   */
+
+/*
+ * The firmware keeps the fillet in user variables, in program units, and
+ * leaves them set: X1 Y1 corner, U1 V1 line into it, X2 Y2 U2 V2 the next
+ * point and line, R2 radius (R3 the next fillet's), B1 B2 the offset lines'
+ * intercepts, P2 P3 their slopes, I1 J1 the centre, X3 Y3 X4 Y4 the tangent
+ * points.  Lines are y = m*x + c relative to the corner.
+ */
+static double fg(dxsim *s, int c, int n)
+{
+    return s->var[dxlet(c)][n];
+}
+
+static void fv(dxsim *s, int c, int n, double v)
+{
+    int l = dxlet(c);
+    s->var[l][n] = v;
+    s->setv[l][n] = 1;
+}
+
+/* the offset line's intercept for line (U,V) (0x1d89e / 0x1d946): into B, slope into P */
+static void foff(dxsim *s, int un, int bn, int pn)
+{
+    double u = fg(s, 'U', un), v = fg(s, 'V', un), c = fg(s, 'R', 2), m;
+    if (u < 0.0 || (u == 0.0 && v >= 0.0)) c = -fabs(c);
+    if (s->fcw) c = -c;
+    if (u != 0.0) {
+        m = v / u;
+        fv(s, 'P', pn, m);
+        if (v != 0.0) c *= sqrt(m * m + 1.0);
+    }
+    fv(s, 'B', bn, c);
+}
+
+/* foot of the centre on line n (slope P, through the corner): into X,Y index t (0x1da90) */
+static void ffoot(dxsim *s, int un, int pn, int t)
+{
+    double m = fg(s, 'P', pn), xi = fg(s, 'I', 1), yj = fg(s, 'J', 1), x;
+    if (fg(s, 'V', un) == 0.0) {
+        fv(s, 'X', t, xi);
+        fv(s, 'Y', t, 0.0);
+    } else if (fg(s, 'U', un) == 0.0) {
+        fv(s, 'X', t, 0.0);
+        fv(s, 'Y', t, yj);
+    } else {
+        x = (xi / m + yj) / (1.0 / m + m);
+        fv(s, 'X', t, x);
+        fv(s, 'Y', t, m * x);
+    }
+}
+
+/* a feed move from fpos, in program units */
+static void fline(dxsim *s, double x, double y)
+{
+    double u = dxunit(s), b[3];
+    b[0] = x * u;
+    b[1] = y * u;
+    b[2] = s->tgt[2];
+    needfeed(s);
+    line(s, DXM_LINE, s->fpos, b);
+    memcpy(s->fpos, b, sizeof b);
+}
+
+static void farc(dxsim *s, double x, double y, double cx, double cy)
+{
+    double u = dxunit(s), b[3], c[3], a0, a1, sw;
+    b[0] = x * u;
+    b[1] = y * u;
+    b[2] = s->tgt[2];
+    c[0] = cx * u;
+    c[1] = cy * u;
+    c[2] = s->fpos[2];
+    a0 = atan2(s->fpos[1] - c[1], s->fpos[0] - c[0]);
+    a1 = atan2(b[1] - c[1], b[0] - c[0]);
+    sw = a1 - a0;
+    if (s->fcw) { while (sw > 0.0) sw -= 2.0 * PI; }
+    else { while (sw < 0.0) sw += 2.0 * PI; }
+    needfeed(s);
+    if (fabs(sw) > PI + 1e-9)
+        dxwarn(s, 21, "fillet arc of more than 180 degrees: G22/G23 does not match the turn, or the "
+               "radius is too big for the lines");
+    arcseg(s, 17, s->fpos, b, c, sw);
+    memcpy(s->fpos, b, sizeof b);
+}
+
+static void fillet(dxsim *s)
+{
+    double u = dxunit(s), x, y, m1, m2, c1, c2;
+    if (s->fstate == 1) {               /* the G22/G23 block: the corner (0x216e0, 0x1d89e) */
+        memcpy(s->fpos, s->cur, sizeof s->fpos);
+        if (s->axset & 1) {
+            fv(s, 'X', 1, s->tgt[0] / u);
+            fv(s, 'U', 1, (s->tgt[0] - s->cur[0]) / u);
+        }
+        if (s->axset & 2) {
+            fv(s, 'Y', 1, s->tgt[1] / u);
+            fv(s, 'V', 1, (s->tgt[1] - s->cur[1]) / u);
+        }
+        if (s->rset) fv(s, 'R', 2, s->rword / u);
+        if ((s->axset & 3) != 3)
+            dxwarn(s, 22, "G22/G23 needs both X and Y: the firmware keeps the old X1/Y1 (manual p.18)");
+        foff(s, 1, 1, 2);
+        s->fstate = 2;
+        return;
+    }
+    /* the block after it: the next point (0x216ba), then the fillet (0x1d946) */
+    if (s->axset & 1) {
+        fv(s, 'X', 2, s->tgt[0] / u);
+        fv(s, 'U', 2, s->tgt[0] / u - fg(s, 'X', 1));
+    }
+    if (s->axset & 2) {
+        fv(s, 'Y', 2, s->tgt[1] / u);
+        fv(s, 'V', 2, s->tgt[1] / u - fg(s, 'Y', 1));
+    }
+    if (s->rset) fv(s, 'R', 3, s->rword / u);
+    if ((s->axset & 3) != 3 || (!s->fmore && s->mot != DXM_LINE))
+        dxwarn(s, 23, "the block after the last G22/G23 must be a G1 move with X and Y (manual p.18)");
+    if (s->axset & 4)
+        dxwarn(s, 24, "Z in a fillet block: dxsim moves Z with the block's lines (not traced in the firmware)");
+    foff(s, 2, 2, 3);
+    c1 = fg(s, 'B', 1);
+    c2 = fg(s, 'B', 2);
+    m1 = fg(s, 'P', 2);
+    m2 = fg(s, 'P', 3);
+    if (fg(s, 'U', 1) == 0.0) {         /* the centre (0x1d9ec) */
+        fv(s, 'I', 1, c1);
+        fv(s, 'J', 1, m2 * c1 + c2);
+    } else {
+        if (fg(s, 'U', 2) == 0.0) fv(s, 'I', 1, c2);
+        else {
+            fv(s, 'P', 4, m1 - m2);
+            fv(s, 'B', 3, c2 - c1);
+            if (m1 == m2) {
+                dxwarn(s, 25, "fillet between parallel lines: no fillet, straight to the corner "
+                       "(the firmware divides by zero)");
+                fline(s, fg(s, 'X', 1), fg(s, 'Y', 1));
+                goto next;
+            }
+            fv(s, 'I', 1, (c2 - c1) / (m1 - m2));
+        }
+        fv(s, 'J', 1, m1 * fg(s, 'I', 1) + c1);
+    }
+    ffoot(s, 1, 2, 3);                  /* tangent points (0x1da90, 0x1db3a) */
+    ffoot(s, 2, 3, 4);
+    x = fg(s, 'X', 1);
+    y = fg(s, 'Y', 1);
+    fv(s, 'X', 3, fg(s, 'X', 3) + x);
+    fv(s, 'Y', 3, fg(s, 'Y', 3) + y);
+    fv(s, 'X', 4, fg(s, 'X', 4) + x);
+    fv(s, 'Y', 4, fg(s, 'Y', 4) + y);
+    fv(s, 'I', 1, fg(s, 'I', 1) + x);
+    fv(s, 'J', 1, fg(s, 'J', 1) + y);
+    /* a tangent point outside its line: the radius does not fit */
+    {
+        double u1 = fg(s, 'U', 1), v1 = fg(s, 'V', 1), u2 = fg(s, 'U', 2), v2 = fg(s, 'V', 2);
+        double t1 = ((fg(s, 'X', 3) - x) * u1 + (fg(s, 'Y', 3) - y) * v1) / (u1 * u1 + v1 * v1);
+        double t2 = ((fg(s, 'X', 4) - x) * u2 + (fg(s, 'Y', 4) - y) * v2) / (u2 * u2 + v2 * v2);
+        if (t1 < -1.0 - 1e-9 || t1 > 1e-9 || t2 < -1e-9 || t2 > 1.0 + 1e-9)
+            dxwarn(s, 26, "fillet radius too big for its lines: a tangent point lies outside the line, "
+                   "the tool goes backwards (the firmware does not check)");
+    }
+    fline(s, fg(s, 'X', 3), fg(s, 'Y', 3));        /* line to the first tangent point */
+    farc(s, fg(s, 'X', 4), fg(s, 'Y', 4), fg(s, 'I', 1), fg(s, 'J', 1));    /* state 3 (0x1dc80) */
+next:
+    if (s->fmore) {                     /* another fillet: shift (0x1dce2), new line 1 (0x1d89e) */
+        fv(s, 'X', 1, fg(s, 'X', 2));
+        fv(s, 'Y', 1, fg(s, 'Y', 2));
+        fv(s, 'U', 1, fg(s, 'U', 2));
+        fv(s, 'V', 1, fg(s, 'V', 2));
+        fv(s, 'R', 2, fg(s, 'R', 3));
+        s->fcw = s->fcwn;
+        s->fmore = 0;
+        foff(s, 1, 1, 2);
+        s->fstate = 2;
+        return;
+    }
+    fline(s, fg(s, 'X', 2), fg(s, 'Y', 2));        /* state 4: the last line (0x1dd3e) */
+    s->fstate = 0;
+}
+
 void dxmend(dxsim *s)
 {
     double b[3];
@@ -560,6 +751,11 @@ void dxmend(dxsim *s)
         keepbase(s, b);
         return;
     }
+    if (s->fstate) {
+        fillet(s);
+        memcpy(s->cur, s->tgt, sizeof s->cur);
+        return;
+    }
     if (s->gmot1 == 12 || s->gmot1 == 13 || s->aset) {
         polar(s);
         return;
@@ -569,11 +765,8 @@ void dxmend(dxsim *s)
         return;
     }
     if (s->mot == DXM_CW || s->mot == DXM_CCW) {
-        if (s->gmot1 == 22 || s->gmot1 == 23) linear(s);
-        else {
-            needfeed(s);
-            arc(s);
-        }
+        needfeed(s);
+        arc(s);
     } else linear(s);
     memcpy(s->cur, s->tgt, sizeof s->cur);
 }
