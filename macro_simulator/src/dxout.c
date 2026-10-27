@@ -19,6 +19,10 @@ void dxtline(dxsim *s, const char *text)
 {
     char where[16];
     if (!s->trace) return;
+    /* -flow alone: only the flow lines, warnings and the end */
+    if (s->flow == 1 && !s->inflow && strncmp(text, "WARN", 4) && strncmp(text, "END", 3) &&
+        strncmp(text, "STOP", 4))
+        return;
     dxbwhere(s, s->start.blk, where);
     fprintf(s->trace, "%-7s %s\n", where, text);
 }

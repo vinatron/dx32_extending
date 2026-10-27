@@ -53,7 +53,7 @@ code if it changes behaviour.
 | C2 | M codes and Z-only pairs while compensating | **B:** `tests/CCWARN.TXT`: watch where the tool goes after the M8 and the two Z moves |
 | C3 | An input that raises `Dummy Radius Won't Fit` | **F:** search for a path where C's offset start changes between 0x246e6 and 0x24cec. Low priority |
 | C4 | Do the gouging paths match the control's graphics? | **B:** the bench sheet in `CUTCOMP.md` section 6 (`CCSTEP`, `CCNOTCH`) |
-| C5 | Blocks without a move (F, S, T alone, an assignment) while compensating | **F:** whether the block loop calls the dispatcher 0x1d03e for such blocks (0x1c4d2 and the even states), and what 0x1d6e4 builds from an unchanged 0x4010 |
+| C5 | Blocks without a move (F, S, T alone, an assignment) while compensating | **F:** each block the look-ahead takes goes 0x224b4 (finalizer) → `bra 0x1d03e` (0x1c50c-0x1c526). What is left is whether the parse step (0x1e9b2, 0x1ec7e) hands over blocks without a move, and what 0x1d6e4 builds from an unchanged 0x4010 |
 | C6 | G41/G42 again while compensating, and canned cycles while compensating | **F:** a second G41 sets state 2 in mid-compensation (0x20d0e): follow 0x1d0b0 with records held. Cycle blocks run through the same block loop, so they are probably compensated: trace one G81 block through 0x1c4d2 |
 | C7 | Which line the control shows for a compensation error | **B:** `tests/CCNEG.TXT` (`Cutter-Comp: Negative Radius`): dxsim reports the arc's line |
 
@@ -62,7 +62,7 @@ code if it changes behaviour.
 | ID | Question | How to answer |
 |---|---|---|
 | F1 | When does a Z word in a fillet block move? | **F:** what Z target (0x3f54) holds when 0x1dc50/0x1dd3e make the moves. **B:** `bench/BZMOVE.TXT` (dry run, Z clear): watch when Z goes to .5. dxsim moves it with the line into the corner |
-| F2 | The 0x32fa state machine next to the fillet one ("AutoBlend", G9) | **F:** trace 0x1c580-0x1c602 and where 0x32fa is set to 1 (0x1ddee). If it is G9's automatic corner blending, it becomes a roadmap item |
+| F2 | The 0x32fa state machine next to the fillet one ("AutoBlend", G9) | **Mostly answered:** it is G9 precision cornering's corner blending (`../../MOTION_PLANNER.md` "What P controls"). With a valid `G9 P`, corners up to 96° get inserted sub-segments, deviating about 0.004-0.01 in; a program starts with no valid tolerance, so nothing is blended until `G9 P`. The fillet helpers (0x1dc80, 0x1dd3e) make the moves. dxsim does not draw these blends: **roadmap candidate, low priority**. Still to trace (**F**): how 0x1e706's classes become the 0x32fa states (0x1ddca sets state 1) |
 | F3 | Does the control really leave the fillet values in X3/Y3/I1...? | **B:** the bench sheet in `FILLET.md` section 6, item 2 |
 
 ## Bench session (for the owner)
@@ -93,4 +93,5 @@ The cutter-compensation and fillet sheets (`CUTCOMP.md` and `FILLET.md`, section
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-27 | (this commit) | Register created. A1-A5 answered from the firmware; A2 and A3 change dxsim (Z check per params 98/62, no travel check in a G54-G59 block). Bench programs `bench/*.TXT` for L1, L2, L6, L7, F1 |
+| 2026-10-27 | (next commit) | F2 identified as G9 corner blending; C5 narrowed to the parse step |
+| 2026-10-27 | 226fc92 | Register created. A1-A5 answered from the firmware; A2 and A3 change dxsim (Z check per params 98/62, no travel check in a G54-G59 block). Bench programs `bench/*.TXT` for L1, L2, L6, L7, F1 |

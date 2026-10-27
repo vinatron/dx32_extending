@@ -79,6 +79,7 @@ dxsim [options] program.txt
   -keep      keep blanks in blocks                  -del       block delete switch on
   -p8 0|1    P8 for G170-G179 (machine family flag, default 1)
   -lint      check every line without running it    -silent    no error/warning lines on the console
+  -flow      program flow only (calls, returns, cycles, loops, jumps, skips)   -flow+  flow lines in the full trace
   -P FILE    machine parameters (BMDCPRMS.SYS, BMDCPRMS.INI)   -model M   apply [M] of BMDCPRMS.INI
   -zero X,Y,Z  machine position of part zero: check the travel limits (needs -P)
   -e EXPR    evaluate a PPPL expression and exit    -corpus / -check   list / parse the built-in cycles
@@ -125,6 +126,28 @@ three are drawn at the same time.
 
 Programs: one block per line, as on the control. The manual writes the end of block as `;`, which is also
 the comment character, so `N10G1X1.F10.; feed` is fine.
+
+## Program flow (`-flow`)
+
+`DXSIM PROG.TXT -flow` shows how the program runs instead of every move:
+- macro calls with their names and the values passed, and the returns;
+- canned cycles;
+- `=N` loops: start, end and number of passes;
+- `=Ln` jumps;
+- the lines a false condition skipped.
+
+Lines are indented by macro and loop depth, and later loop passes are folded. `-flow+` puts the same
+lines into the full trace, every pass included. Details and the next steps (colours by macro in the
+plot, a call map) are in `features/FLOW.md`.
+
+```
+L20     CALL  #1 "Hole pair" at line 5
+L6      CALL    #2 "One hole" at line 9, values 0
+L13     RET       back to the call at line 6
+L23     JUMP  =L1: back to line 19
+L22     SKIP  condition false: lines 22-24 skipped
+L28     LOOP  =N30/2: blocks up to N30, 2 passes
+```
 
 ## Machine parameters
 

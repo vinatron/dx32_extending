@@ -1,0 +1,27 @@
+L20     CALL  #1 "Hole pair" at line 5
+L6      CALL    #2 "One hole" at line 9, values 0
+L13     RET       back to the call at line 6
+L7      CALL    #2 "One hole" at line 9, values 1
+L13     RET       back to the call at line 7
+L8      RET     back to the call at line 20
+L23     JUMP  =L1: back to line 19
+L20     CALL  #1 "Hole pair" at line 5
+L6      CALL    #2 "One hole" at line 9, values 0
+L13     RET       back to the call at line 6
+L7      CALL    #2 "One hole" at line 9, values 1
+L13     RET       back to the call at line 7
+L8      RET     back to the call at line 20
+L22     SKIP  condition false: lines 22-24 skipped
+L25     SKIP  condition false: lines 25-27 skipped
+L28     LOOP  =N30/2: blocks up to N30, 2 passes
+L30     CALL    M100 "Spot" at line 14
+L17     RET       back to the call at line 30
+L31     LOOP    passes 2-2 not shown (-flow+ shows every pass)
+L31     LOOP    end of the =N loop, 2 passes
+L32     CYCLE canned cycle G81 (firmware text, driver A20)
+L33     CYCLE canned cycle G81 (firmware text, driver A20)
+L35     END   M2
+------- summary
+moves   24 (rapid 11.8000, feed 1.7000 in)
+extent  X0.0000 Y0.0000 Z-0.2000 .. X4.0000 Y0.0000 Z0.1000
+final   X0.0000 Y0.0000 Z0.1000  (G90, G0, T1)

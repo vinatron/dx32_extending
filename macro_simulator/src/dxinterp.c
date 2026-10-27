@@ -31,6 +31,9 @@ static void vz(dxsim *s, int l, int n, double v)
     s->setv[l][n] = 1;
 }
 
+static void flowskip(dxsim *s);
+static dxpos loopend(dxsim *s, dxpos next);
+
 /* ------------------------------------------------------------------ */
 /* errors and warnings                                                 */
 
@@ -162,6 +165,12 @@ void dxreset(dxsim *s)
     s->macdepth = 0;
     s->cycn = s->cycdrv = s->cap = s->zcyc = s->intext = 0;
     s->skip = 0;
+    s->fskip = -1;
+    s->sseq = -1;
+    s->flastb = -1;
+    s->flast[0] = 0;
+    s->frep = 0;
+    s->inflow = 0;
     s->stop = 0;
     s->steps = 0;
     s->nmoves = 0;
@@ -340,6 +349,7 @@ static void gword(dxsim *s)
     int fl;
     long g = intval(s, &fl);
     if (fl & DXN_PARAM) return;
+    if ((g >= 77 && g <= 89) || (g >= 170 && g <= 199)) s->cycg = (int)g;
     if (g >= 0 && g <= 3) {
         dxgcode(s, (int)g);
         if (!s->sdepth) cancelcyc(s);
@@ -460,6 +470,7 @@ static void mword(dxsim *s)
         s->state = DXS_CALLSUB;
         s->starg = macslot(i);
         s->stmac = 1;
+        s->stmnum = (int)m;
         return;
     }
     mcode(s, m);
@@ -756,7 +767,10 @@ static void condrhs(dxsim *s)
     case 4: c = d > 0; break;
     default: c = d >= 0; break;
     }
-    if (!c) s->skip++;
+    if (!c) {
+        if (!s->skip) s->fskip = s->start.blk;
+        s->skip++;
+    }
 }
 
 /* 0x200ba: '#n' call (after '=') or definition */
@@ -917,7 +931,7 @@ static void exblock(dxsim *s)
         if (s->skip) {                      /* 0x1ed44 */
             s->p++;
             if (c == '?') s->skip++;
-            else if (c == '!') s->skip--;
+            else if (c == '!' && --s->skip == 0) flowskip(s);
             first = 0;
             continue;
         }
@@ -939,12 +953,100 @@ static void exblock(dxsim *s)
     s->wstart = 0;
 }
 
+/* ------------------------------------------------------------------ */
+/* -flow: the program's structure (features/FLOW.md)                   */
+
+static void flowrep(dxsim *s)
+{
+    char buf[80];
+    long sb = s->start.blk;
+    if (s->frep <= 0) return;
+    sprintf(buf, "      (the line above %ld more time%s)", s->frep, s->frep > 1 ? "s" : "");
+    s->start.blk = s->flastb;
+    s->inflow = 1;
+    dxtline(s, buf);
+    s->inflow = 0;
+    s->start.blk = sb;
+    s->frep = 0;
+}
+
+/* one flow line, located at block blk, indented by the macro and loop depth */
+static void flowl(dxsim *s, long blk, const char *kind, const char *text)
+{
+    char buf[200];
+    long sb = s->start.blk;
+    int i, d = s->gdepth + s->ldepth;
+    if (!s->flow || !s->trace || blk < 0 || blk >= s->corp0) return;
+    if (s->flow == 1)
+        for (i = 0; i < s->ldepth; i++)
+            if (s->lpass[i] >= 2) return;           /* later passes of a loop: folded */
+    if (d > 20) d = 20;
+    sprintf(buf, "%-5s %*s%.150s", kind, 2 * d, "", text);
+    if (blk == s->flastb && !strcmp(buf, s->flast)) {
+        s->frep++;
+        return;
+    }
+    flowrep(s);
+    strcpy(s->flast, buf);
+    s->flastb = blk;
+    s->start.blk = blk;
+    s->inflow = 1;
+    dxtline(s, buf);
+    s->inflow = 0;
+    s->start.blk = sb;
+}
+
+void dxflowend(dxsim *s)
+{
+    flowrep(s);
+}
+
+/* the comment on a macro's definition line, as its name */
+static void flowname(dxsim *s, long blk, char *out)
+{
+    const char *t = dxbtext(s, blk), *c = strchr(t, ';');
+    out[0] = 0;
+    if (!c) return;
+    c++;
+    while (*c == ' ') c++;
+    if (*c) sprintf(out, " \"%.40s\"", c);
+}
+
+static void flowcall(dxsim *s, int slot)
+{
+    char buf[200], name[48], v[40];
+    int i;
+    long d = s->sub[slot].blk;
+    if (!s->flow) return;
+    flowname(s, d, name);
+    if (s->stmac) sprintf(buf, "M%d%s at line %ld", s->stmnum, name, dxbline(s, d));
+    else sprintf(buf, "#%d%s at line %ld", slot, name, dxbline(s, d));
+    for (i = s->newframe; i < s->nprm && strlen(buf) < 150; i++) {
+        sprintf(v, "%s%g", i == s->newframe ? ", values " : " ", s->prm[i]);
+        strcat(buf, v);
+    }
+    flowl(s, s->start.blk, "CALL", buf);
+}
+
+static void flowskip(dxsim *s)
+{
+    char buf[80];
+    long a, b;
+    if (!s->flow || s->fskip < 0 || s->fskip >= s->corp0 || s->start.blk >= s->corp0) return;
+    a = dxbline(s, s->fskip);
+    b = dxbline(s, s->start.blk);
+    if (a == b) sprintf(buf, "condition false: the rest of the block skipped");
+    else sprintf(buf, "condition false: lines %ld-%ld skipped", a, b);
+    flowl(s, s->fskip, "SKIP", buf);
+}
+
 static void gosub(dxsim *s, dxpos ret, int slot)
 {
     if (slot < 1 || slot >= DX_NSUB || !s->subset[slot])
         dxerror(s, "Parser: Call Of Undefined Loop Or Macro");
     if (s->gdepth >= DX_GOSUB) dxerror(s, "Parser: #1 Internal Addressing Error");
     s->gret[s->gdepth] = ret;
+    s->gseq[s->gdepth] = s->seqno;
     s->gprm0[s->gdepth] = s->frame0;
     s->grprm[s->gdepth] = s->rprm;
     s->gmac[s->gdepth] = s->stmac;
@@ -956,12 +1058,23 @@ static void gosub(dxsim *s, dxpos ret, int slot)
 
 static void subret(dxsim *s, int bar)
 {
+    long ret0 = s->start.blk;
     if (s->gdepth == 0) dxerror(s, "Parser: return ('$' or '|') without a macro call");
     s->gdepth--;
     s->nprm = s->frame0;
     s->frame0 = s->gprm0[s->gdepth];
     s->rprm = s->grprm[s->gdepth];
     s->start = s->gret[s->gdepth];
+    if (s->flow) {
+        char buf[48];
+        long b = s->start.off ? s->start.blk : s->start.blk - 1;
+        sprintf(buf, "back to the call at line %ld", dxbline(s, b));
+        s->gdepth++;                        /* indent like the macro's own lines */
+        flowl(s, ret0, "RET", buf);
+        s->gdepth--;
+    }
+    s->seqno = s->gseq[s->gdepth];          /* the calling block ends now: count its =N pass */
+    s->start = loopend(s, s->start);
     if (s->gmac[s->gdepth] || bar) {        /* 0x20176 */
         if (s->macdepth > 0) s->macdepth--;
         if (s->macdepth == 0 && !s->sdepth) s->intext = 0;
@@ -981,25 +1094,86 @@ static void sysret(dxsim *s)
     if (s->sdepth == 0) dxerror(s, "Parser: '&' without a cycle call");
     s->start = s->sret[--s->sdepth];
     if (s->sdepth == 0 && !s->macdepth) s->intext = 0;   /* 0x1cafc */
+    if (s->sdepth == 0 && s->sseq >= 0) {   /* a cycle called by a program block: count its =N pass */
+        s->seqno = s->sseq;
+        s->sseq = -1;
+        s->start = loopend(s, s->start);
+    }
+
 }
 
-/* the block after this one, with =N loops applied (manual chapter 10) */
-static dxpos nextpos(dxsim *s)
+/*
+ * =N loops (manual chapter 10).  loopbeg() opens a loop programmed in this
+ * block; loopend() counts a pass when the block numbered N ends and returns
+ * where to go on.  A block that calls a macro or a canned cycle ends when the
+ * call returns, so its pass is counted then (subret, sysret).
+ */
+static void loopbeg(dxsim *s, dxpos next)
 {
-    dxpos next;
-    setpos(&next, s->start.blk + 1, 0);
     if (s->nloop) {                         /* =Nseq/count: the loop starts after this block */
         if (s->ldepth >= DX_LOOPS) dxerror(s, "Parser: #8 Internal Addressing Error");
         s->lend[s->ldepth] = s->nloopseq;
         s->lcnt[s->ldepth] = s->nloopcnt < 1 ? 1 : s->nloopcnt;
         s->lstart[s->ldepth] = next;
+        s->lpass[s->ldepth] = 1;
+        if (s->flow) {
+            char buf[80];
+            sprintf(buf, "=N%ld/%ld: blocks up to N%ld, %ld pass%s", s->nloopseq, s->lcnt[s->ldepth],
+                    s->nloopseq, s->lcnt[s->ldepth], s->lcnt[s->ldepth] > 1 ? "es" : "");
+            flowl(s, s->start.blk, "LOOP", buf);
+        }
         s->ldepth++;
         s->nloop = 0;
     }
+}
+
+static dxpos loopend(dxsim *s, dxpos next)
+{
     while (s->seqno >= 0 && s->ldepth > 0 && s->lend[s->ldepth - 1] == s->seqno) {
-        if (--s->lcnt[s->ldepth - 1] > 0) return s->lstart[s->ldepth - 1];
+        int k = s->ldepth - 1;
+        if (--s->lcnt[k] > 0) {
+            char buf[80];
+            s->lpass[k]++;
+            if (s->flow == 2) {
+                sprintf(buf, "pass %d", s->lpass[k]);
+                flowl(s, s->start.blk, "LOOP", buf);
+            } else if (s->flow == 1 && s->lpass[k] == 2) {
+                s->lpass[k] = 1;            /* print this one line, then fold */
+                if (s->lcnt[k] == 1) sprintf(buf, "pass 2 not shown (-flow+ shows every pass)");
+                else sprintf(buf, "passes 2-%ld not shown (-flow+ shows every pass)", s->lcnt[k] + 1);
+                flowl(s, s->start.blk, "LOOP", buf);
+                s->lpass[k] = 2;
+            }
+            return s->lstart[k];
+        }
         s->ldepth--;                        /* finished; an outer loop may end here too */
+        if (s->flow) {
+            char buf[48];
+            sprintf(buf, "end of the =N loop, %d pass%s", s->lpass[k], s->lpass[k] > 1 ? "es" : "");
+            s->ldepth++;
+            s->lpass[k] = 1;
+            flowl(s, s->start.blk, "LOOP", buf);
+            s->ldepth--;
+        }
     }
+    return next;
+}
+
+/* the block after this one, with =N loops applied */
+static dxpos nextpos(dxsim *s)
+{
+    dxpos next;
+    setpos(&next, s->start.blk + 1, 0);
+    loopbeg(s, next);
+    return loopend(s, next);
+}
+
+/* the block after this one, the =N loop end left for the return */
+static dxpos nextcall(dxsim *s)
+{
+    dxpos next;
+    setpos(&next, s->start.blk + 1, 0);
+    loopbeg(s, next);
     return next;
 }
 
@@ -1018,7 +1192,18 @@ static void endblock(dxsim *s)
         s->zcyc = 0;
         if (go) {
             dxmpole(s);
-            syscall(s, nextpos(s), s->cycdrv - 1);
+            if (s->flow && !s->sdepth) {
+                static const char *const pat[] = { "polar pattern", "bolt circle", "row" };
+                char buf[96];
+                const char *what = s->cycdrv >= 0x15 && s->cycdrv <= 0x17 ? pat[s->cycdrv - 0x15] :
+                                   s->cycdrv == 0x19 ? "bolt circle" : "";
+                sprintf(buf, "canned cycle G%d%s%s (firmware text, driver A%d)", s->cycg,
+                        *what ? " " : "", what, s->cycdrv);
+                flowl(s, s->start.blk, "CYCLE", buf);
+                s->fcycb = s->start.blk;
+            }
+            if (!s->sdepth) s->sseq = s->seqno;
+            syscall(s, s->sdepth ? nextpos(s) : nextcall(s), s->cycdrv - 1);
             return;
         }
     } else {
@@ -1035,11 +1220,19 @@ static void endblock(dxsim *s)
     }
     switch (st) {
     case DXS_NEXT:    s->start = nextpos(s); break;
-    case DXS_CALLSUB: gosub(s, nextpos(s), s->starg); break;
+    case DXS_CALLSUB:
+        if (s->starg >= 1 && s->starg < DX_NSUB && s->subset[s->starg]) flowcall(s, s->starg);
+        gosub(s, nextcall(s), s->starg);
+        break;
     case DXS_RETSUB:  subret(s, s->starg); break;
     case DXS_JUMPB:   setpos(&s->start, s->corp0 + dxcorptb[s->starg], 0); break;
     case DXS_LABEL:
         if (!s->labset[s->starg]) dxerror(s, "Parser: Call Of Undefined Loop Or Macro");
+        if (s->flow) {
+            char buf[48];
+            sprintf(buf, "=L%d: back to line %ld", s->starg, dxbline(s, s->label[s->starg].blk));
+            flowl(s, s->start.blk, "JUMP", buf);
+        }
         s->start = s->label[s->starg];
         break;
     case DXS_CALLSYS: syscall(s, s->stpos, s->starg); break;

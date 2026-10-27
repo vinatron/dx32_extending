@@ -5,6 +5,7 @@ documents here hold the detail.
 
 | File | Feature | Roadmap | Status |
 |---|---|---|---|
+| `FLOW.md` | Program flow view (`-flow`, colours by caller, call map) | item 4 | **4a done** (`-flow` trace); 4c and 4b next |
 | `OPENQ.md` | **Open questions register**: every open question, with how to answer it (firmware trace, bench test, BXX trace); the bench session | all | kept current |
 | `FILLET.md` | Fillets (G22/G23) | item 3 | **Simulated** (phases 0-3 done); bench check waits for the owner |
 | `CUTCOMP.md` | Cutter diameter compensation (G40/G41/G42, G48/G49, G44/G45) | item 2 | **Simulated** (phases 0-5 done); phase 6, the bench check on the machine, waits for the owner |

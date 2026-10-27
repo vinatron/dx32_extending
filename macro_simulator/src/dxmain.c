@@ -42,6 +42,8 @@ static const char *const help[] = {
     "  -selftest  check the cutter-compensation geometry against hand results and exit",
     "  -lint      check every line of the program without running it; list all errors",
     "  -silent    no error or warning summary on the console (the trace has them)",
+    "  -flow      program flow only: calls, returns, cycles, loops, jumps, skipped blocks",
+    "  -flow+     the same flow lines inside the full trace, every loop pass",
     0
 };
 
@@ -252,6 +254,8 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-selftest")) self = 1;
         else if (!strcmp(a, "-lint")) lint = 1;
         else if (!strcmp(a, "-silent")) silent = 1;
+        else if (!strcmp(a, "-flow")) s->flow = 1;
+        else if (!strcmp(a, "-flow+")) s->flow = 2;
         else { usage(); return 1; }
     }
 
@@ -351,6 +355,7 @@ int main(int argc, char **argv)
     }
     dxreset(s);
     rc = dxrun(s);
+    dxflowend(s);
     if (pfile || screen) dxplend(s);
     if (pf) fclose(pf);
     if (rc) {

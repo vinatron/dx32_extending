@@ -450,6 +450,30 @@ static void manual(void)
         check(ok, "cutter comp arc-arc inside corner: the point is on both offset circles (R4.75, R1.75)");
     }
 
+    /* -flow (features/FLOW.md): the events of tests/flow.txt, counted by hand:
+       #1 called twice (label loop), #2 four times, M100 once (pass 2 folded) */
+    {
+        static const char *const kinds[] = { "CALL", "RET", "JUMP", "SKIP", "LOOP", "CYCLE" };
+        static const int want[] = { 7, 7, 1, 2, 3, 2 };
+        int got[6] = { 0, 0, 0, 0, 0, 0 };
+        char line[256], where[32], kind[16];
+        FILE *fp;
+        dx("flow.txt -flow");
+        fp = fopen(TMPOUT, "r");
+        if (fp) {
+            while (fgets(line, sizeof line, fp))
+                if (sscanf(line, "%31s %15s", where, kind) == 2)
+                    for (k = 0; k < 6; k++)
+                        if (!strcmp(kind, kinds[k])) got[k]++;
+            fclose(fp);
+        }
+        for (k = 0, ok = 1; k < 6; k++)
+            if (got[k] != want[k]) ok = 0;
+        sprintf(what, "-flow events: CALL %d RET %d JUMP %d SKIP %d LOOP %d CYCLE %d", got[0], got[1],
+                got[2], got[3], got[4], got[5]);
+        check(ok, what);
+    }
+
     /* fillets G22/G23 (features/FILLET.md), worked out by hand */
     {
         static const double f1[] = { 2.366200, .5, 2.574200, .611300 };

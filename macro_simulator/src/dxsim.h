@@ -160,17 +160,30 @@ typedef struct dxsim {
     int    macnum[DX_NMAC];
     int    nmac;
     dxpos  gret[DX_GOSUB];      /* =# / M return positions */
+    long   gseq[DX_GOSUB];      /* N of the calling block: its =N loop end is counted on return */
     int    gprm0[DX_GOSUB];     /* parameter frame start of each call */
     int    grprm[DX_GOSUB];     /* parameter read pointer of the caller */
     int    gmac[DX_GOSUB];      /* 1 if the call was an M-macro */
     int    newframe;            /* parameter frame of the call in this block */
     int    stmac;               /* the pending call is an M-macro */
+    int    stmnum;              /* its M number */
+    /* ---- -flow (features/FLOW.md) ---- */
+    int    flow;                /* 1: structure only, loop passes folded; 2: with the full trace */
+    int    inflow;              /* a flow line is being printed */
+    int    lpass[DX_LOOPS];     /* =N loops: pass number */
+    long   fskip;               /* block where a false condition began skipping */
+    int    cycg;                /* G code of the last canned cycle started */
+    long   fcycb;               /* user block that called the running cycle */
+    char   flast[160];          /* folding: the last flow line ... */
+    long   flastb;
+    long   frep;                /* ... and how often it came again */
     int    gdepth;
     double prm[DX_NPARAM];
     int    nprm;                /* write pointer (0x3368) */
     int    rprm;                /* read pointer (0x336c) */
     int    frame0;              /* current frame start */
     dxpos  sret[DX_SYSSTK];
+    long   sseq;                /* the same for a canned cycle called from the program */
     int    sdepth;              /* 0x3c40 */
     long   lend[DX_LOOPS];      /* =N loops: end sequence number */
     long   lcnt[DX_LOOPS];
@@ -362,6 +375,7 @@ void  dxplend(dxsim *s);
 void  dxprog(dxsim *s, const dxseg *g);
 int   dxview(const char *name);
 void  dxsumm(dxsim *s);
+void  dxflowend(dxsim *s);
 
 /* ---- dxcomp.c (cutter compensation) ---- */
 void  dxcoffl(const double *p0, const double *p1, double r, int left, double *q0, double *q1,
