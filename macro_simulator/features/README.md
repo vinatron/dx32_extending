@@ -5,7 +5,7 @@ documents here hold the detail.
 
 | File | Feature | Roadmap | Status |
 |---|---|---|---|
-| `CUTCOMP.md` | Cutter diameter compensation (G40/G41/G42, G48/G49, G44/G45) | item 2 | **Phase 0 done**: research and plan written, firmware mapped |
+| `CUTCOMP.md` | Cutter diameter compensation (G40/G41/G42, G48/G49, G44/G45) | item 2 | **Phases 0-1 done**: plan written, firmware traced; phase 2 (geometry code) next |
 
 ## How a feature document is kept
 

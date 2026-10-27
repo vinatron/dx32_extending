@@ -10,7 +10,7 @@ Roadmap item 2. Sources:
 | Phase | What | Status |
 |---|---|---|
 | 0 | Research: manual chapter 7, firmware map, design, test list (this document) | **done** |
-| 1 | Firmware trace of the geometry engine (0x2412e ...) and the state machine (0x1d03e): settle the open questions in section 7 | not started |
+| 1 | Firmware trace of the geometry engine (0x2412e ...) and the state machine (0x1d03e): settle the open questions in section 7 | **done**: sections 2.2-2.4 |
 | 2 | `src/dxcomp.c` geometry: offset line/arc, intersections, blend arcs, with unit tests | not started |
 | 3 | Look-ahead pipeline: turn-on, approach, corners, exit, Z-only moves, G48/G49; trace and plot both paths | not started |
 | 4 | Rules, errors and warnings; errors reported at the right line despite the look-ahead | not started |
@@ -84,25 +84,129 @@ cutter compensation is not simulated.
   - G73 must be set before G41/G42 and cancelled after G40 (M p.33 note 4);
   - polar data may be used with compensation (M ch.4, polar coordinates note 4).
 
-### 2.2 From the firmware (6.89)
+### 2.2 From the firmware (6.89): codes and state
+
+Everything in this section was traced in the 6.89 code. CONFIRMED means read from the instructions;
+TENTATIVE marks an interpretation that the code does not settle on its own.
 
 | What | Where | Status |
 |---|---|---|
-| G40: if the compensation state 0x32f4 ≠ 0, set it to 12 (exit) | G table 0x205e2 entry 40 → 0x20d00 | CONFIRMED |
-| G41 / G42: call 0x20c86, then set or clear the side bit 0x4974 bit 1 (G41 clears it, G42 sets it). The bit is **inverted when exactly one axis is mirrored**: 0x20c86 sets 0x32e7 bit 4 = 0x32ec bit 3 XOR bit 4, the X and Y mirror flags (TENTATIVE: which bit is X) | 0x20d0e, 0x20d46, 0x20c86 | CONFIRMED (code); mirror reading TENTATIVE |
-| The radius is copied from 0x3d88 (the active tool's radius) to 0x4978, and the state set to 2 (turn-on), **only if the radius ≠ 0**: zero leaves compensation off, as the manual says | 0x20d28, 0x20d60 | CONFIRMED |
-| G44 / G45: 0x32ec bit 6 clear / set (constant surface feed) | 0x20d84, 0x20d8c | CONFIRMED |
-| G48 / G49: 0x32ec bit 7 set / clear (bit 7 = corner rounding **off**) | 0x20db0, 0x20db8 | CONFIRMED |
-| Compensation state machine: 16 states, `jmp` through table 0x1d050, indexed by 0x32f4 | 0x1d03e | CONFIRMED (structure) |
-| States seen: 0 normal; 2 turn-on, then 4; 4 → 6 and 6 → 8 build the first look-ahead records; 7-10 the running states, which take records from two buffers at 0x4768.. and 0x47ec.. (stride 0x84: two blocks of look-ahead); 11; 12 exit (set by G40); 13; 15 | 0x1d0b0-0x1d6dc | TENTATIVE (meaning of each state) |
-| Block record builder 0x1d6e4 copies into the record at 0x46e1..: flags (bit 4 G45, bit 6 G48, bit 1 linear, bit 2 arc, bit 3 CW), end point X/Y (0x4010/0x401c), arc centre (0x4058/0x4064), arc radius (computed, 0x4720), Z (0x472c). It then calls the geometry engine 0x2412e | 0x1d6e4-0x1d868 | CONFIRMED (fields), TENTATIVE (names) |
-| **Z-only move during compensation:** the Z handler sets 0x32e6 bit 6 (0x21d14) when the state is ≥ 3. The record builder then saves that Z and its feed (0x3df4/0x3e00) and **carries them into the next X/Y record** (0x46e3 bit 0, Z at 0x4738) instead of making a block of its own. There is room for one such Z, hence the manual's rule that Z-only moves need an X/Y move between them | 0x21d0c, 0x1d6e4 | CONFIRMED (code), TENTATIVE (exact timing of the Z move) |
-| Geometry engine: functions 0x2412e-0x24e0a | 0x2412e | to trace (phase 1) |
-| Error `Cutter-Comp: Negative Radius` (0x328ee), raised at 0x24638, 0x2465e, 0x2473c, 0x24762: an offset arc whose radius would be ≤ 0, e.g. an inside arc smaller than the tool | 0x328ee | message CONFIRMED, cause TENTATIVE |
-| Error `Cutter-Comp: Dummy Radius Won't Fit` (0x3290b), raised at 0x24d28 | 0x3290b | message CONFIRMED, cause to trace (probably the G49 blend or the approach) |
-| Error `Cutter-Comp: Cannot Pick Intersection` (0x3292f), raised at 0x24dda: an inside corner whose offset elements do not intersect | 0x3292f | message CONFIRMED, cause TENTATIVE |
-| Error `Parser: Cannot Comp "C" Axis` (0x32f46) from 0x1f202 | 0x1f202 | CONFIRMED (message); context to trace |
+| **G40:** if the compensation state 0x32f4 ≠ 0, set it to 12 (exit) | G table 0x205e2 entry 40 → 0x20d00 | CONFIRMED |
+| **G41 / G42:** call 0x20c86, then set the side bit 0x4974 bit 1 for **G41** and clear it for G42. The bit is inverted when exactly one of X and Y is mirrored: 0x20c86 sets 0x32e7 bit 4 = 0x32ec bit 3 XOR bit 4, the two mirror flags. Bit 1 set = tool **left** (checked against the offset formula, 2.3) | 0x20d0e, 0x20d46, 0x20c86 | CONFIRMED |
+| **Radius:** copied from 0x3d88 (the active tool's radius) to 0x4978, and the state set to 2, **only if the radius ≠ 0**. With 0, compensation stays off | 0x20d28, 0x20d60 | CONFIRMED |
+| **Negative radius (undersized cutter):** at turn-on the engine flips the side bit and uses \|r\| | 0x24156-0x24166 | CONFIRMED |
+| **G44 / G45:** 0x32ec bit 6 clear / set | 0x20d84, 0x20d8c | CONFIRMED |
+| **G48 / G49:** 0x32ec bit 7 set / clear (bit 7 = corner rounding **off**) | 0x20db0, 0x20db8 | CONFIRMED |
+| **Tolerance:** 0x4adc = 1270 units = 0.0005 in. It decides tangent corners, coincident points, tangent intersections and parallel lines (determinant) | 0x24144 | CONFIRMED |
+| **Coordinates:** the records take the block targets 0x4010.. after G73 rotation and mirror. That fits the side swap under mirror: compensation works in the transformed path | 0x1d822 | CONFIRMED (inference from the mirror swap) |
+| `Parser: Cannot Comp "C" Axis` (0x32f46) is raised by the C-word handler while 0x32f5 ≠ 0. That is a different state byte from 0x32f4, so this message is **not** about cutter compensation | 0x1f1f6 | CONFIRMED |
 | The built-in canned-cycle text never uses G41/G42; the G170 cycles offset by R1 themselves | `../corpus_689.txt` | CONFIRMED |
+
+**Block records.**
+- **Size:** 0x84 bytes, copied with `dbra` over 33 longs.
+- **Builder:** 0x1d6e4 fills the new record at 0x46e0 from the block just read.
+- **Fields** (offsets from the record start):
+
+| Offset | Field |
+|---|---|
+| +1 | flags: bit 1 line, bit 2 arc, bit 3 CW (G2), bit 4 G45, bit 6 G48 |
+| +3 | carried Z-only move: bit 0 present, bit 1 its mode |
+| +4 | feed |
+| +0x10 / +0x1c | end X / Y |
+| +0x28 / +0x34 | arc centre X / Y |
+| +0x40 | arc radius, computed |
+| +0x4c | Z |
+| +0x58 / +0x64 | carried Z / its feed |
+
+- **Working copies:** **A** (0x4764), **B** (0x47e8, the element being finished) and **C** (0x48f0, the
+  next one). Raw copies sit at 0x4984/0x4a08; a blend-arc record is at 0x4868.
+- **The record counter** 0x4ae8 (1, 2, 3, then shifting) is what makes the two-block look-ahead.
+
+**States** (0x32f4, table 0x1d050).
+- **Odd vs even:** odd states mean "more output before the next block is read". The block loop sends them
+  straight to the dispatcher (0x1c4d2: `btst #0,0x32f4`). Even states wait for the next block.
+
+| State | Code | Does |
+|---|---|---|
+| 2 | 0x1d0b0 | end of the G41/G42 block: its move is made **uncompensated**; then state 4 |
+| 4 | 0x1d0d8 | approach block: record only (no motion yet), first-record flag set; then state 6 |
+| 6 | 0x1d0ee | first compensated element: record only; then state 8 |
+| 8 | 0x1d10a | second element: record. The engine runs for the first time. The **approach move** is made to the first element's offset start. Its carried Z goes first (state 7). Then state 9 |
+| 9 / 10 | 0x1d1d0 / 0x1d1d8 | each new block: record, engine, then the element B is made: its carried Z first, then B to its trimmed end (line, or arc with its offset centre and radius). Then state 11 if a blend arc is due, else 10 |
+| 11 | 0x1d3ee | the blend arc: CW for G41, CCW for G42, centre on the programmed corner, end at C's offset start. If its start and end directions from the corner agree within 1e-4, it is made as a straight line (0x1d326). Then state 10 |
+| 12 | 0x1d4a6 | G40 block read: its target is saved. C's carried Z goes first (state 15). Then **C is made to its offset end**, the normal at its end point. Then state 13 |
+| 13 | 0x1d61c | a pending Z-only move, if any; then the **G40 move to its programmed point, uncompensated**; state 0 |
+
+### 2.3 From the firmware: the geometry engine (0x2412e-0x24e86)
+
+The engine (0x2424c) runs once per new record. It offsets B and C, then joins B to C.
+
+**Line offset** (0x24442), for a line from (x0,y0) to (x1,y1):
+- The line is written as `A·x + B·y + C = 0`, with A = y0 - y1, B = x1 - x0, C = x0·y1 - y0·x1.
+  (A,B) is the left normal.
+- The line is moved by `C ∓ r·√(A²+B²)`: minus for side bit set (G41, left), plus for G42.
+- The new start and end are the **feet of the perpendiculars** from the programmed start and end.
+- The coefficients are kept for the intersections: 0x4b70.. for the newer line, 0x4b40.. for the older.
+
+**Arc offset** (0x245e2 for B, 0x246e6 for C):
+- **G41 + CW, or G42 + CCW:** the tool is outside, so R' = R + r.
+- **G41 + CCW, or G42 + CW:** the tool is inside, so R' = R - r.
+- **R' < 0** gives `Cutter-Comp: Negative Radius` (trap data → 0x328ee, at 0x24636 and 0x24660 for B,
+  0x2473a and 0x24760 for C). R' = 0 is accepted.
+- The start and end move radially: `P' = P + (P - centre)·(±r/R)`.
+
+**Corner B→C** (0x247ea):
+- **Tangent:** B's offset end and C's offset start within 0.0005 in of each other. Nothing is added. The
+  block is then made with G99, deceleration override, automatically (0x1d2e6), which is the manual's
+  factor 9.
+- **Otherwise,** the sign of the cross product `(B'end - P) × (C'start - P)` (P = the programmed corner),
+  with the side, decides the corner type:
+  - **outside:** a blend arc is set up (0x24834). Its feed is B's feed; under G45 it is ×1.5 (0x24e86
+    with radius 2r).
+  - **inside:** marked for intersection (0x486d bit 5).
+- **Then, by element types** (0x242e8-0x24404):
+
+| B → C | Inside corner | Outside corner, G49 (default) | Outside corner, G48 |
+|---|---|---|---|
+| line → line | intersection of the offset lines (0x2489a). Parallel (determinant ≤ tol): blend instead | blend arc | **intersection**: sharp corner (0x2489a) |
+| line → arc | line-arc intersection (0x24928) | blend arc | **intersection** (0x24928) |
+| arc → line | arc-line intersection (0x24a5a) | blend arc | **intersection** (0x24a5a) |
+| arc → arc | circle-circle intersection (0x24b84) | blend arc | **blend arc**: the code has no G48 case for arc → arc |
+
+- **The intersection becomes B's new end.** C's start is left as computed; with no blend, the next record
+  starts from B's end.
+- **When an intersection does not exist** (line too far from the circle, circles apart or one inside the
+  other, beyond the tolerance), the engine falls back to a **blend arc** (0x24834). It then checks that
+  C's offset start is one radius from the corner, within the tolerance: 0x24cec, using 0x24e32. If not,
+  it stops with `Cutter-Comp: Dummy Radius Won't Fit` (0x3290b, at 0x24d22). With the offsets above this
+  holds by construction, so the error marks an inconsistent state rather than an everyday case
+  (TENTATIVE: no input found yet that raises it).
+- **Choosing one of two intersection points** (0x24d36):
+  - If the two candidates are within the tolerance, take either.
+  - Otherwise take the one **nearer the reference point**: B's offset end for line → arc, C's offset start
+    for arc → line and arc → arc (0x24e4c).
+  - If both are equally near (within 2 × tolerance), take the one on the side of the arc's direction:
+    the cross product about the arc centre, with the CW flag.
+  - If that cross product is exactly 0: `Cutter-Comp: Cannot Pick Intersection` (0x3292f, at 0x24dd4).
+- **Gouging is not detected:** an intersection behind the start of an element is used as it is, and the
+  tool path reverses (manual figs. 7-13, 7-14).
+
+**G45 constant surface feed** (0x24e86):
+- **Arcs:** `F' = F · (R ± r) / R`, with + where the offset arc grows (G41 CW, G42 CCW). This is the
+  manual's tool-path radius / part radius.
+- **Blend arcs:** the formula is used with R = 2r, so the blend is cut at **1.5 × F**.
+
+### 2.4 Z-only moves during compensation (CONFIRMED)
+
+- **Marking:** with the state ≥ 3, a block with Z and no X/Y sets 0x32e6 bit 6 (Z handler 0x21d14).
+- **Saving:** the record builder (0x1d6e4) saves that Z and its feed (0x3df4/0x3e00) and returns without
+  making a record (`addq #4,a7`). The block produces no motion yet.
+- **Carrying:** the next X/Y block's record carries it (+3 bit 0, Z at +0x58, feed at +0x64).
+- **Making it:** when that element is made, the carried Z is made **first, as its own straight Z move**,
+  at the element's start point (states 7, 9, 15, 13). This happens after any blend arc of the previous
+  corner.
+- **Only one fits:** there is one slot, which is the manual's "Z-only moves must be separated by an X/Y
+  move" (factor 7).
 
 ## 3. Design
 
@@ -122,6 +226,9 @@ dxmotion.c  --dxseg (programmed, base coordinates)-->  dxcomp.c  --dxseg (tool c
   mirrored the side is swapped, as the firmware does (2.2). Rotation and uniform scale keep the geometry,
   so offsetting afterwards gives the same result. A non-uniform G73 scale turns arcs into ellipses; that
   case is reported (section 4) rather than guessed.
+- **dxcomp follows the firmware's model step by step** (2.2-2.4): the A/B/C records, the states, the
+  order of emission, the 0.0005 in tolerance, and the same formulas. Where the manual and the code differ,
+  the code wins, and the difference is noted here.
 
 ### 3.2 Data
 
@@ -158,10 +265,9 @@ The state lives in `dxsim`:
   Intersection`.
 - **Outside corner:**
   - **G49:** a blend arc with centre at the programmed corner and radius r, from the first element's end
-    normal to the second element's start normal, turning the same way as the corner.
-  - **G48:** TENTATIVE until phase 1. The working assumption is that the two offset elements are extended
-    to meet in a sharp corner, lines along their direction and arcs along their tangent. If they don't
-    meet, they are joined by a straight line.
+    normal to the second element's start normal: CW for G41, CCW for G42.
+  - **G48:** the offset elements meet at their intersection (a sharp corner), except arc → arc, which is
+    always blended. If there is no intersection, a blend arc is used (2.3).
 - **Approach** (turn-on): from the turn-on point to `approach point + side * r * left normal of the first
   element at its start`.
 - **Exit:** the last element ends at `end + side * r * left normal at its end`, then a straight move to the
@@ -176,8 +282,9 @@ The state lives in `dxsim`:
 3. **Running:** each new element is pushed into the ring. When the ring holds the next element, the
    current one is emitted with its trimmed end, or with its end and a blend arc. Emission therefore runs
    one block behind the reading, as the two-block look-ahead does on the control.
-4. **Z-only blocks:** they are carried with the next X/Y element, as in the firmware. A second Z-only
-   block before any X/Y move is reported (section 4).
+4. **Z-only blocks:** they are carried with the next X/Y element and made first, as their own Z move at
+   that element's start point (2.4). A second Z-only block before any X/Y move overwrites the slot, as in
+   the firmware, and is reported (section 4).
 5. **G40 block:** the ring is flushed, the last element is given its exit normal, and the G40 move is
    emitted without compensation.
 6. **End of program** (M2/M30, or end of text) with compensation still on: the ring is flushed as if
@@ -201,7 +308,7 @@ The state lives in `dxsim`:
 |---|---|
 | `Cutter-Comp: Negative Radius` | the offset of an arc has radius ≤ 0 |
 | `Cutter-Comp: Cannot Pick Intersection` | an inside corner whose offset elements don't meet |
-| `Cutter-Comp: Dummy Radius Won't Fit` | to be defined by the phase 1 trace |
+| `Cutter-Comp: Dummy Radius Won't Fit` | the fallback blend (inside corner with no intersection) does not start one radius from the corner (2.3) |
 
 **Warnings** cover what the manual forbids. The firmware has no message for these, so the result on the
 machine is undefined. dxsim keeps going with the most likely behaviour and says so:
@@ -212,12 +319,12 @@ machine is undefined. dxsim keeps going with the most likely behaviour and says 
 | G41/G42 outside G17, or with G2/G3 modal | p.58, p.59 |
 | G41↔G42 or a new diameter while compensation is on (ignored) | factor 1 |
 | block without movement while compensation is on | factor 3 |
-| two co-linear moves in a row | factor 5 |
+| two co-linear moves in a row (the firmware treats them as tangent and adds G99; the manual forbids them) | factor 5 |
 | fewer than 5 blocks between G41/G42 and G40 (4 in BOSS 4-7 mode) | factor 6 |
 | two Z-only moves without an X/Y move between them | factor 7 |
 | an M code while compensation is on | factor 8 |
 | G92, a G73 change, a helix (G12/G13), or G77/G78/G79 while compensation is on | ch.4, ch.6 |
-| the tool-centre path reverses on an element: **gouge**, the tool is bigger than the feature (figs. 7-13, 7-14) | p.65 |
+| the tool-centre path reverses on an element: **gouge**, the tool is bigger than the feature (figs. 7-13, 7-14). The firmware does not check this (2.3) | p.65 |
 | the program ends with compensation on | (dxsim) |
 
 **Reporting the right line.** Because of the look-ahead, the block being read is not the one at fault.
@@ -248,16 +355,16 @@ direction).
 ## 6. Phases (checklist)
 
 **Phase 1: firmware trace**
-- [ ] Geometry engine 0x2412e-0x24e0a: which function offsets, intersects and blends; how G48 joins an
+- [x] Geometry engine 0x2412e-0x24e0a: which function offsets, intersects and blends; how G48 joins an
   outside corner.
-- [ ] When each `Cutter-Comp:` error is raised.
-- [ ] What each state of 0x1d03e does (turn-on, approach, running, exit); confirm that the approach and
+- [x] When each `Cutter-Comp:` error is raised.
+- [x] What each state of 0x1d03e does (turn-on, approach, running, exit); confirm that the approach and
   exit match the manual.
-- [ ] When the carried Z-only move happens: at the start of the next element, or with it.
-- [ ] Whether the offset is applied before or after G73/mirror. The firmware works on 0x4010.. after
+- [x] When the carried Z-only move happens: at the start of the next element, or with it.
+- [x] Whether the offset is applied before or after G73/mirror. The firmware works on 0x4010.. after
   transformation: check.
-- [ ] The context of `Parser: Cannot Comp "C" Axis`.
-- [ ] Record the results in section 2.2 and close section 7's items.
+- [x] The context of `Parser: Cannot Comp "C" Axis`.
+- [x] Record the results in section 2.2 and close section 7's items.
 
 **Phase 2: geometry**
 - [ ] `src/dxcomp.c` with offset, classify, intersect and blend functions; add it to `Makefile` and
@@ -284,19 +391,26 @@ direction).
 
 ## 7. Open questions
 
-1. **G48 outside corners:** extended sharp corner, or something else? `Dummy Radius Won't Fit` may belong
-   here. Phase 1.
-2. **Where the carried Z-only move goes** in the next element: before the X/Y motion, or blended into it?
-   Phase 1, then the machine.
-3. **Negative diameter:** does the firmware flip the side, or use `|r|` on the other side?
-   `Cutter-Comp: Negative Radius` might also be raised for a negative tool radius. Phase 1.
-4. **Mirror flags:** which of 0x32ec bits 3/4 is X. Only the XOR matters for the side.
-5. **Non-uniform G73 scale with arcs:** what does the control do? dxsim will warn.
-6. **Behaviour after a manual-forbidden case** (M codes, co-linear moves): only the machine can show
-   it. dxsim warns.
+Closed by phase 1:
+- **G48 outside corners:** intersection, except arc → arc, which is always blended (2.3).
+- **The carried Z-only move:** made first, as its own move, at the next element's start (2.4).
+- **Negative diameter:** side flipped, \|r\| used (2.2).
+- **`Dummy Radius Won't Fit`:** the consistency check after the fallback blend (2.3).
+- **Coordinates:** after G73 and mirror (2.2).
+
+Still open:
+1. **Mirror flags:** which of 0x32ec bits 3/4 is X. Only the XOR matters for the side.
+2. **Non-uniform G73 scale with arcs:** what the control does. dxsim will warn.
+3. **Behaviour in cases the manual forbids** (M codes, Z-only pairs): only the machine can show it.
+   dxsim warns and does what the code would do.
+4. **An input that raises `Dummy Radius Won't Fit`:** none found yet. dxsim makes the same check, so a
+   case would show up in testing.
+5. **Gouging:** the manual's figs. 7-13 and 7-14 are the bench test (phase 6). dxsim reproduces the
+   firmware's arithmetic, so the paths should match the control's graphics.
 
 ## 8. Change log
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-26 | (this commit) | Phase 0: manual chapter 7 summarised; firmware map (G40-G49 handlers, side bit and mirror XOR, zero radius = off, state machine 0x1d03e, record builder 0x1d6e4, Z-only carry, the three `Cutter-Comp:` messages); design, test list and phases |
+| 2026-10-26 | 100c783 | Phase 0: manual chapter 7 summarised; firmware map (G40-G49 handlers, side bit and mirror XOR, zero radius = off, state machine 0x1d03e, record builder 0x1d6e4, Z-only carry, the three `Cutter-Comp:` messages); design, test list and phases |
+| 2026-10-27 | (this commit) | Phase 1: geometry engine and state machine traced. G41 sets the side bit (left); negative radius flips the side; line/arc offset formulas; corner classification; the intersection/blend table including G48 (arc → arc always blended); intersection choice; the three error conditions; G45 ×(R±r)/R and ×1.5 on blends; automatic G99 on tangent corners; the Z-only carry made as its own move; the full state sequence for turn-on, approach, running and exit. `Cannot Comp "C" Axis` is not about cutter compensation |
