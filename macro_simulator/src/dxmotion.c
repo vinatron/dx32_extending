@@ -115,6 +115,7 @@ void dxmblock(dxsim *s)
     s->g99 = 0;
     s->g73blk = s->g92blk = s->g97blk = 0;
     s->premask = 0;
+    s->g5xblk = 0;
 }
 
 static int axis(int c)
@@ -245,6 +246,7 @@ void dxgcode(dxsim *s, int g)
     case 46: case 47: case 94: case 95:
         break;
     case 54: case 55: case 56: case 57: case 58: case 59:
+        s->g5xblk = 1;                  /* 0x20dc0: this block is not travel-checked */
         dxtopos(s, s->cur, b);
         s->work = g;
         keepbase(s, b);

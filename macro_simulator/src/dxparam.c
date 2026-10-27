@@ -13,9 +13,12 @@
  * from the move finalizer at 0x231d2): the end point of every block, built-in
  * cycle blocks included, against params 17-22, with the messages at 0x331fc
  * "Parser: Commanded X Axis Move Too Far Minus" ...  A Z limit of -2147483648
- * switches the Z check off (0x23280).  Above the Z positive limit a move is
- * refused only if it also goes higher than Z already is (0x232ae, 254 units of
- * tolerance).  Points between the end points (arcs) are caught by the
+ * switches the Z check off (0x23280).  Z is checked at all only when the top
+ * nibble of param 98 (0xaf58, the machine family) is not 0 or param 62 (Z
+ * velocity gain, 0x2988) is not 0 (0x23260); with the nibble 0, a move above
+ * the Z positive limit is refused only if it also goes higher than Z already
+ * is (0x232ae, 254 units of tolerance).  A block with G54-G59 sets 0x4089
+ * bit 3 (0x20dc0) and is not checked at all (0x231ca).  Points between the end points (arcs) are caught by the
  * interpolator at run time on the machine ("dpCom: ..." messages, operator's
  * manual appendix D); dxsim reports those with the dpCom wording.
  *
@@ -146,6 +149,14 @@ void dxpapply(dxsim *s)
         s->tmin[k] = lim(17 + 2 * k, -1e30);
         s->tmax[k] = lim(18 + 2 * k, 1e30);
     }
+    {                                               /* 0x23260 */
+        double v = pset[98] ? pv[98] : 1.0 * 0x20000000L;
+        int nib;
+        if (v < 0.0) v += 4294967296.0;
+        nib = (int)(fmod(floor(v / 268435456.0), 16.0));
+        s->zchk = nib != 0 || !pset[62] || pv[62] != 0.0;
+        s->zrule = nib == 0;
+    }
     if (pset[21] && pv[21] <= -LNONE - 0.5) {       /* 0x23280: no Z check */
         s->tmin[2] = -1e30;
         s->tmax[2] = 1e30;
@@ -187,6 +198,8 @@ void dxpdesc(const dxsim *s, FILE *fp)
         fprintf(fp, "zero    not given (-zero): only the size of the part is checked\n");
     fprintf(fp, "rapid   X/Y %.1f ipm  Z %.1f ipm (params 7, 8); spindle max %.0f rpm (params 73-76)\n",
             s->rapid, s->zrapid, s->smax);
+    fprintf(fp, "zcheck  %s (params 98, 62)\n", !s->zchk ? "Z limits not checked" :
+            s->zrule ? "Z checked; above the + limit only if going higher" : "Z checked");
     fprintf(fp, "------- program\n");
 }
 
@@ -200,14 +213,15 @@ void dxtravel(dxsim *s, const double *p, double zfrom, int runtime)
     char msg[80];
     double m;
     int k, plus;
-    if (!s->mp || !s->zset) return;
+    if (!s->mp || !s->zset || s->g5xblk) return;
     for (k = 0; k < 3; k++) {
+        if (k == 2 && !s->zchk) break;
         m = p[k] + s->zero[k];
         plus = 0;
         if (m < s->tmin[k] - 5e-6) plus = -1;
         else if (m > s->tmax[k] + 5e-6) {
             plus = 1;
-            if (k == 2 && m <= zfrom + s->zero[2] + 254.0 / UPI) plus = 0;   /* 0x232ae */
+            if (k == 2 && s->zrule && m <= zfrom + s->zero[2] + 254.0 / UPI) plus = 0;   /* 0x232ae */
         }
         if (!plus) continue;
         sprintf(msg, "%s: Commanded %s Axis Move Too Far %s", runtime ? "dpCom" : "Parser", ax[k],

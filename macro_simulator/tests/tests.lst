@@ -57,3 +57,6 @@ ffig37
 fsquare -d
 fwarn
 fcomp -t 1=.5
+pzrule -P P689.SYS -P PZTEST.INI -model ZRULE -zero 10.,8.,-15.
+pzon -P P689.SYS -P PZTEST.INI -model ZLOW -zero 10.,8.,-15.
+pg54 -P P689.SYS -zero 10.,8.,-15.

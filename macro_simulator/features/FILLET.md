@@ -141,6 +141,8 @@ Items in bold are also asserted by `dxtest`.
 
 ## 7. Open questions
 
+These are also in `OPENQ.md` (F1-F3), with how to answer them.
+
 1. **Z in fillet blocks:** when the Z move happens. Not traced.
 2. **The `0x32fa` state machine** next to the fillet one (0x1c580-0x1c602) uses the same helpers
    (0x1dc80, 0x1dce2, 0x1dd3e) with G9's flag 0x32e0 bit 7. It looks like precision-cornering's automatic

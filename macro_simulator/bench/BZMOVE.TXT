@@ -1,0 +1,7 @@
+; BZMOVE.TXT - open question F1: when does a Z word in a fillet block move? Dry run, Z well clear.
+N1G0X0Y0Z1.
+N2G1X1.F10.
+N3G23X2.Y0Z.5R.25
+N4G1X2.Y1.
+N5M2
+; Watch Z: at the start of the line into the corner, with it, or only at the fillet arc?

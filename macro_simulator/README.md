@@ -21,6 +21,7 @@ CONFIRMED/TENTATIVE marks and firmware addresses. `ROADMAP.md` lists the feature
 | Path | Contents |
 |---|---|
 | `LANGUAGE.md` | Language reference (manual + firmware 6.89), canned-cycle variable rules, open questions |
+| `bench/` | Short programs for the machine that answer open questions (`features/OPENQ.md`), CR/LF, 8.3 names |
 | `features/` | One design document per feature being built (`features/README.md` is the index), e.g. `CUTCOMP.md` for cutter compensation |
 | `ROADMAP.md` | Planned features: machine parameters, cutter compensation, fillets, program flow view, z/OS |
 | `manual/` | Programmer's manual (1994), operator's manual (1997), work-shift appendix (PDF) |
@@ -153,7 +154,10 @@ gear-shift and I/O parameters are ignored on purpose, because they are machine d
   * The end point of every block, including the blocks inside a canned cycle, is checked against params
     17-22. Over the limit, the run stops with the control's message, e.g.
     `Parser: Commanded X Axis Move Too Far Positive`, and a `^` under the axis word.
-  * Above the Z positive limit, a move is refused only if it goes higher than Z already is.
+  * Z is checked only when param 98's machine-family nibble or param 62 is not 0; true on both shipped
+    files. With the nibble 0, a move above the Z positive limit is refused only if it goes higher than Z
+    already is. The trace header's `zcheck` line says which applies.
+  * A block with G54-G59 is not checked, as on the control.
   * Z limit -2147483648 means no Z check.
   * An arc that bulges past a limit between its end points stops with the `dpCom:` form of the message,
     which is what the interpolator reports on the machine.

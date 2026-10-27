@@ -380,7 +380,8 @@ One M per block. `dxsim` traces them; it does not move to the clear point or app
 
 The parser checks the end point of every block that moves, before the move is queued. The block can be in
 the user program or in the built-in cycle text. The check is FUN_000231f0, called from the move finalizer
-at 0x231d2 unless 0x4089 bit 3 is set; nothing found sets that bit (TENTATIVE). It compares the target in
+at 0x231d2 unless 0x4089 bit 3 is set. **G54-G59 set that bit** (0x20dc0), so a block that contains a work
+shift is not checked; the bit is cleared at each block start. It compares the target in
 machine units (0x40b2 X, 0x40be Y, 0x40ca Z, 0x40d6 4th axis, 0x40e2 S) with params 17-26 (0xfd8-0xffc).
 Each violation is a `trap #14` with its message:
 
@@ -392,10 +393,12 @@ Each violation is a `trap #14` with its message:
 | 4th axis < 23 / > 24 | `... W Axis ...` (0x3330d / 0x33339) |
 | S axis < 25 / > 26 | `... S Axis ...` (0x33368 / 0x33394) |
 
-* **Z, 4th axis and S are checked only if** the low nibble of 0xaf58 is not 0, or the long at 0x2988 is not
-  0. Both are machine configuration; their source is not traced (TENTATIVE). `dxsim` always checks Z.
+* **Z, 4th axis and S are checked only if** the top nibble of **param 98** (0xaf58, the 'Master'
+  configuration, `bfextu {0:4}`) is not 0, or **param 62** (Z velocity gain, 0x2988) is not 0 (CONFIRMED).
+  Both shipped `BMDCPRMS.SYS` files have param 98 = 0x21221220 (nibble 2): Z is checked. `dxsim -P` reads
+  both and shows the result as `zcheck` in the trace header.
 * **Z limit off:** if param 21 is -2147483648 (0x80000000), Z is not checked (0x23280).
-* **Above the Z positive limit,** when 0xaf58's nibble is 0, the move is refused only if it also goes
+* **Above the Z positive limit,** only when that nibble is 0 (not on the shipped files), the move is refused only if it also goes
   higher than Z already is (0x2758) by more than 254 units, i.e. 0.0001 in (0x232ae). A move at a height
   that was already reached is allowed.
 * **Between end points:** the parser doesn't look there. The operator's manual (appendix D) lists the
@@ -414,6 +417,10 @@ Each violation is a `trap #14` with its message:
 `dxsim -P` warns above the highest of params 74-76.
 
 ## 15. Open questions
+
+All open questions, with how to answer each one (firmware trace, bench test, or a BXX trace), are in
+`features/OPENQ.md`. The list below is the language part of it (L1-L7 there).
+
 
 1. **`?Q7<NE>0W8=1.27!`** (G87 body, block 0x2757b): by context it means W8 = 1.27 when Q7 ≠ 0, but the
    assignment test (0x1ed88) only looks at the start of a block. Read literally, `W8` is a W word (capture

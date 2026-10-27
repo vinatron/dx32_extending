@@ -1,0 +1,8 @@
+; BBLANKS.TXT - open question L6: what BXX does with blanks on load, and whether "X1  =  5." is an assignment.
+X1=0.
+X1  =  5.
+M0
+; After loading, look at the second block in the editor: are the blanks still there?
+; At the M0 stop look at X1: 5 = an assignment despite the blanks; 0 = not one (the firmware tests
+; fixed character positions: with the blanks the = is the 5th character, so 5 means BXX removed them).
+M2

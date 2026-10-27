@@ -430,8 +430,8 @@ Closed by phase 1:
 - **`Dummy Radius Won't Fit`:** the consistency check after the fallback blend (2.3).
 - **Coordinates:** after G73 and mirror (2.2).
 
-Still open:
-1. **Mirror flags:** which of 0x32ec bits 3/4 is X. Only the XOR matters for the side.
+Still open (all are also in `OPENQ.md`, C1-C7, with how to answer them):
+1. ~~Mirror flags~~: answered, G31 sets bit 3 (X), G32 bit 4 (Y) (`OPENQ.md` A1).
 2. **Non-uniform G73 scale with arcs:** what the control does. dxsim will warn.
 3. **Behaviour in cases the manual forbids** (M codes, Z-only pairs): only the machine can show it.
    dxsim warns and does what the code would do.

@@ -2,6 +2,7 @@
 travel  X 0.0000 .. 22.2000  Y 0.0000 .. 16.2000  Z -20.0000 .. 0.2000 in (params 17-22, machine coordinates)
 zero    part zero at machine X10.0000 Y8.0000 Z-15.0000 in
 rapid   X/Y 472.0 ipm  Z 300.0 ipm (params 7, 8); spindle max 6000 rpm (params 73-76)
+zcheck  Z checked (params 98, 62)
 ------- program
 L3      RAPID X0.0000 Y0.0000 Z15.0000
 L3      RAPID X0.0000 Y0.0000 Z0.1000

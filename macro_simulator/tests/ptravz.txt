@@ -1,5 +1,5 @@
-; travel test: Z above the positive limit (+0.2) is refused only if it also goes
-; higher than Z already is (0x232ae).  Home is machine Z0 = part Z15.
+; travel test: Z above the positive limit (+0.2). These parameter files have the param 98 family nibble 2,
+; so the firmware's stay-above rule does not apply (see pzrule): N3 (+.15) passes, N4 (+.3) is refused.
 N1G0G90Z15.
 N2G0X1.Y1.
 N3G0Z15.15
