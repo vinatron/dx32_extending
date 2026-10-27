@@ -6,7 +6,7 @@ change the order.
 | # | Feature | Status |
 |---|---|---|
 | 1 | Machine parameters (`-P BMDCPRMS.SYS`) | **done** (PR #5): `README.md` "Machine parameters", `LANGUAGE.md` 14a |
-| 2 | Cutter diameter compensation (G41/G42) | **in progress**: phases 0-2 (plan, firmware trace, geometry) done, see `features/CUTCOMP.md` |
+| 2 | Cutter diameter compensation (G41/G42) | **simulated** (phases 0-5); bench check on the machine pending, see `features/CUTCOMP.md` |
 | 3 | Fillets and corner radii (G22/G23) | planned |
 | 4 | Program flow view: main program → macros → cycles | planned (design below) |
 | 5 | FANUC Macro B to DX32 translator (`fb2dx`) | proposed (assessment below) |
@@ -48,15 +48,11 @@ plan:
 - **Z check:** the firmware applies it only for some machine configurations (0xaf58, 0x2988). That isn't
   traced yet; dxsim always checks Z.
 
-## 2. Cutter diameter compensation (G41/G42)
+## 2. Cutter diameter compensation (G41/G42) (simulated)
 
-The full plan is in `features/CUTCOMP.md`:
-- what the manual and the 6.89 firmware say, including the G-code handlers, the 16-state compensation
-  machine at 0x1d03e and its three `Cutter-Comp:` messages;
-- the design: a new `src/dxcomp.c` with a two-block look-ahead, between the transformations and the output;
-- the errors and warnings;
-- the tests, taken from the manual's figures 7-3 and 7-13 to 7-15;
-- six phases, the last one a bench check on the machine.
+Simulated in PR #5, following the 6.89 firmware's own compensation code: `README.md` "Cutter compensation",
+with the full record in `features/CUTCOMP.md`. What is left is phase 6, the bench check on the machine.
+The bench sheet is in `features/CUTCOMP.md` section 6.
 
 ## 3. Fillets and corner radii (G22/G23)
 

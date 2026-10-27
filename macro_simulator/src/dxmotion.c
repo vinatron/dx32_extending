@@ -63,6 +63,7 @@ void dxmreset(dxsim *s)
     s->acur = 0.0;
     s->spindle = 0.0;
     s->sdir = 5;
+    dxcreset(s);
 }
 
 /* rotation, scaling and mirror only */
@@ -201,6 +202,8 @@ void dxgcode(dxsim *s, int g)
     case 9:  s->g9 = 1; break;
     case 99: s->g99 = 1; break;
     case 12: case 13: case 22: case 23:
+        if ((g == 12 || g == 13) && s->cstate >= 4 && s->cstate <= 10)
+            dxwarn(s, 18, "helix (G12/G13) with cutter compensation on (manual p.15 note 1)");
         s->gmot1 = g;
         break;
     case 17: case 18: case 19:
@@ -221,14 +224,14 @@ void dxgcode(dxsim *s, int g)
             s->miry0 = m[1];
         }
         break;
-    case 40:
-        s->ccomp = 40;
-        break;
-    case 41: case 42:
+    case 40: case 41: case 42:
         s->ccomp = g;
-        dxwarn(s, 3, "cutter compensation (G41/G42) is not simulated: the plot shows the programmed path");
+        dxcgcode(s, g);
         break;
-    case 44: case 45: case 46: case 47: case 48: case 49: case 94: case 95:
+    case 44: case 45: case 48: case 49:
+        dxcgcode(s, g);
+        break;
+    case 46: case 47: case 94: case 95:
         break;
     case 54: case 55: case 56: case 57: case 58: case 59:
         dxtopos(s, s->cur, b);
@@ -246,6 +249,9 @@ void dxgcode(dxsim *s, int g)
         keepbase(s, b);
         break;
     case 73:
+        if (s->cstate >= 4 && s->cstate <= 10)
+            dxwarn(s, 17, "G73 while cutter compensation is on: set it before G41/G42, cancel it after G40 "
+                   "(manual p.33 note 4)");
         s->g73blk = 1;
         s->xform = 1;
         break;
@@ -253,7 +259,11 @@ void dxgcode(dxsim *s, int g)
     case 75: s->g75 = 1; break;
     case 90: s->abs = 1; break;
     case 91: s->abs = 0; break;
-    case 92: s->g92blk = 1; break;
+    case 92:
+        if (s->cstate >= 4 && s->cstate <= 10)
+            dxwarn(s, 16, "G92 while cutter compensation is on (manual p.21 note 4)");
+        s->g92blk = 1;
+        break;
     case 96:
         dxtopos(s, s->cur, b);
         memset(s->g97, 0, sizeof s->g97);
@@ -280,7 +290,7 @@ static void line2(dxsim *s, int kind, const double *a, const double *b, int quie
     g.feed = kind == DXM_RAPID ? 0.0 : s->feed;
     if (fabs(g.p0[0] - g.p1[0]) + fabs(g.p0[1] - g.p1[1]) + fabs(g.p0[2] - g.p1[2]) < EPS)
         return;
-    dxemit(s, &g);
+    dxcmove(s, &g);
 }
 
 static void line(dxsim *s, int kind, const double *a, const double *b)
@@ -313,7 +323,7 @@ static void arcseg(dxsim *s, int plane, const double *a, const double *b,
     g.feed = s->feed;
     if (s->xform && fabs(s->scl[0] - s->scl[1]) > 1e-9)
         dxwarn(s, 4, "arc with unequal X/Y scale factors (G73) is drawn as a circle");
-    dxemit(s, &g);
+    dxcmove(s, &g);
 }
 
 /* a spiral or any curve with changing radius: short straight pieces */
@@ -488,8 +498,9 @@ static void linear(dxsim *s)
     double mid[3];
     if (s->gmot1 == 22 || s->gmot1 == 23)
         dxwarn(s, 5, "fillets (G22/G23) are not simulated: cut as a straight line to the corner");
-    if (s->mot == DXM_RAPID && s->gmot1 == 0) {
-        /* G0: Z up first, then XY; or XY first, then Z down (manual chapter 3) */
+    if (s->mot == DXM_RAPID && s->gmot1 == 0 && !(s->cstate >= 4 && s->cstate <= 10)) {
+        /* G0: Z up first, then XY; or XY first, then Z down (manual chapter 3).
+           While compensating a G0 block is one feed move (0x32f1 never 0) */
         int xy = fabs(s->tgt[0] - s->cur[0]) > EPS || fabs(s->tgt[1] - s->cur[1]) > EPS;
         int z = fabs(s->tgt[2] - s->cur[2]) > EPS;
         if (xy && z) {

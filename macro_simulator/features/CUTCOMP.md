@@ -12,13 +12,14 @@ Roadmap item 2. Sources:
 | 0 | Research: manual chapter 7, firmware map, design, test list (this document) | **done** |
 | 1 | Firmware trace of the geometry engine (0x2412e ...) and the state machine (0x1d03e): settle the open questions in section 7 | **done**: sections 2.2-2.4 |
 | 2 | `src/dxcomp.c` geometry: offset line/arc, intersections, blend arcs, with unit tests | **done**: 31 checks in `dxsim -selftest`, run by `dxtest` |
-| 3 | Look-ahead pipeline: turn-on, approach, corners, exit, Z-only moves, G48/G49; trace and plot both paths | not started |
-| 4 | Rules, errors and warnings; errors reported at the right line despite the look-ahead | not started |
-| 5 | G45 constant surface feed, the live preview, `README.md` / `LANGUAGE.md` | not started |
-| 6 | Bench check on the machine: the test programs on the control's own graphics, compared with dxsim | not started (needs the owner) |
+| 3 | Look-ahead pipeline: turn-on, approach, corners, exit, Z-only moves, G48/G49; trace and plot both paths | **done** |
+| 4 | Rules, errors and warnings; errors reported at the right line despite the look-ahead | **done** (one rule left as an open question, 7) |
+| 5 | G45 constant surface feed, the live preview, `README.md` / `LANGUAGE.md` | **done** |
+| 6 | Bench check on the machine: the test programs on the control's own graphics, compared with dxsim | **waiting for the owner**: bench sheet in section 6 |
 
-Until phase 3 is done, `dxsim` keeps today's behaviour: it plots the programmed path and warns once that
-cutter compensation is not simulated.
+Cutter compensation is simulated (phases 0-5). What is left is the bench check on the machine (phase 6).
+Until then, every behaviour here rests on the firmware trace and the manual. It is marked CONFIRMED (code)
+where it was read from the instructions, but not yet seen on the machine.
 
 ## 2. What the control does
 
@@ -318,37 +319,44 @@ machine is undefined. dxsim keeps going with the most likely behaviour and says 
 |---|---|
 | G41/G42 with tool diameter 0: compensation is not active | p.59, factor 10 |
 | G41/G42 outside G17, or with G2/G3 modal | p.58, p.59 |
-| G41↔G42 or a new diameter while compensation is on (ignored) | factor 1 |
-| block without movement while compensation is on | factor 3 |
+| G41↔G42 while compensation is on (ignored: dxsim keeps the first; the firmware would start a new turn-on, 0x20d0e) | factor 1 |
 | two co-linear moves in a row (the firmware treats them as tangent and adds G99; the manual forbids them) | factor 5 |
-| fewer than 5 blocks between G41/G42 and G40 (4 in BOSS 4-7 mode) | factor 6 |
+| fewer than 5 blocks between G41/G42 and G40 (4 in BOSS 4-7 mode). dxsim makes what it holds: only an approach → as programmed; approach + one element → approach, then the element to its offset end | factor 6 |
 | two Z-only moves without an X/Y move between them | factor 7 |
 | an M code while compensation is on | factor 8 |
-| G92, a G73 change, a helix (G12/G13), or G77/G78/G79 while compensation is on | ch.4, ch.6 |
-| the tool-centre path reverses on an element: **gouge**, the tool is bigger than the feature (figs. 7-13, 7-14). The firmware does not check this (2.3) | p.65 |
-| the program ends with compensation on | (dxsim) |
+| G92, G73, or a helix (G12/G13) while compensation is on | p.21, p.33, p.15 |
+| a canned cycle while compensation is on: dxsim leaves the cycle's moves **uncompensated** (what the control does is not traced) | ch.6 |
+| an approach that is an arc (the firmware makes it a straight line anyway) | p.59 |
+| the tool-centre path reverses on an element, or a blend loops more than half a turn: **gouge**, the tool is bigger than the feature (figs. 7-13, 7-14). The firmware does not check this (2.3) | p.65 |
+| the program ends with compensation on: the held elements are made as if G40 came, without the move back | (dxsim) |
 
-**Reporting the right line.** Because of the look-ahead, the block being read is not the one at fault.
-Each `dxcel` keeps its block, and a new `dxerrat(s, blk, msg)` reports an error against a given block.
+**Reporting the right line.**
+- Because of the look-ahead, the block being read is usually not the one at fault.
+- Each `dxcel` keeps its block. `errat()` in `dxcomp.c` reports an error against the element at fault, and
+  every delayed move is traced with its own block's line.
+- The control may show the block it was reading at the time. That is for the bench check.
 
 ## 5. Tests
 
 Each test program has an expected trace, and the key points are also checked by hand in `dxtest.c`, like
 the existing manual figures.
 
-| Test (8.3) | Program | Expected result, worked out by hand |
+| Test (8.3) | Program | Result (hand-checked items in **bold** are also asserted by `dxtest`) |
 |---|---|---|
-| `ccsq` | M fig. 7-15 example 1: the 1.5 in square, G41, .5 dia | The centre path runs .25 outside. Approach ends at (0, .25); edges at Y.25, X1.75, Y-1.75, X-.25; G49 blend arcs of R.25 round (1.5,0), (1.5,-1.5) and (0,-1.5); the last element ends at (-.25, .1); then G40 to (-1, 1) |
-| `cctri` | M fig. 7-15 example 2 (triangle) | worked out when the test is written |
-| `ccarc` | M fig. 7-15 example 3 (R.75 arc) | arc offset to R1.0 / R.5 depending on side |
-| `ccentry` | M fig. 7-3, both versions: first element a line, then an arc | approach end on the normal of the first element |
-| `ccnotch` | M fig. 7-13 with .25 and 1.0 dia | .25: no warning. 1.0: gouge warning |
-| `ccstep` | M fig. 7-14 example A (G49) and B (G48) | the step smaller than the radius: gouge warning; B shows the G48 corner |
-| `ccinside` | line-line, line-arc, arc-arc inside corners | intersection points |
-| `ccneg` | inside arc R.2 with a .5 dia tool | error `Cutter-Comp: Negative Radius` at the arc's line |
-| `ccmirror` | ccsq with one axis mirrored | the side flips: the path runs inside the square |
-| `ccwarn` | each warning in section 4 once | the warning lines |
-| `cczero` | G41 with diameter 0 | warning; programmed path |
+| `ccsq` | M fig. 7-15 example 1: the 1.5 in square, G41, .5 dia | **Approach to (0,.25); edges at Y.25, X1.75, Y-1.75, X-.25; R.25 CW blends at (1.5,0), (1.5,-1.5), (0,-1.5); last element to (-.25,.1); G40 rapid to (-1,1).** Blends at F30 (G45 ×1.5) |
+| `cctri` | M fig. 7-15 example 2: triangle | **(-.9736,.1118), (-.2236,1.6118), blend to (.2236,1.6118), (.9736,.1118), blend to (.75,-.25), (-.85,-.25)** |
+| `ccentry` | M fig. 7-3: entry with a line, then with an arc. The figure's arc numbers are not on one circle, so the test uses R2.5 about (6.5,0) | approach to (3.85,.2) on the normal of the 3-4-5 line; approach to (3.75,0) radial for the arc, which is offset to R2.75 (G41 + CW = outside, F22 by G45) |
+| `ccnotch` | M fig. 7-13, .25 and 1.0 dia | .25: arcs offset to R.875, no warning. 1.0: the offset circles (R.5) do not meet, the firmware falls back to a 286° blend round the notch: gouge warning |
+| `ccstep` | M fig. 7-14 example A (G49) and B (G48), 1.0 dia | A: the step's element runs backwards, gouge warning. B: G48 makes the outside corner sharp (1.5,.5) |
+| `ccinside` | inside corners: line → arc, arc → line, line → line | **(2.7753,.25), arc to (3.75,1.2247), (3.75,2.75), (.25,2.75), exit (.25,1)** |
+| `ccarcarc` | arc → arc inside corner | **the intersection lies on both offset circles (R4.75, R1.75)** |
+| `ccneg` | inside arc R.2, .5 dia | error `Cutter-Comp: Negative Radius` at the arc's line |
+| `cczero` | G41 with diameter 0 | warning; the programmed path is cut |
+| `ccmirror` | ccsq with X mirrored (G31) | the side is swapped: the mirrored square is still cut from outside |
+| `ccz` | a Z-only move inside compensation | made at its own feed (F5) after the corner blend, before the next element |
+| `ccwarn` | co-linear moves, an M code, two Z-only moves, the end of the program without G40 | the warning lines; the first Z-only move is lost; the held elements are made at the end |
+
+Fig. 7-15 example 3 (the R.75 arc) is not used: the printed program is garbled (`G2X0Y.7510J0`).
 
 **Unit checks (phase 2, done):**
 - `dxsim -selftest` runs `dxcself()` in `src/dxcomp.c`. It checks 31 results worked out by hand:
@@ -380,22 +388,37 @@ the existing manual figures.
 - [x] Unit checks in `dxtest.c`.
 
 **Phase 3: pipeline**
-- [ ] `dxcel` ring, turn-on/approach/running/exit, Z-only carry, G48/G49.
-- [ ] Trace tags, the programmed path in plots and the preview.
-- [ ] Tests `ccsq`, `cctri`, `ccarc`, `ccentry`, `ccinside`, `ccmirror`.
+- [x] `dxcel` records A/B/C, turn-on/approach/running/exit, Z-only carry, G48/G49 (`dxcmove`, `dxcgcode`,
+  `dxcblk`, `dxcfin` in `src/dxcomp.c`; hooks in `dxmotion.c` and `dxinterp.c`).
+- [x] Trace tags `CDC` / `CDC blend`; the programmed path in green in plots (SVG/HPGL/PS) and the preview.
+- [x] Tests `ccsq`, `cctri`, `ccentry`, `ccinside`, `ccarcarc`, `ccmirror`, `ccz`.
 
 **Phase 4: rules**
-- [ ] The errors and warnings of section 4, `dxerrat`.
-- [ ] Tests `ccneg`, `ccnotch`, `ccstep`, `ccwarn`, `cczero`.
+- [x] The errors and warnings of section 4, errors at the element's own line.
+- [x] Tests `ccneg`, `ccnotch`, `ccstep`, `ccwarn`, `cczero`.
 
 **Phase 5: finishing**
-- [ ] G45 feed scaling on arcs: trace F and preview pacing.
-- [ ] Remove the "not simulated" warning; update `README.md`, `LANGUAGE.md` and `ROADMAP.md`.
-- [ ] Watcom builds, `make test`, `make test-screen`.
+- [x] G45 feed scaling on arcs and blends: in the trace's F, so the preview's feed pacing uses it.
+- [x] The "not simulated" warning removed; `README.md`, `LANGUAGE.md`, `ROADMAP.md` updated.
+- [x] Watcom builds (dos, dos32, win32, win32w, DXTEST), `make test` (83 passed), `make test-screen`
+  (the cc tests run with their tool options).
 
-**Phase 6: machine**
-- [ ] A short bench sheet for the owner: run `ccsq`, `ccentry`, `ccstep` B and `ccneg` on the control and
-  compare its graphics and messages with dxsim. The results flip TENTATIVE items to CONFIRMED.
+**Phase 6: machine (bench sheet for the owner)**
+
+Set tool 1 to the diameter given, part zero anywhere safe, and Z well clear of the table (the programs cut at
+Z0 or Z-.1). Load each program and look at it in the control's F5 PREVIEW, or dry-run it, then compare with
+`DXSIM PROG.TXT -t 1=D -S` or the trace:
+
+| # | Program | Tool 1 dia | Look for | Result |
+|---|---|---|---|---|
+| 1 | `tests/CCSQ.TXT` | .5 | rounded corners .25 outside the square; approach ends at (0,.25) | |
+| 2 | `tests/CCENTRY.TXT` | .5 | approach on the normal of the first element; blend at (8,3) | |
+| 3 | `tests/CCSTEP.TXT` | 1.0 | example A: the tool backs up at the step (gouge); example B: sharp corner at (1.5,.5) | |
+| 4 | `tests/CCNEG.TXT` | .5 | the control stops with `Cutter-Comp: Negative Radius` (which line does it show?) | |
+| 5 | `tests/CCZ.TXT` | .5 | the Z move happens at (1.75,0) after the corner, not before | |
+| 6 | `tests/CCNOTCH.TXT` | T1 .25, T2 1.0 | with T2 the tool loops round the notch | |
+
+- [ ] Results filled in; differences recorded in section 2 and fixed in `dxcomp.c`.
 
 ## 7. Open questions
 
@@ -411,6 +434,11 @@ Still open:
 2. **Non-uniform G73 scale with arcs:** what the control does. dxsim will warn.
 3. **Behaviour in cases the manual forbids** (M codes, Z-only pairs): only the machine can show it.
    dxsim warns and does what the code would do.
+6. **Blocks without a move** (an F, S or T word alone, an assignment or a condition) while compensating:
+   the firmware's dispatcher may build a zero-length record for them. That is not traced. dxsim ignores
+   them and warns only for M codes (factor 8).
+7. **G41/G42 again while compensating, and canned cycles while compensating:** not traced. dxsim warns,
+   keeps the first G41/G42, and leaves cycle moves uncompensated.
 4. **An input that raises `Dummy Radius Won't Fit`:** none found yet. dxsim makes the same check, so a
    case would show up in testing.
 5. **Gouging:** the manual's figs. 7-13 and 7-14 are the bench test (phase 6). dxsim reproduces the
@@ -422,4 +450,5 @@ Still open:
 |---|---|---|
 | 2026-10-26 | 100c783 | Phase 0: manual chapter 7 summarised; firmware map (G40-G49 handlers, side bit and mirror XOR, zero radius = off, state machine 0x1d03e, record builder 0x1d6e4, Z-only carry, the three `Cutter-Comp:` messages); design, test list and phases |
 | 2026-10-27 | 1c9e4e1 | Phase 1: geometry engine and state machine traced. G41 sets the side bit (left); negative radius flips the side; line/arc offset formulas; corner classification; the intersection/blend table including G48 (arc → arc always blended); intersection choice; the three error conditions; G45 ×(R±r)/R and ×1.5 on blends; automatic G99 on tangent corners; the Z-only carry made as its own move; the full state sequence for turn-on, approach, running and exit. `Cannot Comp "C" Axis` is not about cutter compensation |
-| 2026-10-27 | (this commit) | Phase 2: `src/dxcomp.c` geometry (`dxcoffl`, `dxcoffa`, `dxccorn`, `dxcxll`, `dxcxla`, `dxcxaa`, `dxcpick`, `dxcg45`), written from the firmware formulas; `dxsim -selftest` with 31 hand-checked results, run by `dxtest`. Also found: G0 inside compensation is cut at feed (2.2) |
+| 2026-10-27 | 5664f35 | Phase 2: `src/dxcomp.c` geometry (`dxcoffl`, `dxcoffa`, `dxccorn`, `dxcxll`, `dxcxla`, `dxcxaa`, `dxcpick`, `dxcg45`), written from the firmware formulas; `dxsim -selftest` with 31 hand-checked results, run by `dxtest`. Also found: G0 inside compensation is cut at feed (2.2) |
+| 2026-10-27 | (this commit) | Phases 3-5: the look-ahead pipeline after the firmware states (turn-on, approach, two-block look-ahead, blends, intersections, G48, Z-only carry, exit), errors at the element's line, the manual's rules as warnings plus gouge detection, G45 feeds, `CDC` trace tags, the programmed path in green. 12 test programs (`cc*.txt`) and 4 hand checks in `dxtest`; 83 passed. Phase 6 bench sheet added |

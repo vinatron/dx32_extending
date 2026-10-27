@@ -265,8 +265,8 @@ G45 G49 G70/71 G72 G75 G90 G94 G96. Unknown: `Parser: Illegal G-Code`. Last colu
 | 17 / 18 / 19 | plane XY / ZX / YZ | yes |
 | 22 / 23 | fillet CW / CCW | **no**: cut as a line to the corner, warning |
 | 30 / 31 / 32 | mirror off / X / Y, about the point where it is programmed | yes |
-| 40 / 41 / 42 | cutter compensation off / left / right | **no**: programmed path, warning |
-| 44 / 45, 48 / 49 | constant surface feed, corner rounding | recorded |
+| 40 / 41 / 42 | cutter compensation off / left / right | yes, as the 6.89 firmware does it (`features/CUTCOMP.md`) |
+| 44 / 45, 48 / 49 | constant surface feed off / on (reset G45); corner rounding off / on (reset G49; G48 in BOSS 4-7 mode) | yes, with cutter compensation |
 | 54-59 | work shifts (operator's manual appendix C) | yes (offsets 0) |
 | 70 / 71 | inch / metric input | yes |
 | 72 / 73 | transformation off / on: `G73A_` rotate about X0Y0, `G73X_Y_Z_` scale | yes |

@@ -83,7 +83,22 @@ typedef struct dxseg {
     double sweep;           /* arc sweep in radians, + = CCW in the plane */
     double feed;            /* programmed feed (program units / min) */
     int    quiet;           /* part of a curve already traced as a whole */
+    int    cdc;             /* cutter compensation: 1 compensated move, 2 blend arc */
 } dxseg;
+
+/* one programmed element held by cutter compensation (dxcomp.c, firmware record 0x46e0) */
+typedef struct dxcel {
+    int    arc, cw;         /* arc: 1, direction G2 */
+    double p0[3], p1[3];    /* programmed start and end, base coordinates (inch) */
+    double c[2], rad;       /* arc centre and radius */
+    double sweep;           /* programmed sweep (radians) */
+    double feed;            /* modal F when the block was read */
+    int    g45, g48;        /* modes when the block was read */
+    long   blk;             /* source block */
+    int    zc, zrap;        /* a carried Z-only move (+3 bit 0), made as a rapid */
+    double zz, zf;          /* its Z and feed */
+    long   zblk;
+} dxcel;
 
 typedef struct dxplot {
     int    dev;             /* DXP_* */
@@ -195,6 +210,19 @@ typedef struct dxsim {
     int    g9;                  /* modal decel override */
     int    g99;                 /* one-shot */
     int    ccomp;               /* 40 41 42 */
+    int    cstate;              /* cutter compensation state, firmware 0x32f4: 0 off, 2 turn-on block,
+                                   4 approach, 6 first element, 8 second, 10 running, 12 G40 */
+    int    cleft;               /* tool left of the path */
+    double crad;                /* compensation radius (inch) */
+    int    g48, g45;            /* corner rounding off; constant surface feed */
+    int    cn;                  /* elements held: A (approach), B, C */
+    dxcel  crec[3];
+    int    czp, czrap;          /* a Z-only move waiting for the next element (0x32e6 bit 6) */
+    double czz, czf;
+    long   czb;
+    double ctp[3];              /* tool centre, base coordinates */
+    int    cused;               /* this block gave the compensation an element or a Z move */
+    int    cblks;               /* elements since the turn-on (the 5-block rule) */
     int    mirx, miry;          /* G31 / G32 */
     double mirx0, miry0;        /* axis of symmetry */
     int    xform;               /* G73 active */
@@ -255,7 +283,7 @@ typedef struct dxsim {
     double lrapid, lfeed;
     double bmin[3], bmax[3];
     int    bset;
-    int    warned[16];
+    int    warned[32];
     unsigned char cov[1024];    /* built-in blocks executed (coverage) */
     void (*blkhook)(struct dxsim *s);   /* called before each block (live preview) */
 
@@ -326,6 +354,7 @@ void  dxtline(dxsim *s, const char *text);
 void  dxemit(dxsim *s, const dxseg *g);
 void  dxplbeg(dxsim *s);
 void  dxplend(dxsim *s);
+void  dxprog(dxsim *s, const dxseg *g);
 int   dxview(const char *name);
 void  dxsumm(dxsim *s);
 
@@ -342,6 +371,11 @@ int   dxcpick(const double *x1, const double *x2, const double *ref, const doubl
               const double *ctr, int cw);
 double dxcg45(double rad, double r, int left, int cw);
 int   dxcself(FILE *fp);
+void  dxcmove(dxsim *s, const dxseg *g);
+void  dxcgcode(dxsim *s, int g);
+void  dxcblk(dxsim *s);
+void  dxcfin(dxsim *s);
+void  dxcreset(dxsim *s);
 
 /* ---- dxparam.c (machine parameter files) ---- */
 int   dxpload(const char *file, char *err);

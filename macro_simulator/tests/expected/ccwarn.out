@@ -1,0 +1,28 @@
+L3      TOOL  M6 change to T1 (TLO 0.0000 DIA 0.5000)
+L4      RAPID X-1.0000 Y0.0000 Z0.0000
+L5      RAPID X-0.5000 Y0.0000 Z0.0000
+L6      WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+L6      FEED  X0.0000 Y0.2500 Z0.0000  F20.0  CDC
+L8      WARN  two co-linear moves in a row while compensating (manual p.67, factor 5)
+L7      FEED  X1.0000 Y0.2500 Z0.0000  F20.0  CDC
+L8      FEED  X2.0000 Y0.2500 Z0.0000  F20.0  CDC
+L8      ARC2  X2.2500 Y0.0000 Z0.0000  CX2.0000 Y0.0000 R0.2500  -90.000 deg  F30.0  CDC blend
+L10     WARN  M code while cutter compensation is on (manual p.67, factor 8)
+L10     MCODE M8
+L12     WARN  two Z-only moves without an X/Y move between them while compensating: the first is lost (one slot, manual p.67 factor 7)
+L9      FEED  X2.2500 Y-1.0000 Z0.0000  F20.0  CDC
+L9      ARC2  X2.0000 Y-1.2500 Z0.0000  CX2.0000 Y-1.0000 R0.2500  -90.000 deg  F30.0  CDC blend
+L12     FEED  X2.0000 Y-1.2500 Z-0.2000  F20.0  CDC
+L13     FEED  X0.0000 Y-1.2500 Z-0.2000  F20.0  CDC
+L14     FEED  X-0.5000 Y-0.5000 Z-0.2000  F20.0
+L15     FEED  X-1.0000 Y0.0000 Z-0.2000  F20.0
+L16     FEED  X0.0000 Y0.2500 Z-0.2000  F20.0  CDC
+L17     FEED  X0.7500 Y0.2500 Z-0.2000  F20.0  CDC
+L19     WARN  the program ends with cutter compensation on (no G40)
+L18     FEED  X0.7500 Y1.0000 Z-0.2000  F20.0  CDC
+L19     END   M2
+------- summary
+moves   15 (rapid 1.5000, feed 10.6837 in)
+extent  X-1.0000 Y-1.2500 Z-0.2000 .. X2.2500 Y1.0000 Z0.0000
+final   X1.0000 Y1.0000 Z-0.2000  (G90, G1, T1)
+warnings 5

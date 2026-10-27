@@ -187,14 +187,15 @@ static void devline(dxplot *pl, int pen, double X0, double Y0, double X1, double
     case DXP_SVG:
         if (pl->pen != pen || fabs(X0 - pl->lx) > 1e-6 || fabs(Y0 - pl->ly) > 1e-6) {
             svgclose(pl);
-            fprintf(pl->fp, "<path class=\"%s\" d=\"M%.3f,%.3f", pen ? "f" : "r", X0, -Y0);
+            fprintf(pl->fp, "<path class=\"%s\" d=\"M%.3f,%.3f", pen == 2 ? "p" : pen ? "f" : "r",
+                    X0, -Y0);
             pl->pen = pen;
         }
         fprintf(pl->fp, " L%.3f,%.3f", X1, -Y1);
         break;
     case DXP_HPGL:
         if (pl->pen != pen) {
-            fprintf(pl->fp, "SP%d;%s\n", pen ? 1 : 2, pen ? "LT;" : "LT2,1;");
+            fprintf(pl->fp, "SP%d;%s\n", pen == 2 ? 3 : pen ? 1 : 2, pen ? "LT;" : "LT2,1;");
             pl->pen = pen;
             pl->lx = pl->ly = -1e30;
         }
@@ -205,7 +206,7 @@ static void devline(dxplot *pl, int pen, double X0, double Y0, double X1, double
     case DXP_PS:
         if (pl->pen != pen || fabs(X0 - pl->lx) > 1e-4 || fabs(Y0 - pl->ly) > 1e-4) {
             if (pl->pen >= 0) fprintf(pl->fp, "stroke\n");
-            fprintf(pl->fp, "%s %.2f %.2f moveto\n", pen ? "F" : "R", X0, Y0);
+            fprintf(pl->fp, "%s %.2f %.2f moveto\n", pen == 2 ? "P" : pen ? "F" : "R", X0, Y0);
             pl->pen = pen;
         }
         fprintf(pl->fp, "%.2f %.2f lineto\n", X1, Y1);
@@ -259,7 +260,7 @@ static void plline(dxsim *s, int pen, const double *a, const double *b)
         devx(pl, x0, y0, &X0, &Y0);
         devx(pl, x1, y1, &X1, &Y1);
         if (fabs(X1 - X0) + fabs(Y1 - Y0) < 1e-9) {
-            if (!pen || fabs(a[2] - b[2]) < 1e-9) continue;
+            if (pen != 1 || fabs(a[2] - b[2]) < 1e-9) continue;
             /* a plunge seen end-on (a drilled hole in the G17 view): draw a small x */
             h = pl->mark;
 #ifdef DX_SCREEN
@@ -275,8 +276,8 @@ static void plline(dxsim *s, int pen, const double *a, const double *b)
         }
 #ifdef DX_SCREEN
         if (pl->dev == DXP_SCREEN) {
-            /* only the first view is paced; the others follow at once */
-            dxscline(s, pl, pen, X0, Y0, X1, Y1, v ? 0.0 : len);
+            /* only the first view is paced; the others (and the programmed path) at once */
+            dxscline(s, pl, pen, X0, Y0, X1, Y1, v || pen == 2 ? 0.0 : len);
             continue;
         }
 #endif
@@ -377,9 +378,11 @@ void dxplbeg(dxsim *s)
                 w >= h ? 900.0 : 900.0 * w / h, w >= h ? 900.0 * h / w : 900.0,
                 -h * pl->sc, w * pl->sc, h * pl->sc);
         fprintf(pl->fp, "<style>path{fill:none;stroke-linejoin:round;stroke-width:%.3f}"
-                ".f{stroke:#1f4fbf}.r{stroke:#d04020;stroke-dasharray:%.3f,%.3f}"
+                ".f{stroke:#1f4fbf}.p{stroke:#2a9d3a;stroke-width:%.3f}"
+                ".r{stroke:#d04020;stroke-dasharray:%.3f,%.3f}"
                 ".o{stroke:#999;stroke-width:%.3f}</style>\n",
-                (w > h ? w : h) * pl->sc / 700.0, (w > h ? w : h) * pl->sc / 120.0,
+                (w > h ? w : h) * pl->sc / 700.0, (w > h ? w : h) * pl->sc / 1400.0,
+                (w > h ? w : h) * pl->sc / 120.0,
                 (w > h ? w : h) * pl->sc / 120.0, (w > h ? w : h) * pl->sc / 900.0);
         break;
     case DXP_HPGL:
@@ -397,6 +400,7 @@ void dxplbeg(dxsim *s)
         fprintf(pl->fp, "%%%%Creator: dxsim %s\n%%%%EndComments\n", DX_VERSION);
         fprintf(pl->fp, "/F { stroke 0.12 0.31 0.75 setrgbcolor [] 0 setdash } def\n"
                 "/R { stroke 0.82 0.25 0.12 setrgbcolor [3 3] 0 setdash } def\n"
+                "/P { stroke 0.16 0.62 0.23 setrgbcolor [] 0 setdash } def\n"
                 "0.5 setlinewidth 1 setlinejoin newpath\n");
         break;
 #ifdef DX_SCREEN
@@ -481,10 +485,10 @@ void dxemit(dxsim *s, const dxseg *g)
                    (g->p1[2] - g->p0[2]) * (g->p1[2] - g->p0[2]));
         if (pen) {
             sprintf(f, "  F%.1f", g->feed);
-            sprintf(buf, "FEED  %s%s", a, f);
+            sprintf(buf, "FEED  %s%s%s", a, f, g->cdc == 2 ? "  CDC blend" : g->cdc ? "  CDC" : "");
             s->lfeed += len;
         } else {
-            sprintf(buf, "RAPID %s", a);
+            sprintf(buf, "RAPID %s%s", a, g->cdc ? "  CDC" : "");
             s->lrapid += len;
         }
         if (!g->quiet) dxtline(s, buf);
@@ -510,8 +514,9 @@ void dxemit(dxsim *s, const dxseg *g)
         sprintf(b, "C%c%s %c%s R%s", "XYZ"[a0], f, "XYZ"[a1], f, f);
         sprintf(buf, b, nz(g->c[a0] * s->dunit), nz(g->c[a1] * s->dunit), r * s->dunit);
         strcpy(b, buf);
-        sprintf(buf, "ARC%c  %s  %s  %+.3f deg  F%.1f", g->arc == DXM_CW ? '2' : '3',
-                a, b, g->sweep * 180.0 / PI, g->feed);
+        sprintf(buf, "ARC%c  %s  %s  %+.3f deg  F%.1f%s", g->arc == DXM_CW ? '2' : '3',
+                a, b, g->sweep * 180.0 / PI, g->feed,
+                g->cdc == 2 ? "  CDC blend" : g->cdc ? "  CDC" : "");
         dxtline(s, buf);
         dth = r > tol ? 2.0 * acos(1.0 - tol / r) : PI / 4;
         if (dth > PI / 8) dth = PI / 8;
@@ -533,6 +538,40 @@ void dxemit(dxsim *s, const dxseg *g)
 #ifdef DX_SCREEN
         if (s->plot && s->plot->dev == DXP_SCREEN && s->plot->pass == 2) dxscmove(s);
 #endif
+    }
+}
+
+/*
+ * The programmed path while cutter compensation is on: a thin green line under
+ * the tool-centre path (pen 2).  Not traced, not in the extent summary.
+ */
+void dxprog(dxsim *s, const dxseg *g)
+{
+    int a0, a1, an, i, n;
+    double r, st, dth, p[3], q[3], th, tol;
+    if (!s->plot || s->plot->dev == DXP_NONE) return;
+    if (!g->arc) {
+        plline(s, 2, g->p0, g->p1);
+        return;
+    }
+    tol = s->plot->tol > 0 ? s->plot->tol : 0.001;
+    paxes(g->plane, &a0, &a1, &an);
+    r = sqrt((g->p0[a0] - g->c[a0]) * (g->p0[a0] - g->c[a0]) +
+             (g->p0[a1] - g->c[a1]) * (g->p0[a1] - g->c[a1]));
+    st = atan2(g->p0[a1] - g->c[a1], g->p0[a0] - g->c[a0]);
+    dth = r > tol ? 2.0 * acos(1.0 - tol / r) : PI / 4;
+    if (dth > PI / 8) dth = PI / 8;
+    n = (int)(fabs(g->sweep) / dth) + 1;
+    if (n > 2000) n = 2000;
+    memcpy(p, g->p0, sizeof p);
+    for (i = 1; i <= n; i++) {
+        th = st + g->sweep * i / n;
+        q[a0] = g->c[a0] + r * cos(th);
+        q[a1] = g->c[a1] + r * sin(th);
+        q[an] = g->p0[an] + (g->p1[an] - g->p0[an]) * i / n;
+        if (i == n) memcpy(q, g->p1, sizeof q);
+        plline(s, 2, p, q);
+        memcpy(p, q, sizeof p);
     }
 }
 

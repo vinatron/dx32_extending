@@ -226,14 +226,14 @@ static void runprog(const char *name, const char *opts)
 /* ------------------------------------------------------------------ */
 /* hand-checked results                                                */
 
-/* run a test program and read its moves */
-static void moves(const char *name)
+/* run a test program (with options) and read its moves */
+static void movesx(const char *name, const char *opts)
 {
     char args[96], line[256], where[32], kind[16];
     const char *c;
     FILE *fp;
     mv m;
-    sprintf(args, "%s.txt", name);
+    sprintf(args, "%.20s.txt %.60s", name, opts);
     dx(args);
     nmv = 0;
     fp = fopen(TMPOUT, "r");
@@ -252,6 +252,28 @@ static void moves(const char *name)
         mvs[nmv++] = m;
     }
     fclose(fp);
+}
+
+static void moves(const char *name)
+{
+    movesx(name, "");
+}
+
+/*
+ * The moves kinds[0..n-1] ('F' feed, '2'/'3' arcs, 'R' rapid) ending at the
+ * points xy[2i], xy[2i+1], one after the other somewhere in the trace.
+ */
+static int seq(const char *kinds, const double *xy)
+{
+    int i, j, n = (int)strlen(kinds);
+    for (i = 0; i + n <= nmv; i++) {
+        for (j = 0; j < n; j++)
+            if (mvs[i + j].k != kinds[j] || !near(mvs[i + j].x, xy[2 * j], 1e-4) ||
+                !near(mvs[i + j].y, xy[2 * j + 1], 1e-4))
+                break;
+        if (j == n) return 1;
+    }
+    return 0;
 }
 
 /* drill plunges: a feed straight down; the pecks of one hole count once */
@@ -404,6 +426,28 @@ static void manual(void)
                  near(p->sw, q->sw, 1e-3);
         }
         check(ok, "fig 3-3: I/J, R and G91 arc forms agree");
+    }
+
+    /* cutter compensation (features/CUTCOMP.md section 5), worked out by hand */
+    {
+        static const double sq[] = { 0, .25, 1.5, .25, 1.75, 0, 1.75, -1.5, 1.5, -1.75,
+                                     0, -1.75, -.25, -1.5, -.25, .1, -1, 1 };
+        static const double tri[] = { -.973607, .111803, -.223607, 1.611803, .223607, 1.611803,
+                                      .973607, .111803, .75, -.25, -.85, -.25, -1.75, -1 };
+        static const double ins[] = { 2, .25, 2.775255, .25, 3.75, 1.224745, 3.75, 2.75,
+                                      .25, 2.75, .25, 1, 1, -1 };
+        movesx("ccsq", "-t 1=.5");
+        check(seq("FF2F2F2FR", sq), "fig 7-15 square, G41 .5 dia: .25 outside, R.25 blends, exit at (-.25,.1)");
+        movesx("cctri", "-t 1=.5");
+        check(seq("FF2F2FR", tri), "fig 7-15 triangle, G41 .5 dia: offset edges and blend arcs");
+        movesx("ccinside", "-t 1=.5");
+        check(seq("FF2FFFF", ins), "cutter comp inside corners: line-arc, arc-line, line-line intersections");
+        movesx("ccarcarc", "-t 1=.5");
+        for (i = 0; i < nmv && mvs[i].k != '3'; i++) {
+        }
+        ok = i < nmv && near(sqrt(mvs[i].x * mvs[i].x + mvs[i].y * mvs[i].y), 4.75, 1e-4) &&
+             near(sqrt((mvs[i].x - 3) * (mvs[i].x - 3) + (mvs[i].y - 2) * (mvs[i].y - 2)), 1.75, 1e-4);
+        check(ok, "cutter comp arc-arc inside corner: the point is on both offset circles (R4.75, R1.75)");
     }
 }
 

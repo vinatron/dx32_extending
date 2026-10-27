@@ -105,7 +105,7 @@ void dxwarn(dxsim *s, int once, const char *msg)
 {
     char buf[160];
     if (s->linting) return;
-    if (once > 0 && once < 16) {
+    if (once > 0 && once < 32) {
         if (s->warned[once]) return;
         s->warned[once] = 1;
     }
@@ -445,6 +445,8 @@ static void mword(dxsim *s)
     if (fl & DXN_PARAM) return;
     if (++s->nm == 2 && dxuser(s) && peekc(s) != ':')
         dxwarn(s, 0, "more than one M code in a block (manual chapter 9: only one M code per block)");
+    if (s->cstate >= 4 && s->cstate <= 10 && dxuser(s) && peekc(s) != ':')
+        dxwarn(s, 15, "M code while cutter compensation is on (manual p.67, factor 8)");
     if (peekc(s) == ':') {      /* a definition met at run time: skip its body */
         skipdef(s);
         return;
@@ -1021,9 +1023,11 @@ static void endblock(dxsim *s)
         }
     } else {
         dxmend(s);
+        dxcblk(s);
     }
     s->zcyc = 0;
     if (s->endpend) {
+        dxcfin(s);
         sprintf(buf, "END   M%d", s->endpend - 1);
         dxtline(s, buf);
         s->stop = 1;
@@ -1108,6 +1112,7 @@ int dxrun(dxsim *s)
         if (s->start.blk >= s->nuser && s->start.blk < s->corp0) {
             if (s->gdepth || s->sdepth)
                 dxerror(s, "end of program inside a macro or cycle");
+            dxcfin(s);
             dxtline(s, "END   end of program text (no M2/M30)");
             s->stop = 1;
             break;

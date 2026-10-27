@@ -1,0 +1,15 @@
+L2      TOOL  M6 change to T1 (TLO 0.0000 DIA 0.0000)
+L3      WARN  G41/G42 with tool diameter 0: cutter compensation is not active (manual p.59)
+L3      RAPID X-0.5000 Y0.0000 Z0.0000
+L4      WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+L4      FEED  X0.0000 Y0.0000 Z0.0000  F20.0
+L5      FEED  X1.0000 Y0.0000 Z0.0000  F20.0
+L6      FEED  X1.0000 Y-1.0000 Z0.0000  F20.0
+L7      FEED  X0.0000 Y-1.0000 Z0.0000  F20.0
+L8      FEED  X-0.5000 Y0.0000 Z0.0000  F20.0
+L9      END   M2
+------- summary
+moves   6 (rapid 0.5000, feed 4.6180 in)
+extent  X-0.5000 Y-1.0000 Z0.0000 .. X1.0000 Y0.0000 Z0.0000
+final   X-0.5000 Y0.0000 Z0.0000  (G90, G1, T1)
+warnings 2

@@ -1,0 +1,14 @@
+; cutter compensation: inside corners, G41 with a .5 dia tool (r .25), worked out by hand:
+;  line -> arc (CW R1 about 4,0, offset R1.25) meet at (2.7753,.25); arc -> line at (3.75,1.2247);
+;  line -> line at (3.75,2.75) and (.25,2.75); the last element ends at (.25,1)
+N1T1M6
+N2G0X1.Y-1.
+N3G41X1.Y0
+N4G1X2.F20.
+N5X3.
+N6G2X4.Y1.I4.J0
+N7G1Y3.
+N8X0
+N9Y1.
+N10G40X1.Y-1.
+N11M2

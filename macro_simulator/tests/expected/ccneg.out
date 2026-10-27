@@ -1,0 +1,12 @@
+L2      TOOL  M6 change to T1 (TLO 0.0000 DIA 0.5000)
+L3      RAPID X-1.0000 Y0.0000 Z0.0000
+L4      RAPID X-0.5000 Y0.0000 Z0.0000
+L5      WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+L5      FEED  X0.0000 Y0.2500 Z0.0000  F20.0  CDC
+ERROR   line 7: Cutter-Comp: Negative Radius
+        N6G3X1.Y.4I1.J.2
+------- summary
+moves   3 (rapid 1.5000, feed 0.5590 in)
+extent  X-1.0000 Y0.0000 Z0.0000 .. X0.0000 Y0.2500 Z0.0000
+final   X1.0000 Y0.0000 Z0.0000  (G90, G3, T1)
+warnings 1

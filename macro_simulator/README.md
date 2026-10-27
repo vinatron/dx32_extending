@@ -164,6 +164,42 @@ Parameter 156, the option word, was in the original plan. It turned out to hold 
 (low air, low lube, index in/out), so it plays no part here. The PPPL option (param 285) and the peck
 clearance (param 272) are not in `BMDCPRMS.SYS`; `-nopppl` and `-peck` still set them.
 
+## Cutter compensation (G40/G41/G42)
+
+G41 and G42 offset the tool-centre path by the radius of the active tool (`T__D__`, `T__/tlo/dia`, or
+`-t T=D`). `dxsim` follows the 6.89 firmware step by step. The trace was taken from the code and is in
+`features/CUTCOMP.md`, with the firmware addresses.
+
+- **Turn-on:**
+  - The G41/G42 block moves to its point **without** compensation.
+  - The next block, the approach, ends one radius out on the normal to the first compensated element.
+  - The approach and every compensated move are feed moves at the modal F. A G0 inside compensation is cut
+    at the feed rate, as on the control.
+- **Corners:** the control reads two blocks ahead.
+  - **Inside corners** are cut back to where the two offset elements meet: line-line, line-arc or arc-arc.
+  - **Outside corners** get a blend arc of the tool radius round the programmed corner with **G49**, the
+    reset state.
+  - With **G48**, outside corners are extended to a sharp corner, except arc → arc, which is always blended.
+  - The control stops with its own messages: `Cutter-Comp: Negative Radius` (an inside arc smaller than
+    the tool), `Cannot Pick Intersection`, `Dummy Radius Won't Fit`.
+- **G45**, the reset state, scales the feed on arcs by tool-path radius / part radius. Blend arcs run at
+  1.5 × F.
+- **Z:**
+  - A Z-only move is carried to the next element and made first, after the corner's blend.
+  - There is room for one; a second Z-only move before an X/Y move is lost, with a warning.
+- **Exit:**
+  - G40 ends the last element one radius out on the normal at its end point.
+  - The G40 block then moves to its point **without** compensation.
+- **Mirror:** with exactly one axis mirrored (G31 or G32), G41 and G42 swap, so a mirrored part is still
+  cut from the same side.
+- **Output:**
+  - The trace shows the tool-centre path, tagged `CDC`; blend arcs are tagged `CDC blend`.
+  - Plots and the live preview also draw the programmed path as a thin green line.
+  - `-zero` checks the travel limits on the tool-centre path.
+- **Warnings:**
+  - for the manual's rules (chapter 7);
+  - when the path runs backwards, a **gouge** the control does not check for (figs. 7-13, 7-14).
+
 ## Errors and warnings
 
 An **error** stops the run, as on the control. The message is the control's own (operator's manual
@@ -197,7 +233,8 @@ mistake. Warnings are only given for your program's lines, never for the built-i
 | `more than one M code in a block` | manual ch.9 |
 | `S5000 is outside the range 1-4200` | manual table 2-2; with `-P`, the machine's spindle maximum (params 73-76) |
 | `feed move with no M3/M4 programmed` | the control stops with SPINDLE NOT ON CANNOT CUT unless the operator started the spindle |
-| cutter compensation, fillets, E words | not simulated (see the end of this file) |
+| fillets, E words | not simulated (see the end of this file) |
+| cutter compensation: co-linear moves, an M code, two Z-only moves, G92/G73/helix while it is on, a gouge, no G40 | the manual's rules, chapter 7 (see Cutter compensation) |
 
 The summary at the end of the trace counts the warnings. When the trace goes to a file, the console also
 says how many there were (`-silent` turns these console lines off).
@@ -272,10 +309,13 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
 5. `p*.txt` check the machine parameters with copies of the 6.89 and the TC22 `BMDCPRMS.SYS` (`P689.SYS`,
    `PTC22.SYS`) and `BMDCPRMS.INI`: each travel limit message, an arc past the limit, a canned cycle past
    the limit, the Z positive rule, the size check and a `-model` section.
+6. `cc*.txt` are the cutter-compensation tests: the manual's figures 7-3, 7-13, 7-14 and 7-15, and the
+   corner types, negative radius, diameter 0, mirror, Z-only moves and the warnings. The square, the
+   triangle, the inside corners and the arc-arc corner are also checked against points worked out by hand.
 
 ## Not simulated (yet)
 
-Cutter diameter compensation (G41/G42: the plot shows the programmed path), fillets (G22/G23: cut as a
-straight line to the corner), spherical coordinates (E), constant surface feed and feed per revolution
-(recorded only), tool length offsets and clear-point moves (traced, not applied), feed timing. `dxsim`
-prints a warning the first time a program uses one of them. `ROADMAP.md` has the plan for each.
+Fillets (G22/G23: cut as a straight line to the corner), spherical coordinates (E), feed per revolution
+(recorded only), constant surface feed outside cutter compensation, tool length offsets and clear-point
+moves (traced, not applied), feed timing. `dxsim` prints a warning the first time a program uses one of
+them. `ROADMAP.md` has the plan for each.

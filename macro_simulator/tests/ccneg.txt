@@ -1,0 +1,10 @@
+; cutter compensation: inside arc R.2 with a .5 dia tool -> Cutter-Comp: Negative Radius
+N1T1M6
+N2G0X-1.Y0
+N3G41X-.5
+N4G1X0F20.
+N5X1.
+N6G3X1.Y.4I1.J.2
+N7G1X0
+N8G40X-1.
+N9M2

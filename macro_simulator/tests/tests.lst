@@ -41,3 +41,15 @@ ptravcyc -P P689.SYS -zero 10.,8.,-15.
 ptravz -P P689.SYS -zero 10.,8.,-15.
 pspan -P P689.SYS
 pspantc -P PTC22.SYS -model VMC-1000/22
+ccsq -t 1=.5
+cctri -t 1=.5
+ccentry -t 1=.5
+ccnotch -t 1=.25 -t 2=1.
+ccstep -t 1=1.
+ccinside -t 1=.5
+ccarcarc -t 1=.5
+ccneg -t 1=.5
+cczero
+ccmirror -t 1=.5
+ccz -t 1=.5
+ccwarn -t 1=.5

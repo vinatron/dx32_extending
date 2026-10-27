@@ -226,7 +226,8 @@ void dxsclabel(dxplot *pl, const char *text, double x, double y)
 
 static void draw(int pen, double x0, double y0, double x1, double y1)
 {
-    _setcolor((short)(pen ? 11 : 12));          /* light cyan feed, light red rapid */
+    /* light cyan feed, light red rapid, green programmed path (cutter compensation) */
+    _setcolor((short)(pen == 2 ? 2 : pen ? 11 : 12));
     _setlinestyle((unsigned short)(pen ? 0xffff : 0xf0f0));
     _moveto((short)floor(x0 + 0.5), (short)(SCH - 1 - floor(y0 + 0.5)));
     _lineto((short)floor(x1 + 0.5), (short)(SCH - 1 - floor(y1 + 0.5)));

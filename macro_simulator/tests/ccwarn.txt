@@ -1,0 +1,19 @@
+; cutter compensation warnings: co-linear moves, an M code, two Z-only moves, and the end of the program with
+; compensation still on (flushed as if G40 had been programmed, without the move back)
+N1T1M6
+N2G0X-1.Y0
+N3G41X-.5
+N4G1X0F20.
+N5X1.
+N6X2.
+N7Y-1.
+N8M8
+N9Z-.1
+N10Z-.2
+N11X0
+N12G40X-.5Y-.5
+N13G41X-1.Y0
+N14G1X0
+N15X1.
+N16Y1.
+N17M2

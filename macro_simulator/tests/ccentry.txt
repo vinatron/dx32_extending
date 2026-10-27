@@ -1,0 +1,15 @@
+; cutter compensation, manual fig. 7-3: entry with a line, then with an arc, as the first element (-t 1=.5).
+; The figure's arc numbers are not on one circle; the arc here is R2.5 about (6.5,0) from (4,0) to (6.5,2.5).
+N1T1M6
+N10G0G41X1.Y2.
+N20G1X4.Y0.F20.
+N30G1X8.Y3.
+N35X10.
+N38G40X12.
+N40G0X1.Y2.
+N50G0G41X1.Y2.
+N60G1X4.Y0.F20.
+N70G2X6.5Y2.5I6.5J0
+N80G1X8.
+N90G40X10.Y3.
+N99M2
