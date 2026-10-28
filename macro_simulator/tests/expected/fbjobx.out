@@ -1,0 +1,6 @@
+FILE     fbjob.nc (from line 1)
+DIALECT  series 10 15 16 0i 30i (Macro B at line 18, THEN at line 18)
+REFUSED  line 5: G28 Z: give -g28 m25 (the DX32 quill home) or -g28 drop (leave it out)
+REFUSED  line 15: G28 Z: give -g28 m25 (the DX32 quill home) or -g28 drop (leave it out)
+STOP     fbwjobx.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

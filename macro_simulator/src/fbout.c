@@ -449,10 +449,48 @@ static void opencond(const fbn *c, int neg)
 /* ------------------------------------------------------------------ */
 /* statements                                                           */
 
+static const fbs *cursta;       /* the statement being written */
+static int ncancel, ng28, nalarm;
+
+/* a condition that tests a vacant variable (#0), e.g. an argument check: the evaluation ran
+   every call of the program, so if it always came out the same, it is that constant
+   (FB2DX.md 3.14).  -1 no such test, 0 / 1 always false / true, -2 both ways or never run */
+static int cfold(const fbs *s)
+{
+    if (!s->vtest) return -1;
+    if (s->ctrue && !s->cfalse) return 1;
+    if (s->cfalse && !s->ctrue) return 0;
+    return -2;
+}
+
+/* an IF..GOTO that really tests something (not folded to "always") */
+static int condjump(const fbs *s)
+{
+    return s->k == ST_IFGOTO && cfold(s) != 1;
+}
+
+/* #3000 (alarm) and #3006 (stop with a message): a comment with the message, then M2 / M0 */
+static int alarm(const fbn *lhs, const fbn *e, int close)
+{
+    long n;
+    char t[48];
+    if (lhs->k != EN_VAR || lhs->a->k != EN_NUM) return 0;
+    n = (long)lhs->a->v;
+    if (n != 3000 && n != 3006) return 0;
+    if (e->k == EN_NUM) sprintf(t, "%.0f", e->v);
+    else strcpy(t, "?");
+    out("; FANUC %s %s: %s", n == 3000 ? "alarm" : "stop", t, cursta && cursta->cmt ? cursta->cmt : "");
+    out(n == 3000 ? "M2" : "M0");
+    if (close) out("!");
+    nalarm++;
+    return 1;
+}
+
 static void assign(const fbn *lhs, const fbn *e, int close)
 {
     char b[420];
     const char *n;
+    if (alarm(lhs, e, close)) return;
     b[0] = 0;
     xe(e, b);
     n = varname(lhs);
@@ -647,7 +685,7 @@ static void hole(const fbs *s)
         }
     }
     /* the cycle variables first (a carrier may be among them), then the moves */
-    if (m & MO_CST) out("%s=Z20", cyi);
+    if ((m & MO_CST) && needpos) out("%s=Z20", cyi);     /* the initial level, for G98 */
     {
         int j = 0, n = npre;
         for (j = 0; j < n; j++)
@@ -724,6 +762,28 @@ static void nc(const fbs *s)
         dwell(s);
         return;
     }
+    if (findg(s, 28)) {                 /* G91 G28 Z0: the DX32 quill home (M25), or left out */
+        int bad = 0, inc = findg(s, 91) || ((s->modes & MO_INC) && !findg(s, 90));
+        for (i = 0; i < s->nw; i++) {
+            int l = s->w[i].l;
+            if (l == 'G' && whole(s->w[i].e, &v) && (v == 28 || v == 90 || v == 91)) continue;
+            if (l == 'Z' && inc && whole(s->w[i].e, &v) && v == 0) continue;
+            bad = 1;
+        }
+        if (bad || findw(s, 'Z') < 0) {
+            fail("only G91 G28 Z0 (Z to the reference point) translates");
+            return;
+        }
+        if (!X->par.g28) {
+            fail("G28 Z: give -g28 m25 (the DX32 quill home) or -g28 drop (leave it out)");
+            return;
+        }
+        if (findg(s, 91)) out("G91");
+        if (findg(s, 90)) out("G90");
+        if (X->par.g28 == 1) out("M25");
+        ng28++;
+        return;
+    }
     if (s->modes & MO_HOLE) {
         if (s->modes & (MO_LIN | MO_ARC)) fail("this block drills in one pass and moves in another");
         else hole(s);
@@ -744,6 +804,10 @@ static void nc(const fbs *s)
     for (i = 0; i < s->nw; i++) {
         int g;
         if (s->w[i].l != 'G') continue;
+        if (whole(s->w[i].e, &v) && (v == 15 || v == 50 || v == 50.1 || v == 69 || v == 64 || v == 13.1)) {
+            ncancel++;                  /* cancels of what never translates: nothing to cancel */
+            continue;
+        }
         if (!whole(s->w[i].e, &v) || v != floor(v)) {
             fail("G with a variable value does not translate");
             continue;
@@ -755,8 +819,8 @@ static void nc(const fbs *s)
             continue;
         }
         if (g == 98 || g == 99) continue;   /* the return level of the holes (written by hole()) */
-        if (!(g <= 3 || (g >= 17 && g <= 21) || (g >= 54 && g <= 59) || g == 80 || g == 90 || g == 91 ||
-              g == 94)) {
+        if (!(g <= 3 || (g >= 17 && g <= 21) || (g >= 54 && g <= 59) || g == 40 || g == 80 || g == 90 ||
+              g == 91 || g == 94)) {
             fail("G%d does not translate yet", g);
             continue;
         }
@@ -1024,6 +1088,7 @@ static void structure(fbx *x, int s0, int end, int sub)
         }
         if (s->k == ST_WHILE || s->k == ST_DO) newlab(i, s->pair, 1);
         if (s->k == ST_NC && (s->modes & (MO_C83 | MO_C73))) newlab(i, i, 2);  /* the peck loop */
+        if (s->k == ST_IFGOTO && cfold(s) == 0) continue;      /* never jumps */
         if (s->k != ST_GOTO && s->k != ST_IFGOTO && !early99(x, i, end, sub)) continue;
         curline = s->line;
         stfw[i - s0] = -3;              /* refused, until it is placed */
@@ -1128,14 +1193,14 @@ static void openjump(const fbs *s, int f)
 {
     fwd *w = &fw[f];
     if (w->flag < 0) {
-        if (s->k == ST_IFGOTO) opencond(s->e, 1);
+        if (condjump(s)) opencond(s->e, 1);
         else {
             const char *z = tmp();
             out("%s=0.", z);
             out("?%s<EQ>1.", z);
         }
     } else {                                    /* set the exit flag, then skip while it is set */
-        if (s->k == ST_IFGOTO) {
+        if (condjump(s)) {
             opencond(s->e, 0);
             out("%s=1.!", flg[w->flag]);
         } else out("%s=1.", flg[w->flag]);
@@ -1434,6 +1499,18 @@ static void emit(fbx *x, int k)
             fail("uses a vacant variable where the DX32 would use 0 (it has no vacant values)");
             continue;
         }
+        cursta = s;
+        if (s->vtest) {
+            int f = cfold(s);
+            if (f == -2 || s->k == ST_WHILE) {
+                fail("a test of a vacant variable (#0) that %s: the DX32 has no vacant values", s->k == ST_WHILE ?
+                     "decides a WHILE" : s->nexec ? "comes out both ways in this program" : "never ran");
+                continue;
+            }
+            fbrep(x, "NOTE", curline, "the #0 test is always %s here (the run covers every call); written so",
+                  f ? "true" : "false");
+            if (!f) continue;               /* nothing to write: the IF never holds */
+        }
         if (!s->nexec) {
             n = unsetst(s);
             if (n) {
@@ -1447,8 +1524,11 @@ static void emit(fbx *x, int k)
             assign(s->lhs, s->e, 0);
             break;
         case ST_IFTHEN:
-            opencond(s->e, 0);
-            assign(s->lhs, s->e2, 1);
+            if (s->vtest) assign(s->lhs, s->e2, 0);         /* folded: always true */
+            else {
+                opencond(s->e, 0);
+                assign(s->lhs, s->e2, 1);
+            }
             break;
         case ST_NC: {
             int g65;
@@ -1500,10 +1580,10 @@ static void emit(fbx *x, int k)
                 for (kk = 0; kk < nlb; kk++)
                     if (!lb[kk].loop && lb[kk].t == tg) break;
                 if (kk == nlb) { fail("internal: no label for this GOTO"); break; }
-                if (s->k == ST_IFGOTO) opencond(s->e, 0);
+                if (condjump(s)) opencond(s->e, 0);
                 lb[kk].lastjmp = nln;
                 special(LN_JMP, kk);
-                if (s->k == ST_IFGOTO) out("!");
+                if (condjump(s)) out("!");
             }
             break;
         case ST_UNSUP:
@@ -1608,7 +1688,8 @@ int fbwrite(fbx *x, const char *path)
     else if (g20) fbrep(x, "NOTE", 0, "the program switches between G20 and G21");
 
     /* arcs: G75 (multi-quadrant) at the top; G90 arcs need the position kept in X20 Y20 Z20 */
-    needpos = anyarc = anyhole = ntlen = ntsel = 0;
+    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = nalarm = 0;
+    cursta = 0;
     for (k = 0; k < nins; k++)
         for (i = ins[k].s0; i < ins[k].end; i++) {
             if (x->st[i]->modes & MO_ARC) anyarc = 1;
@@ -1700,6 +1781,12 @@ int fbwrite(fbx *x, const char *path)
     if (ntlen) fbrep(x, "NOTE", 0, "G43/G49 left out: the DX32 applies the tool length of the tool in the spindle "
                      "from its table (TENTATIVE)");
     if (ntsel) fbrep(x, "NOTE", 0, "T without M6 left out: the DX32 takes T in the M6 block");
+    if (ncancel) fbrep(x, "NOTE", 0, "G15/G50/G50.1/G64/G69/G13.1 left out: what they cancel never translates");
+    if (ng28) fbrep(x, "NOTE", 0, "G28 Z0 %s (-g28)", x->par.g28 == 1 ? "written as M25, the DX32 quill home "
+                    "(TENTATIVE: check that it goes where FANUC's reference point is)" :
+                    "left out: Z stays where it is; check the program is safe without it");
+    if (nalarm) fbrep(x, "NOTE", 0, "#3000/#3006 written as a comment with the message and M2/M0; the DX32 "
+                      "shows no message");
     if (maxl) fbrep(x, "NOTE", 0, "loops and jumps use labels L1-L%d; do not call this from a loop that uses them", maxl);
     if (nins > 1) {
         fbrep(x, "NOTE", 0, "%d called program(s) written as DX32 macros #1-#%d, nested %d deep", nins - 1, nins - 1,

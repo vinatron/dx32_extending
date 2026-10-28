@@ -548,6 +548,38 @@ as a separate program (`system()`; only the files it writes are read, so it work
 - **Skipped**, with a NOTE: when the unit system of some moves is not known, or the program makes more
   than 16000 moves.
 
+### 3.14 Shop programs: safety lines, argument checks, alarms, G28
+
+What typical FANUC jobs contain, beyond the phases above:
+- **Safety lines** (`G17 G21 G40 G49 G80 G90`):
+  - G40 is written as G40; G49 is left out (3.12).
+  - G15, G50, G50.1, G64, G69 and G13.1 are left out with a NOTE: what they cancel is refused anyway, so
+    there is nothing active to cancel.
+- **Argument checks**, e.g. `IF [#18 EQ #0] THEN #3000=1 (NO RADIUS)` or `IF [#2 EQ #0] GOTO 900`.
+  - **Why they can be folded:** the DX32 has no vacant value. But a program that translates has no
+    inputs from outside: system variables are refused, and an unset variable that is read is caught. So
+    the evaluator's run, which goes through every call in the input, is the run the machine will make.
+  - **How:** the evaluator counts, for every IF and WHILE, how often its condition held and how often it
+    didn't. A condition that tests a vacant variable and always came out the same is written as that
+    constant, with a NOTE:
+    - an IF..THEN that is always true is written as its assignment;
+    - one that is always false is left out;
+    - an IF..GOTO that is always true becomes a GOTO;
+    - one that is always false is no jump.
+  - **Refused:** a test that came out both ways (a macro called once with the argument and once without),
+    one that never ran, and one that decides a WHILE.
+- **Alarms:** `#3000 = n (MESSAGE)` becomes a comment with the number and the message, then `M2`, because a
+  FANUC alarm ends the run. `#3006 = n (MESSAGE)` becomes the comment and `M0`. The DX32 shows no message:
+  the comment is there for whoever reads the program. The evaluator stops at a #3000 alarm, as the control
+  does. The message is the first comment in the block (the reader keeps it).
+- **`G91 G28 Z0`** (Z to the reference point) needs `-g28`:
+  - `m25` writes the DX32 quill home, M25 (TENTATIVE: check that it goes where FANUC's reference point
+    is);
+  - `drop` leaves it out, so Z stays where it is.
+
+  Any other G28 is refused. After a G28 the evaluator treats those axes as not known, so a G90 arc or a
+  G98 cycle that needs them is refused until an absolute move.
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
@@ -576,6 +608,10 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **Shop programs:**
+  - `fbjob` is a typical job: a safety line, `G91 G28 Z0`, `T1 M6`, `G43`, two G65 bolt circles drilled with G81,
+    and argument checks with `#3000` alarms. It is translated with `-check`; without `-g28` it is refused.
+  - `fbvarg` has an argument check that comes out both ways, and is refused.
 - **Phase 6:** every translating entry in `fb.lst` runs with `-check`, and its expected report holds the CHECK
   line. `fbxcen.txt` (one arc centre moved) and `fbxend.txt` (one arc end point moved) are broken copies of the
   `fbarc` output; `-against` must refuse each of them at the right FANUC line.
@@ -634,7 +670,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | Phase 6: `-check` and `-against` (`src/fbcheck.c`), the FANUC tool path recorded by the evaluator, broken outputs caught in tests (163 passed). All six phases built |
+| 2026-10-28 | (this commit) | Shop programs (3.14): safety-line cancel codes, G40, argument checks folded from the evaluation, #3000/#3006 alarms, `-g28 m25|drop`; test `fbjob` (169 passed) |
+| 2026-10-28 | 788551b | Phase 6: `-check` and `-against` (`src/fbcheck.c`), the FANUC tool path recorded by the evaluator, broken outputs caught in tests (163 passed). All six phases built |
 | 2026-10-28 | 9a5323e | Phase 5 done: G81/G82/G83/G73 written out as moves with a peck loop, -fparam d83/d73, T/M6 from the evaluator, G43/G49 left out, axis words with no motion code refused (161 passed) |
 | 2026-10-28 | 8872bf5 | Phase 5, arcs: modal state per block from the evaluator, G90 centres from X20/Y20/Z20, R arcs, G18/G19, dwell, G54-G59 G80 G94 (155 passed) |
 | 2026-10-28 | 1408751 | Phase 4 built: G65/M98 as DX32 macros per program and level, caller-side arguments, early M99, labels over the call tree; exit flags for jumps out of nested structures; dxsim path checks for fbbolt, fbcall, fbexit (149 passed) |

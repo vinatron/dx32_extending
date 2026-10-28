@@ -15,6 +15,7 @@ static const char *const usage[] = {
     "  -fparam N=V      dpi=0|1 is=b|c nat=0|1 o8=0|1 avar=0|1, or default; repeatable",
     "  -inch | -mm      the unit system when the program has no G20/G21",
     "  -bdel on|off     the block delete switch, for programs with / blocks",
+    "  -g28 m25|drop    G91 G28 Z0: the DX32 quill home (M25), or leave it out",
     "  -parse           list the statements as read",
     "  -eval            evaluate the program and trace its NC blocks",
     "  -w FILE          write the DX32 program to FILE (only when nothing is refused)",
@@ -140,6 +141,14 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-eval")) eval = 1;
         else if (!strcmp(a, "-w") && i + 1 < argc) wout = argv[++i];
         else if (!strcmp(a, "-check")) chk = 1;
+        else if (!strcmp(a, "-g28") && i + 1 < argc) {
+            a = argv[++i];
+            x->par.g28 = !strcmp(a, "m25") ? 1 : !strcmp(a, "drop") ? 2 : -1;
+            if (x->par.g28 < 0) {
+                fprintf(stderr, "fb2dx: -g28 m25 or drop\n");
+                return 1;
+            }
+        }
         else if (!strcmp(a, "-against") && i + 1 < argc) against = argv[++i];
         else if (!strcmp(a, "-dxsim") && i + 1 < argc) dxsim = argv[++i];
         else if (!strcmp(a, "-limit") && i + 1 < argc) limit = atol(argv[++i]);

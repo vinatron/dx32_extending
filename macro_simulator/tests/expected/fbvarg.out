@@ -1,0 +1,5 @@
+FILE     fbvarg.nc (from line 1)
+DIALECT  series 10 15 16 0i 30i (Macro B at line 7, THEN at line 7)
+REFUSED  line 7: a test of a vacant variable (#0) that comes out both ways in this program: the DX32 has no vacant values
+STOP     fbwvarg.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

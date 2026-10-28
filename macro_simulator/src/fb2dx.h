@@ -46,6 +46,7 @@ typedef struct fbpar {
     int avar;       /* Macro A variables in addresses: 0 least increments, 1 whole units */
     int units;      /* 20 inch, 21 metric, 0 unknown (-inch/-mm) */
     int dflt;       /* -fparam default given */
+    int g28;        /* -g28: 0 not given, 1 m25 (quill home), 2 drop */
     double d83, d73;    /* G83 clearance, G73 retract (parameters 5115, 5114 on 16/0i/30i), program units */
     int hd83, hd73;     /* given */
 } fbpar;
@@ -115,6 +116,9 @@ typedef struct fbs {
     int vacbad;         /* the evaluator saw it use a vacant variable in a way the DX32 can't copy */
     long modes;         /* MO_ bits: the modal state the evaluator saw it run in */
     long tool;          /* M6: the T it changed to; -1 none, -2 more than one */
+    char *cmt;          /* the first comment in the block, or 0 (alarm messages) */
+    int vtest;          /* its condition tests a vacant variable (#0, argument checks) */
+    long ctrue, cfalse; /* how often its condition held / did not (IF, WHILE) */
 } fbs;
 
 /* fbs.modes */

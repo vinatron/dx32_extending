@@ -398,8 +398,8 @@ fb2dx PROG.NC -w PROG.TXT -check      write the DX32 program (only when nothing 
 
 The series is detected from what the program uses, or given with `-series a|0|6|10|15|16|0i|30i`. Where
 the meaning of a block depends on the series or on a machine parameter, `fb2dx` stops and says which
-option settles it (`-series`, `-fparam dpi=`, `nat=`, `is=`, `o8=`, `avar=`, or `-fparam default` for the
-factory settings). It never guesses.
+option settles it (`-series`, `-fparam dpi=`, `nat=`, `is=`, `o8=`, `avar=`, `d83=`, `d73=`, or `-fparam default`
+for the factory settings; `-g28 m25|drop` for `G91 G28 Z0`). It never guesses.
 
 ## Not simulated (yet)
 

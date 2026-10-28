@@ -246,7 +246,7 @@ static int cmp(const fbn *e)
     val a = ev(e->a, 0), b = ev(e->b, 0);
     if (e->op == CM_EQ || e->op == CM_NE) {
         int eq = a.vac || b.vac ? a.vac == b.vac : a.v == b.v;
-        if ((a.vac || b.vac) && cur) cur->vacbad = 1;      /* vacant tested: no DX32 equivalent */
+        if ((a.vac || b.vac) && cur) cur->vtest = 1;       /* vacant tested: folded if constant (3.14) */
         return e->op == CM_EQ ? eq : !eq;
     }
     if (a.vac) { a.v = 0; if (e->a->k == EN_VAR) vacread(varno(e->a)); }
@@ -310,6 +310,8 @@ static val ev(const fbn *e, int addr)
     return mkv(0);
 }
 
+static int halted;              /* #3000: the FANUC alarm stopped the program */
+
 static void assign(const fbn *lhs, const fbn *e)
 {
     val v, *p;
@@ -321,6 +323,16 @@ static void assign(const fbn *lhs, const fbn *e)
     }
     n = varno(lhs);
     if (err) return;
+    if (n == 3000 || n == 3006) {       /* alarm / stop with a message */
+        double a = num(e, 0);
+        const char *m = cur && cur->cmt ? cur->cmt : "";
+        tr("L%-5d %s #%ld=%.0f (%s)\n", curline, n == 3000 ? "ALARM " : "STOP  ", n, a, m);
+        if (n == 3000) {
+            fbrep(X, "NOTE", curline, "the FANUC alarm %.0f (%s) stops the program here", a, m);
+            halted = 1;
+        }
+        return;
+    }
     if (n == 0) {
         fail("REFUSED", "%s#0 cannot be set", "", 0);
         return;
@@ -519,7 +531,7 @@ static void holemoves(const fbs *s, int start)
 static void modal(fbs *s)
 {
     static const char ax[] = "XYZ";
-    int i, a, moved = 0, cw = 0, g4 = 0, pa, pb, newcyc = 0, start = 0, g43 = 0, hole = 0;
+    int i, a, moved = 0, cw = 0, g4 = 0, pa, pb, newcyc = 0, start = 0, g43 = 0, hole = 0, g28 = 0;
     double v, h = -1;
     for (i = 0; i < s->nw; i++) {
         int l = s->w[i].l;
@@ -538,6 +550,14 @@ static void modal(fbs *s)
         else if (v == 81 || v == 82 || v == 83 || v == 73) newcyc = (int)v;
         else if (v == 98 || v == 99) gret = (int)v;
         else if (v == 43) g43 = 1;
+        else if (v == 28) g28 = 1;
+    }
+    if (g28) {                          /* to the reference point: where that is, is not known */
+        for (i = 0; i < s->nw; i++) {
+            const char *p = strchr(ax, s->w[i].l);
+            if (p) known[p - ax] = 0;
+        }
+        return;
     }
     if (g43 && h != tool) s->modes |= MO_HBAD;
     if (g4) return;
@@ -643,6 +663,7 @@ int fbeval(fbx *x, FILE *out, long limit)
     gabs = 90;
     gmot = -1;
     gpl = 17;
+    halted = 0;
     gcyc = 0;
     gret = 98;
     tool = -1;
@@ -682,14 +703,28 @@ int fbeval(fbx *x, FILE *out, long limit)
         case ST_ASSIGN:
             assign(s->lhs, s->e);
             pc++;
+            if (halted) {
+                tr("END    the alarm\n");
+                return !x->stop;
+            }
             break;
         case ST_IFTHEN:
-            if (truth(s->e)) assign(s->lhs, s->e2);
+            if (truth(s->e)) {
+                s->ctrue++;
+                assign(s->lhs, s->e2);
+            } else s->cfalse++;
             pc++;
             break;
         case ST_IFGOTO:
         case ST_GOTO:
-            if (s->k == ST_IFGOTO && !truth(s->e)) { pc++; break; }
+            if (s->k == ST_IFGOTO) {
+                if (!truth(s->e)) {
+                    s->cfalse++;
+                    pc++;
+                    break;
+                }
+                s->ctrue++;
+            }
             {
                 double t = num(s->lhs, 0);
                 long n = (long)floor(t + 0.5);
@@ -708,7 +743,8 @@ int fbeval(fbx *x, FILE *out, long limit)
             }
             break;
         case ST_WHILE:
-            pc = truth(s->e) ? pc + 1 : s->pair + 1;
+            if (truth(s->e)) s->ctrue++, pc++;
+            else s->cfalse++, pc = s->pair + 1;
             break;
         case ST_DO:
             pc++;

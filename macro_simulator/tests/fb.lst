@@ -32,3 +32,6 @@ fbdrillw fbdrill  -fparam d83=.5 -fparam d73=.2 -w fbwdrill.txt -check
 fbdrillx fbdrill  -w fbwdrilx.txt
 fbxcen   fbarc    -against fbxcen.txt
 fbxend   fbarc    -against fbxend.txt
+fbjobw   fbjob    -g28 m25 -w fbwjob.txt -check
+fbjobx   fbjob    -w fbwjobx.txt
+fbvarg   fbvarg   -w fbwvarg.txt

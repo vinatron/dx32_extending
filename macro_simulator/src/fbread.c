@@ -336,15 +336,20 @@ static int domn(ps *s)
 }
 
 /* clean a line: comments out, blanks out, upper case; returns 0 for a blank line */
-static int clean(const char *in, char *out, int *bdel)
+static int clean(const char *in, char *out, int *bdel, char *cmt)
 {
-    int depth = 0;
+    int depth = 0, nc = 0, done = 0;
     char *o = out;
     *bdel = 0;
+    cmt[0] = 0;
     for (; *in; in++) {
         if (*in == '(') depth++;
-        else if (*in == ')') { if (depth) depth--; }
-        else if (depth) continue;
+        else if (*in == ')') {
+            if (depth && !--depth && nc) done = 1;
+        } else if (depth) {
+            if (!done && nc < 70 && *in != '\r' && *in != '\n') cmt[nc++] = *in, cmt[nc] = 0;
+            continue;
+        }
         else if (*in == ' ' || *in == '\t' || *in == '\r' || *in == '\n') continue;
         else *o++ = (char)toupper((unsigned char)*in);
     }
@@ -456,18 +461,19 @@ static void block(ps *s, fbs *st)
 /* read one file; *line counts lines over all files.  Returns 0 after a read error. */
 int fbread(fbx *x, FILE *fp, int file, int *line)
 {
-    char raw[FB_LINE], buf[FB_LINE];
+    char raw[FB_LINE], buf[FB_LINE], cmt[80];
     int bdel, ok = 1;
     while (fgets(raw, sizeof raw, fp)) {
         ps s;
         fbs *st;
         ++*line;
-        if (!clean(raw, buf, &bdel)) continue;
+        if (!clean(raw, buf, &bdel, cmt)) continue;
         st = addst(x);
         st->line = *line;
         st->file = file;
         st->bdel = bdel;
         st->text = fbstrdup(buf);
+        st->cmt = cmt[0] ? fbstrdup(cmt) : 0;
         s.p = buf;
         s.x = x;
         s.line = *line;
