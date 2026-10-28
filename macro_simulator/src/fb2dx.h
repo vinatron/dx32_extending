@@ -154,6 +154,9 @@ typedef struct fbs {
 #define MO_KL   67108864L
 #define MO_CYC  (MO_C81 | MO_C82 | MO_C83 | MO_C73 | MO_C85 | MO_C86 | MO_C89)
 
+#define FB_MVN  512     /* moves per chunk */
+#define FB_MVCH 32      /* chunks: 16384 moves at most */
+
 /* a move of the FANUC tool path (evaluator), in inches, for -check (FB2DX.md 3.13) */
 typedef struct fbmv {
     char k;             /* R rapid, F feed, 2 / 3 arc */
@@ -182,8 +185,8 @@ typedef struct fbx {
     int nfile;
     int bdelsw;         /* -bdel: -1 not given, 0 off, 1 on */
     char vset[1000];    /* the evaluator set #n at some point (any level) */
-    fbmv *mv;           /* the FANUC tool path */
-    int nmv, cmv;
+    fbmv *mvc[FB_MVCH]; /* the FANUC tool path, in chunks of FB_MVN (each under 64 KB for 16-bit DOS) */
+    int nmv;
     int mvunk;          /* moves in an unknown unit system: no -check */
 } fbx;
 
@@ -218,6 +221,7 @@ int fbeval(fbx *x, FILE *out, long limit);
 int fbwrite(fbx *x, const char *path);
 
 /* fbcheck.c */
+fbmv *fbmvat(fbx *x, int i);
 int fbcheck(fbx *x, const char *prog, const char *dxsim);
 
 #endif

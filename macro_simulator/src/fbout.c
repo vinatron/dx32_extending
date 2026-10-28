@@ -52,8 +52,13 @@ static void fail(const char *fmt, ...)
 static char **ln;
 static int nln, cln;
 
+
 static void addln(const char *t)
 {
+    if (nln == 16000) {                 /* the pointer array must stay under 64 KB (16-bit DOS) */
+        if (ok) fail("the DX32 program would be longer than 16000 lines");
+        return;
+    }
     if (nln == cln) {
         int nc = cln ? cln * 2 : 512;
         char **a = (char **)fbmalloc((unsigned)(nc * sizeof *a));
@@ -514,7 +519,7 @@ static double incr(int l)
     return (units == 20 ? 0.0001 : 0.001) / d;
 }
 
-static char pre[FB_MAXW][420];    /* static: the DOS stack is small */
+static char pre[2 * FB_MAXW + 8][420];    /* static: the DOS stack is small; up to 2 lines a word */
 
 static int hasm(const fbs *s, double m)
 {
@@ -1729,7 +1734,7 @@ static void emit(fbx *x, int k)
             }
             break;
         case ST_UNSUP:
-            fail("%s does not translate", s->text);
+            fail("%.200s does not translate", s->text);
             break;
         default:
             break;
@@ -1894,7 +1899,7 @@ int fbwrite(fbx *x, const char *path)
     if (ok) {
         W = fopen(path, "wb");
         if (!W) {
-            fbrep(x, "STOP", 0, "cannot write %s", path);
+            fbrep(x, "STOP", 0, "cannot write %.200s", path);
             ok = 0;
         } else {
             fbsnames(line, x->cand);
@@ -1921,7 +1926,7 @@ int fbwrite(fbx *x, const char *path)
     }
     if (!ok) {
         remove(path);
-        fbrep(x, "STOP", 0, "%s not written: see REFUSED above", path);
+        fbrep(x, "STOP", 0, "%.200s not written: see REFUSED above", path);
         x->stop = 1;
         return 0;
     }
@@ -1954,6 +1959,6 @@ int fbwrite(fbx *x, const char *path)
         if (mdepth > 4) fbrep(x, "NOTE", 0, "more than the 4 macro levels the manuals promise (6.89 allows 8)");
     }
     fbrep(x, "NOTE", 0, "the output needs BOSS 4-7 compatibility mode off");
-    fbrep(x, "WROTE", 0, "%s", path);
+    fbrep(x, "WROTE", 0, "%.200s", path);
     return 1;
 }

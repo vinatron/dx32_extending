@@ -371,9 +371,15 @@ static fbs *addst(fbx *x)
     st->pair = -1;
     st->tool = -1;
     st->krep = -1;
+    if (x->nst == 16000) {              /* the pointer array must stay under 64 KB (16-bit DOS) */
+        fbrep(x, "STOP", 0, "more than 16000 blocks: split the program");
+        exit(2);
+    }
     if (x->nst == x->cap) {
         int nc = x->cap ? x->cap * 2 : 256;
-        fbs **a = (fbs **)fbmalloc((unsigned)(nc * sizeof *a));
+        fbs **a;
+        if (nc > 16000) nc = 16000;
+        a = (fbs **)fbmalloc((unsigned)(nc * sizeof *a));
         if (x->nst) memcpy(a, x->st, x->nst * sizeof *a);
         if (x->st) free(x->st);
         x->st = a;
@@ -481,7 +487,7 @@ int fbread(fbx *x, FILE *fp, int file, int *line)
         s.err[0] = 0;
         block(&s, st);
         if (s.err[0]) {
-            fbrep(x, "REFUSED", *line, "cannot read the block %s: %s", st->text, s.err);
+            fbrep(x, "REFUSED", *line, "cannot read the block %.200s: %.150s", st->text, s.err);
             ok = 0;
         }
     }

@@ -32,8 +32,9 @@ win32w: .SYMBOLIC
 	wcc386 -bt=nt -wx -ox -q -DDX_SCREEN -DDX_WIN -fo=dxwin.obj dxwin.c
 	wcl386 -bt=nt -l=nt $(OPT) -DDX_SCREEN -DDX_WIN -fe=DXSIMW.EXE $(SRCW) dxwin.obj
 
+# fb2dx: a 16 KB stack (the default 4 KB is too small for the writer's nested calls)
 fb: .SYMBOLIC
-	wcl -bt=dos -ml $(OPT) -fe=FB2DX.EXE $(FBSRC)
+	wcl -bt=dos -ml $(OPT) -k16384 -fe=FB2DX.EXE $(FBSRC)
 
 fb32: .SYMBOLIC
 	wcl386 -bt=nt -l=nt $(OPT) -fe=FB2DX.EXE $(FBSRC)

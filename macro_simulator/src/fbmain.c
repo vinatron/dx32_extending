@@ -180,7 +180,7 @@ int main(int argc, char **argv)
     for (i = 0; i < x->nfile; i++) {
         FILE *fp = fopen(x->fname[i], "r");
         if (!fp) {
-            fbrep(x, "STOP", 0, "cannot open %s", x->fname[i]);
+            fbrep(x, "STOP", 0, "cannot open %.200s", x->fname[i]);
             ok = 0;
             break;
         }

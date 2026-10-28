@@ -753,7 +753,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | Rotation and shift (3.17): G68/G69/G52 as G73 A, G72 and G97, applied to the FANUC tool path too; tests `fbrot`, `fbxrot`, `fbrotx` (186 passed) |
+| 2026-10-28 | (this commit) | 16-bit DOS review (Watcom could not be run here): the FANUC tool path is kept in 512-move chunks (no object over 64 KB; the static 16000-move copy in fbcheck.c is gone); caps of 16000 statements and 16000 output lines; a 16 KB stack for FB2DX.EXE (\`-k16384\`); user text in messages limited to 200 characters; \`pre[]\` holds two lines a word (186 passed) |
+| 2026-10-28 | a0e7978 | Rotation and shift (3.17): G68/G69/G52 as G73 A, G72 and G97, applied to the FANUC tool path too; tests `fbrot`, `fbxrot`, `fbrotx` (186 passed) |
 | 2026-10-28 | d7f5113 | More drilling (3.16): G91 cycles, K/L repeats by series, G85 G86 G89 written out; test `fbrow` (181 passed) |
 | 2026-10-28 | 49b47ab | Cutter compensation (3.15): G41/G42 on a block of their own so FANUC's start-up move is the DX32 approach (type A), D checked against the tool, `-fparam sup`, `-comp dx32` for type B; the gouge of a plain copy found in dxsim and tested against (176 passed) |
 | 2026-10-28 | 36ae51d | Shop programs (3.14): safety-line cancel codes, G40, argument checks folded from the evaluation, #3000/#3006 alarms, `-g28 m25|drop`; test `fbjob` (169 passed) |

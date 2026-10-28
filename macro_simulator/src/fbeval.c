@@ -491,25 +491,18 @@ static void addmv(int k, double x, double y, double z, int hasc, double cx, doub
         return;
     }
     f = u == 20 ? 1.0 : 1.0 / 25.4;
-    if (X->nmv == X->cmv) {
-        int nc = X->cmv ? X->cmv * 2 : 256;
-        fbmv *a;
-        if (nc > 16000) {
-            X->mvunk = 1;
-            return;
-        }
-        a = (fbmv *)fbmalloc((unsigned)(nc * sizeof *a));
-        if (X->nmv) memcpy(a, X->mv, X->nmv * sizeof *a);
-        if (X->mv) free(X->mv);
-        X->mv = a;
-        X->cmv = nc;
+    if (X->nmv == FB_MVN * FB_MVCH) {
+        X->mvunk = 1;                   /* too long for -check */
+        return;
     }
+    if (!(X->nmv % FB_MVN) && !X->mvc[X->nmv / FB_MVN])
+        X->mvc[X->nmv / FB_MVN] = (fbmv *)fbmalloc((unsigned)(FB_MVN * sizeof(fbmv)));
     tform(&x, &y, &z);
     if (hasc) {
         double cz = 0;
         tform(&cx, &cy, &cz);
     }
-    m = &X->mv[X->nmv++];
+    m = fbmvat(X, X->nmv++);
     m->k = (char)k;
     m->line = curline;
     m->x = x * f;
@@ -835,7 +828,7 @@ int fbeval(fbx *x, FILE *out, long limit)
             pc = s->pair;
             break;
         case ST_UNSUP:
-            fbrep(x, "NOTE", s->line, "%s: output statement, not translated", s->text);
+            fbrep(x, "NOTE", s->line, "%.200s: output statement, not translated", s->text);
             pc++;
             break;
         case ST_PROG:
