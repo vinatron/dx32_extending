@@ -28,3 +28,5 @@ fbexitw  fbexit   -w fbwexit.txt
 fbcallw  fbcall   -w fbwcall.txt
 fbarcw   fbarc    -w fbwarc.txt
 fbarcx   fbarcx   -w fbwarcx.txt
+fbdrillw fbdrill  -fparam d83=.5 -fparam d73=.2 -w fbwdrill.txt
+fbdrillx fbdrill  -w fbwdrilx.txt

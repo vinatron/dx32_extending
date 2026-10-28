@@ -812,6 +812,34 @@ static void fbhand(void)
         check(na == 6 && !bad, "fb2dx arcs: the DX32 centres (absolute in G90) are the FANUC ones");
     }
 
+    /* phase 5: drilling cycles written out as moves, run in dxsim: hole positions and depths
+       worked out by hand, the G99/G98 return levels, the G83 pecks of 4 to Z-10 */
+    {
+        static const double ex[] = { 10, 20, 30, 10, 20, 30 }, ey[] = { 10, 10, 10, 30, 30, 30 },
+            ez[] = { -5, -5, -5, -3, -10, -6 };
+        double hx[16], hy[16], hz[16];
+        int n, bad = 0, pk = 0, after20 = -1, after30 = -1;
+        fb("fbdrill.nc -fparam d83=.5 -fparam d73=.2 -w fbwdrill.txt");
+        movesx("fbwdrill", "");
+        n = holes(hx, hy, hz, 16);
+        for (i = 0; i < n && i < 6; i++)
+            if (!near(hx[i], ex[i] / 25.4, 1e-4) || !near(hy[i], ey[i] / 25.4, 1e-4) || !near(hz[i], ez[i] / 25.4, 1e-4))
+                bad++;
+        sprintf(what, "fb2dx G81/G82/G83/G73 in dxsim: %d holes at the FANUC positions and depths", n);
+        check(n == 6 && !bad, what);
+        for (i = 1; i < nmv; i++) {
+            /* the feeds at X20 Y30: the pecks reach -2, -6, -10 */
+            if (mvs[i].k == 'F' && near(mvs[i].x, 20 / 25.4, 1e-4) && near(mvs[i].y, 30 / 25.4, 1e-4)) pk++;
+            /* the first rapid up after the bottoms of the holes at Y10 */
+            if (mvs[i].k == 'R' && mvs[i - 1].k == 'F' && near(mvs[i].y, 10 / 25.4, 1e-4)) {
+                if (near(mvs[i].x, 20 / 25.4, 1e-4)) after20 = near(mvs[i].z, 2 / 25.4, 1e-4);
+                if (near(mvs[i].x, 30 / 25.4, 1e-4)) after30 = near(mvs[i].z, 20 / 25.4, 1e-4);
+            }
+        }
+        check(pk == 3 && after20 == 1 && after30 == 1,
+              "fb2dx drilling: G83 in 3 pecks, G99 back to R, G98 back to the initial level");
+    }
+
     /* M98 P30100: three passes, the subprogram adds 1 to the caller's #1 */
     fb("fbm98.nc -eval -series 0");
     n = fbxy(x, y, z, 16);

@@ -14,7 +14,7 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 | 2 | Variables and expressions: allocation, PPPL output, numbers always with a point | **done** for straight-line programs (section 3.9) |
 | 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | **done** (section 3.10), with exit flags for jumps out of nested structures |
 | 4 | Calls: `M98`/`M99`, `G65` to `#n` macros with caller-side assignments | **done** (section 3.11) |
-| 5 | Motion subset: G0-G3 (with `R`), G81, G83, G90/G91, F, S, T, M | **in progress**: arcs and dwell done (section 3.12); drilling cycles and tool changes next |
+| 5 | Motion subset: G0-G3 (with `R`), G81, G83, G90/G91, F, S, T, M | **done** (section 3.12): arcs, dwell, G81/G82/G83/G73 written out as moves, T/M6, G43/G49 |
 | 6 | Checking: `dxsim -lint` on the output, then both programs run and the tool paths compared | not started |
 
 ## 2. What the control does (facts the translation relies on)
@@ -469,7 +469,7 @@ and L (L up to 99).
   L1 loop uses L2. The total must stay within L1-L7.
 - **Temporaries and carriers** are only used inside one statement, so calls can't disturb them.
 
-### 3.12 Phase 5 as built: arcs, dwell, more G codes
+### 3.12 Phase 5 as built: arcs, dwell, drilling, tools
 
 The evaluator records, for every NC block it runs, the modal state it ran in (`fbs.modes`): G90 or G91, the
 plane, G0/G1 or G2/G3, whether the current position in the arc's plane was known, and a negative R. The
@@ -491,6 +491,38 @@ writer refuses a block that ran in two different states.
   `../LANGUAGE.md` section 11. The time is .01-327.68 s in steps of .01, otherwise it is refused.
 - **More G codes passed through:** G2 G3 G18 G19, G54-G59, G80, G94.
 - **Word order:** the G codes, then X Y Z, then the rest.
+- **Drilling cycles** (G81 G82 G83 G73, G90). The DX32's own cycles work differently (its G81 Z is a depth
+  below the current height, `../LANGUAGE.md` 13), so each FANUC hole is written out as moves:
+  - rapid to X Y; rapid to R; then
+    - G81: feed to Z;
+    - G82: feed to Z, then dwell P (ms);
+    - G83/G73: a DX32 loop of pecks of Q down from R. G83 goes back to R after each peck, then rapids
+      to the last depth less d83 (parameter 5115); G73 retracts by d73 (parameter 5114).
+  - Then rapid to the initial level (G98) or to R (G99).
+
+  The cycle values (Z, R, Q, P, the initial level) live in five pool variables, set where the FANUC block
+  sets them, so values from variables and macros work.
+  - **The initial level** is Z where the cycle starts (the Z position must be known there).
+  - **The evaluator decides which blocks are holes:** in cycle mode, a block with X, Y, Z or R
+    (TENTATIVE: that is how FANUC describes it).
+  - **The peck loop** is a label region of its own (`loop = 2`), numbered with the others.
+  - **Peck parameters:** d83 and d73 are machine parameters, so `-fparam d83=`/`d73=` (program units)
+    must be given. `-fparam default` does not cover them.
+  - **Refused:** G91 cycles; K/L repeats; G84-G89 and G76 (tapping, boring); a block that drills in one
+    pass and moves in another.
+- **Tools:**
+  - `T` is written with `M6` as `T<n>M6`, using the tool the evaluator saw in the spindle at that M6 (an M6
+    that changes to different tools in different passes is refused). A `T` without `M6` is left out.
+  - **G43 H / G49:** left out, with a NOTE: the DX32 applies the length of the tool in the spindle from its
+    table (TENTATIVE). G43 with an H other than that tool is refused.
+- **Axis words with no G0-G3 in force** (after G80, or before the first motion code) are refused, because
+  FANUC's motion there depends on the control (power-on G0 or G1 is a parameter).
+- **Not translated yet**, refused with the reason:
+  - cutter compensation G40/G41/G42 (D numbers against the DX32's T table);
+  - G68 rotation, G51 scaling;
+  - G28/G30, G10, G52, G53;
+  - G84-G89, G76.
+
 
 ## 4. Errors and warnings (the report)
 
@@ -519,6 +551,9 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **Phase 5, drilling:** `fbdrill` (G81 with G99/G98, G82 with a dwell from a variable depth, G83, G73, two
+  tool changes with G43) is translated and run in dxsim. dxtest checks the six holes' positions and depths, the
+  three G83 pecks and the return levels. `fbdrillx` checks the refusal without d83/d73.
 - **Phase 5, arcs:** `fbarc` is translated and run in dxsim. Its end points are compared with the FANUC
   evaluation, and its arc centres with values worked out by hand. `fbarcx` checks the refusals (unknown
   position, R below 0, helix).
@@ -553,7 +588,7 @@ output.
 - **3** ☑ jumps and loops found (`structure`) ☑ structure check (`check`) ☑ `?`/`!` and label writer
   ☑ jumps out of a loop to other blocks (exit flags)
 - **4** ☑ `M98`/`M99` (early returns too) ☑ `G65` with arguments and L ☑ depth and recursion checks ☑ labels over the call tree
-- **5** ☑ arcs (G90 absolute centres from a tracked position) ☑ dwell ☐ G81/G82/G83/G73 ☐ T, M6, G43/G49
+- **5** ☑ arcs (G90 absolute centres from a tracked position) ☑ dwell ☑ G81/G82/G83/G73 (as moves) ☑ T, M6, G43/G49
 - **6** ☐ `-check`
 
 ## 7. Open questions
@@ -571,7 +606,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | Phase 5, arcs: modal state per block from the evaluator, G90 centres from X20/Y20/Z20, R arcs, G18/G19, dwell, G54-G59 G80 G94 (155 passed) |
+| 2026-10-28 | (this commit) | Phase 5 done: G81/G82/G83/G73 written out as moves with a peck loop, -fparam d83/d73, T/M6 from the evaluator, G43/G49 left out, axis words with no motion code refused (161 passed) |
+| 2026-10-28 | 8872bf5 | Phase 5, arcs: modal state per block from the evaluator, G90 centres from X20/Y20/Z20, R arcs, G18/G19, dwell, G54-G59 G80 G94 (155 passed) |
 | 2026-10-28 | 1408751 | Phase 4 built: G65/M98 as DX32 macros per program and level, caller-side arguments, early M99, labels over the call tree; exit flags for jumps out of nested structures; dxsim path checks for fbbolt, fbcall, fbexit (149 passed) |
 | 2026-10-28 | ff2da1d | Phase 3 built for the main program: WHILE/DO/END, GOTO, IF..GOTO as labels and ?/! regions, checked before writing; breaks out of loops; dxsim path checks (142 passed) |
 | 2026-10-28 | 7101cae | Phase 2 built for straight-line programs: `-w`, `src/fbout.c`, variable pool and carriers, PPPL expressions, `FIX`/`FUP`/`ROUND`/`ATAN`/`ASIN`/`MOD` expansions checked in dxsim, vacancy refusals (134 passed) |

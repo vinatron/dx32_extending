@@ -46,6 +46,8 @@ typedef struct fbpar {
     int avar;       /* Macro A variables in addresses: 0 least increments, 1 whole units */
     int units;      /* 20 inch, 21 metric, 0 unknown (-inch/-mm) */
     int dflt;       /* -fparam default given */
+    double d83, d73;    /* G83 clearance, G73 retract (parameters 5115, 5114 on 16/0i/30i), program units */
+    int hd83, hd73;     /* given */
 } fbpar;
 
 /* ------------------------------------------------------------------ */
@@ -111,7 +113,8 @@ typedef struct fbs {
     char *text;         /* the block as written, comments removed */
     long nexec;         /* times the evaluator ran it */
     int vacbad;         /* the evaluator saw it use a vacant variable in a way the DX32 can't copy */
-    int modes;          /* MO_ bits: the modal state the evaluator saw it run in */
+    long modes;         /* MO_ bits: the modal state the evaluator saw it run in */
+    long tool;          /* M6: the T it changed to; -1 none, -2 more than one */
 } fbs;
 
 /* fbs.modes */
@@ -124,6 +127,18 @@ typedef struct fbs {
 #define MO_P17   64     /* plane G17 / G18 / G19 */
 #define MO_P18  128
 #define MO_P19  256
+#define MO_HOLE  512L   /* a drilling cycle hole (G81 G82 G83 G73) */
+#define MO_C81  1024L
+#define MO_C82  2048L
+#define MO_C83  4096L
+#define MO_C73  8192L
+#define MO_R98 16384L   /* back to the initial level / to R */
+#define MO_R99 32768L
+#define MO_CST 65536L   /* the cycle started here (the initial level is taken) */
+#define MO_NOMOT 131072L    /* axis words with no G0-G3 in force (after G80, or at the start) */
+#define MO_HBAD 262144L     /* G43 H other than the tool in the spindle */
+#define MO_UNKZ 524288L     /* a cycle started while Z was not known */
+#define MO_CYC  (MO_C81 | MO_C82 | MO_C83 | MO_C73)
 
 /* ------------------------------------------------------------------ */
 /* shared state                                                         */

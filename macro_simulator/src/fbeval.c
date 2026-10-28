@@ -446,22 +446,37 @@ static int args(const fbs *s, val *a)
 }
 
 /* the modal state of the axes, as the FANUC control keeps it (for the writer, FB2DX.md 3.12) */
-static int gabs, gmot, gpl, known[3];
+static int gabs, gmot, gpl, known[3], gcyc, gret, tool;
 
 static void modal(fbs *s)
 {
     static const char ax[] = "XYZ";
-    int i, a, moved = 0, cw = 0, g4 = 0, pa, pb;
-    double v;
+    int i, a, moved = 0, cw = 0, g4 = 0, pa, pb, newcyc = 0, start = 0, g43 = 0, hole = 0;
+    double v, h = -1;
     for (i = 0; i < s->nw; i++) {
         int l = s->w[i].l;
+        if (l == 'T' && wval(s, i, &v)) tool = (int)v;
+        if (l == 'H' && wval(s, i, &v)) h = v;
+        if (l == 'M' && wval(s, i, &v) && v == 6) {
+            if (s->tool == -1) s->tool = tool;
+            else if (s->tool != tool) s->tool = -2;
+        }
         if (l != 'G' || !wval(s, i, &v)) continue;
-        if (v == 0 || v == 1 || v == 2 || v == 3) gmot = (int)v;
+        if (v == 0 || v == 1 || v == 2 || v == 3) gmot = (int)v, gcyc = 0;
         else if (v == 90 || v == 91) gabs = (int)v;
         else if (v == 17 || v == 18 || v == 19) gpl = (int)v;
         else if (v == 4) g4 = 1;
+        else if (v == 80) gcyc = 0, gmot = 80;
+        else if (v == 81 || v == 82 || v == 83 || v == 73) newcyc = (int)v;
+        else if (v == 98 || v == 99) gret = (int)v;
+        else if (v == 43) g43 = 1;
     }
+    if (g43 && h != tool) s->modes |= MO_HBAD;
     if (g4) return;
+    if (newcyc) {
+        if (!gcyc) start = 1;
+        gcyc = newcyc;
+    }
     for (i = 0; i < s->nw; i++) {
         int l = s->w[i].l;
         const char *p = strchr(ax, l);
@@ -470,13 +485,31 @@ static void modal(fbs *s)
         if (p && wval(s, i, &v)) moved = 1;
     }
     s->modes |= gabs == 91 ? MO_INC : MO_ABS;
+    if (gcyc)                           /* a hole in a block with X Y Z or R (TENTATIVE: FB2DX.md 3.12) */
+        for (i = 0; i < s->nw; i++)
+            if (strchr("XYZR", s->w[i].l)) hole = 1;
+    if (hole) {
+        s->modes |= MO_HOLE | (gcyc == 81 ? MO_C81 : gcyc == 82 ? MO_C82 : gcyc == 83 ? MO_C83 : MO_C73);
+        s->modes |= gret == 99 ? MO_R99 : MO_R98;
+        if (start) s->modes |= MO_CST;
+        if (start && !known[2]) s->modes |= MO_UNKZ;
+        for (i = 0; i < s->nw; i++) {
+            const char *p = strchr(ax, s->w[i].l);
+            if (s->w[i].l == 'Q' && (gcyc == 83 || gcyc == 73) && wval(s, i, &v) && v <= 0)
+                fail("REFUSED", "%sG83/G73 with Q <= 0: alarm on the control", "", 0);
+            if (!p || s->w[i].l == 'Z' || !wval(s, i, &v)) continue;
+            if (gabs == 90) known[p - ax] = 1;
+        }
+        return;
+    }
     s->modes |= gpl == 18 ? MO_P18 : gpl == 19 ? MO_P19 : MO_P17;
     if ((gmot == 2 || gmot == 3) && (moved || cw)) {
         s->modes |= MO_ARC;
         pa = gpl == 18 ? 2 : gpl == 19 ? 1 : 0;
         pb = gpl == 18 ? 0 : gpl == 19 ? 2 : 1;
         if (!known[pa] || !known[pb]) s->modes |= MO_UNK;
-    } else if (moved) s->modes |= MO_LIN;
+    } else if (moved && (gmot == 80 || gmot < 0)) s->modes |= MO_NOMOT;
+    else if (moved) s->modes |= MO_LIN;
     for (i = 0; i < s->nw; i++) {
         const char *p = strchr(ax, s->w[i].l);
         if (!p || !wval(s, i, &v)) continue;
@@ -524,6 +557,9 @@ int fbeval(fbx *x, FILE *out, long limit)
     gabs = 90;
     gmot = -1;
     gpl = 17;
+    gcyc = 0;
+    gret = 98;
+    tool = -1;
     known[0] = known[1] = known[2] = 0;
     nvac = 0;
     units = 0;

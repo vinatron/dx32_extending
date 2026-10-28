@@ -82,6 +82,30 @@ static void special(int kind, int id)
     addln(b);
 }
 
+#define MAXST 256
+
+typedef struct fwd {    /* a ? region that closes just before statement t (FB2DX.md 3.10, 3.11):
+                           kind 0: opened by statement i (a forward GOTO, an early M99);
+                           kind 1: a guard ?F<EQ>0. opened just before statement i */
+    int i, t, id, kind;
+    int flag;           /* index in flg[], or -1: the jump leaves enclosing loops or regions */
+} fwd;
+
+static char flg[MAXST][4];      /* exit flags of the current program */
+static int nflg;
+
+typedef struct lab {    /* a label region: the label before statement t, jumps up to statement e */
+    int t, e, loop;
+    int line, lastjmp;  /* output lines, filled in while writing */
+    int n;              /* the label number */
+} lab;
+
+static fwd fw[MAXST];
+static lab lb[MAXST];
+static int nfw, nlb, nreg;
+static int ropen[2 * MAXST], rmark[2 * MAXST], rline[2 * MAXST];
+static int stfw[2 * MAXST];     /* region id of the ? opened by each statement, -1 if none */
+
 /* a DX32 number: always with a decimal point, up to 9 decimals */
 static void dxnum(char *b, double v)
 {
@@ -464,6 +488,9 @@ static int hasm(const fbs *s, double m)
 }
 
 static int needpos, anyarc;     /* a G90 arc somewhere: keep the position in X20 Y20 Z20 */
+static int anyhole;
+static char cyz[4], cyr[4], cyi[4], cyq[4], cyp[4];    /* drilling: Z, R, initial level, Q, dwell */
+static int curlab;              /* the label region of the statement being written (peck loops) */
 
 /* the DX32 text of dimension word i: a number in the unit's format, or the word letter's
    carrier, assigned in pre[] (FB2DX.md 3.6).  0 when it can't be written. */
@@ -515,6 +542,17 @@ static int dimval(const fbs *s, int i, char *txt, int *npre)
 }
 
 /* a word from dimval()'s text: a number gets the letter, a carrier is the word itself */
+static int ntlen, ntsel;        /* G43/G49 left out, T without M6 left out */
+
+static int findg(const fbs *s, double g)
+{
+    int i;
+    double v;
+    for (i = 0; i < s->nw; i++)
+        if (s->w[i].l == 'G' && whole(s->w[i].e, &v) && v == g) return 1;
+    return 0;
+}
+
 static void word(char *blk, int l, const char *txt)
 {
     if (txt[0] >= 'A' && txt[0] <= 'Z') strcat(blk, txt);
@@ -556,6 +594,116 @@ static void dwell(const fbs *s)
     out("G4");
 }
 
+/* a drilling cycle hole, written out as moves (FB2DX.md 3.12): G81 G82 G83 G73, G90 only */
+static void hole(const fbs *s)
+{
+    static const char axes[] = "XYZ";
+    char txt[48], blk[420], fw[48];
+    int i, npre = 0, hasxy = 0, k;
+    long m = s->modes;
+    const char *ret;
+    fw[0] = 0;
+    blk[0] = 0;
+    if (m & MO_INC) { fail("a drilling cycle in G91 does not translate yet"); return; }
+    if ((m & MO_R98) && (m & MO_R99)) { fail("this hole runs with G98 and with G99"); return; }
+    if (((m & MO_C81) != 0) + ((m & MO_C82) != 0) + ((m & MO_C83) != 0) + ((m & MO_C73) != 0) > 1) {
+        fail("this block drills with more than one cycle in different passes");
+        return;
+    }
+    if ((m & MO_CST) && (m & MO_UNKZ)) { fail("the cycle starts where Z is not known: no initial level"); return; }
+    if ((m & MO_C83) && !X->par.hd83) { fail("G83: give the peck clearance with -fparam d83= (parameter 5115)"); return; }
+    if ((m & MO_C73) && !X->par.hd73) { fail("G73: give the peck retract with -fparam d73= (parameter 5114)"); return; }
+    for (i = 0; i < s->nw; i++) {
+        int l = s->w[i].l;
+        double v;
+        if (l == 'G') {
+            if (whole(s->w[i].e, &v) && (v == 90 || v == 98 || v == 99 || v == 17 || v == 81 || v == 82 ||
+                v == 83 || v == 73 || v == 21 || v == 20)) {
+                if (v == 20 || v == 21) units = (int)v;
+                continue;
+            }
+            if (whole(s->w[i].e, &v)) fail("G%g in a drilling block does not translate", v);
+            else fail("G with a variable value does not translate");
+            return;
+        }
+        if (l == 'X' || l == 'Y') {
+            if (!dimval(s, i, txt, &npre)) return;
+            word(blk, l, txt);
+            if (needpos) sprintf(pre[npre++], "%c20=%s", l, txt);
+            hasxy = 1;
+        } else if (l == 'Z' || l == 'R' || l == 'Q') {
+            if (!dimval(s, i, txt, &npre)) return;
+            sprintf(pre[npre++], "%s=%s", l == 'Z' ? cyz : l == 'R' ? cyr : cyq, txt);
+        } else if (l == 'P') {
+            if (!whole(s->w[i].e, &v) || v < 0) { fail("P (dwell) in a drilling block must be a constant"); return; }
+            dxnum(txt, v / 1000.0);
+            sprintf(pre[npre++], "%s=%s", cyp, txt);
+        } else if (l == 'F') {
+            if (!dimval(s, i, txt, &npre)) return;
+            word(fw, 'F', txt);
+        } else {
+            fail("%c in a drilling block does not translate (K/L repeats among them)", l);
+            return;
+        }
+    }
+    /* the cycle variables first (a carrier may be among them), then the moves */
+    if (m & MO_CST) out("%s=Z20", cyi);
+    {
+        int j = 0, n = npre;
+        for (j = 0; j < n; j++)
+            if (strncmp(pre[j], "X20=", 4) && strncmp(pre[j], "Y20=", 4)) out("%s", pre[j]);
+    }
+    if (hasxy) out("G0%s", blk);
+    out("Z21=%s", cyr);
+    out("G0Z21");
+    if (m & (MO_C81 | MO_C82)) {
+        out("Z21=%s", cyz);
+        out("G1Z21%s", fw);
+        if (m & MO_C82) {
+            out("Q19=%s", cyp);
+            out("G4Q19");
+            out("G4");
+        }
+    } else {                            /* the pecks: a loop down from R */
+        const char *dp = tmp(), *dn = tmp();
+        char d[48];
+        dxnum(d, (m & MO_C83) ? X->par.d83 : X->par.d73);
+        out("%s=%s", dp, cyr);
+        for (k = 0; k < nlb; k++)
+            if (lb[k].loop == 2 && lb[k].t == curlab) break;
+        lb[k].line = nln;
+        special(LN_LAB, k);
+        out("?%s<GT>%s", dp, cyz);
+        out("%s=%s-%s", dn, dp, cyq);
+        out("?%s<LT>%s", dn, cyz);
+        out("%s=%s!", dn, cyz);
+        if (m & MO_C83) {               /* back down to the last depth, less the clearance */
+            out("?%s<LT>%s", dp, cyr);
+            out("Z21=%s+%s", dp, d);
+            out("G0Z21!");
+        }
+        out("Z21=%s", dn);
+        out("G1Z21%s", fw);
+        fw[0] = 0;
+        if (m & MO_C83) out("Z21=%s", cyr);
+        else out("Z21=%s+%s", dn, d);
+        out("G0Z21");
+        out("%s=%s", dp, dn);
+        lb[k].lastjmp = nln;
+        special(LN_JMP, k);
+        out("!");
+    }
+    ret = (m & MO_R99) ? cyr : cyi;
+    out("Z21=%s", ret);
+    out("G0Z21");
+    if (needpos) {
+        for (i = 0; i < npre; i++)
+            if (!strncmp(pre[i], "X20=", 4) || !strncmp(pre[i], "Y20=", 4)) out("%s", pre[i]);
+        out("Z20=Z21");
+    }
+    (void)axes;
+}
+
 static void nc(const fbs *s)
 {
     static const char axes[] = "XYZ", ctr[] = "IJK";
@@ -576,6 +724,20 @@ static void nc(const fbs *s)
         dwell(s);
         return;
     }
+    if (s->modes & MO_HOLE) {
+        if (s->modes & (MO_LIN | MO_ARC)) fail("this block drills in one pass and moves in another");
+        else hole(s);
+        return;
+    }
+    if (s->modes & MO_NOMOT) {
+        fail("axis words with no G0/G1 in force (after G80, or before the first one): FANUC's motion there "
+             "depends on the control; give G0 or G1");
+        return;
+    }
+    if (s->modes & MO_HBAD) {
+        fail("G43 H other than the tool in the spindle: the DX32 takes the length of the tool itself");
+        return;
+    }
     arc = (s->modes & MO_ARC) != 0;
     plane = s->modes & MO_P18 ? 18 : s->modes & MO_P19 ? 19 : 17;
     /* G codes first: G20/G21 decide how the dimension words in the block are written */
@@ -588,6 +750,11 @@ static void nc(const fbs *s)
         }
         g = (int)v;
         if (g == 20 || g == 21) units = g;
+        if (g == 43 || g == 49) {       /* tool length: the DX32 takes it from the tool table */
+            ntlen++;
+            continue;
+        }
+        if (g == 98 || g == 99) continue;   /* the return level of the holes (written by hole()) */
         if (!(g <= 3 || (g >= 17 && g <= 21) || (g >= 54 && g <= 59) || g == 80 || g == 90 || g == 91 ||
               g == 94)) {
             fail("G%d does not translate yet", g);
@@ -602,6 +769,22 @@ static void nc(const fbs *s)
         const fbn *e = s->w[i].e;
         const char *p;
         if (l == 'G' || (m98 && (l == 'P' || l == 'L'))) continue;
+        if (l == 'H' && findg(s, 43)) continue;
+        if (l == 'T') {                 /* the DX32 takes T with M6 (written there) */
+            if (!hasm(s, 6)) ntsel++;
+            continue;
+        }
+        if (l == 'M' && whole(e, &v) && v == 6) {
+            if (s->tool < 0) {
+                fail(s->tool == -2 ? "M6 changes to different tools in different passes" :
+                     "M6 not reached when evaluated: the tool is not known");
+                continue;
+            }
+            if (++nm > 1) { fail("more than one M code in a block (the DX32 takes one)"); continue; }
+            sprintf(t, "T%ldM6", s->tool);
+            cat(blk, t);
+            continue;
+        }
         if (l == 'M') {
             if (!whole(e, &v)) { fail("M with a variable value does not translate"); continue; }
             if (v == 98 || v == 99) continue;   /* the call or the return: written by the caller of nc() */
@@ -747,30 +930,6 @@ static void prescan(const fbn *e)
 /* ------------------------------------------------------------------ */
 /* phase 3: jumps and loops (FB2DX.md 3.5, 3.10)                        */
 
-#define MAXST 256
-
-typedef struct fwd {    /* a ? region that closes just before statement t (FB2DX.md 3.10, 3.11):
-                           kind 0: opened by statement i (a forward GOTO, an early M99);
-                           kind 1: a guard ?F<EQ>0. opened just before statement i */
-    int i, t, id, kind;
-    int flag;           /* index in flg[], or -1: the jump leaves enclosing loops or regions */
-} fwd;
-
-static char flg[MAXST][4];      /* exit flags of the current program */
-static int nflg;
-
-typedef struct lab {    /* a label region: the label before statement t, jumps up to statement e */
-    int t, e, loop;
-    int line, lastjmp;  /* output lines, filled in while writing */
-    int n;              /* the label number */
-} lab;
-
-static fwd fw[MAXST];
-static lab lb[MAXST];
-static int nfw, nlb, nreg;
-static int ropen[2 * MAXST], rmark[2 * MAXST], rline[2 * MAXST];
-static int stfw[2 * MAXST];     /* region id of the ? opened by each statement, -1 if none */
-
 static int newreg(int line)
 {
     if (nreg == 2 * MAXST) {
@@ -864,6 +1023,7 @@ static void structure(fbx *x, int s0, int end, int sub)
             continue;
         }
         if (s->k == ST_WHILE || s->k == ST_DO) newlab(i, s->pair, 1);
+        if (s->k == ST_NC && (s->modes & (MO_C83 | MO_C73))) newlab(i, i, 2);  /* the peck loop */
         if (s->k != ST_GOTO && s->k != ST_IFGOTO && !early99(x, i, end, sub)) continue;
         curline = s->line;
         stfw[i - s0] = -3;              /* refused, until it is placed */
@@ -956,7 +1116,7 @@ static void atpos(int p)
     for (;;) {
         best = -1;
         for (k = 0; k < nlb; k++)
-            if (lb[k].t == p && lb[k].line < 0 && (best < 0 || lb[k].e > lb[best].e)) best = k;
+            if (lb[k].t == p && lb[k].loop != 2 && lb[k].line < 0 && (best < 0 || lb[k].e > lb[best].e)) best = k;
         if (best < 0) break;
         lb[best].line = nln;
         special(LN_LAB, best);
@@ -1293,6 +1453,7 @@ static void emit(fbx *x, int k)
         case ST_NC: {
             int g65;
             long o, cnt;
+            curlab = i;
             if (callinfo(x, s, &g65, &o, &cnt)) {
                 callout(x, s, k);
                 break;
@@ -1447,12 +1608,22 @@ int fbwrite(fbx *x, const char *path)
     else if (g20) fbrep(x, "NOTE", 0, "the program switches between G20 and G21");
 
     /* arcs: G75 (multi-quadrant) at the top; G90 arcs need the position kept in X20 Y20 Z20 */
-    needpos = anyarc = 0;
+    needpos = anyarc = anyhole = ntlen = ntsel = 0;
     for (k = 0; k < nins; k++)
         for (i = ins[k].s0; i < ins[k].end; i++) {
             if (x->st[i]->modes & MO_ARC) anyarc = 1;
             if ((x->st[i]->modes & MO_ARC) && (x->st[i]->modes & MO_ABS) && findw(x->st[i], 'R') < 0) needpos = 1;
+            if (x->st[i]->modes & MO_HOLE) anyhole = 1;
+            if ((x->st[i]->modes & MO_HOLE) && (x->st[i]->modes & MO_R98)) needpos = 1;
         }
+
+    if (anyhole) {
+        alloc(cyz);
+        alloc(cyr);
+        alloc(cyi);
+        alloc(cyq);
+        alloc(cyp);
+    }
 
     /* the variables of each program at its level */
     for (k = 0; k < nins && ok; k++) {
@@ -1524,6 +1695,11 @@ int fbwrite(fbx *x, const char *path)
     if (nassign) fbrep(x, "NOTE", 0, "the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)");
     if (nfix) fbrep(x, "NOTE", 0, "FIX/FUP/ROUND are built on LSR: exact below 4294967296 (TENTATIVE, bench/BFIX.TXT)");
     if (ng0z) fbrep(x, "NOTE", 0, "G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once");
+    if (anyhole) fbrep(x, "NOTE", 0, "drilling cycles are written out as moves; cycle values in %s %s %s %s %s",
+                       cyz, cyr, cyi, cyq, cyp);
+    if (ntlen) fbrep(x, "NOTE", 0, "G43/G49 left out: the DX32 applies the tool length of the tool in the spindle "
+                     "from its table (TENTATIVE)");
+    if (ntsel) fbrep(x, "NOTE", 0, "T without M6 left out: the DX32 takes T in the M6 block");
     if (maxl) fbrep(x, "NOTE", 0, "loops and jumps use labels L1-L%d; do not call this from a loop that uses them", maxl);
     if (nins > 1) {
         fbrep(x, "NOTE", 0, "%d called program(s) written as DX32 macros #1-#%d, nested %d deep", nins - 1, nins - 1,

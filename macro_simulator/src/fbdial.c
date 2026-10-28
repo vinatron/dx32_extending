@@ -79,7 +79,9 @@ void fbslist(FILE *fp)
     fprintf(fp, "  o8=0|1    30i: 8-digit program numbers, so M98 P is the program and L the count\n");
     fprintf(fp, "  avar=0|1  Macro A: a variable in an address is in least increments (0) or units (1);\n");
     fprintf(fp, "            not a parameter, not covered by -fparam default: check the Macro A manual\n");
-    fprintf(fp, "  default   the factory settings: dpi=0 is=b nat=0 o8=0\n");
+    fprintf(fp, "  d83=N     G83 clearance before each peck (parameter 5115), in program units\n");
+    fprintf(fp, "  d73=N     G73 retract after each peck (parameter 5114), in program units\n");
+    fprintf(fp, "  default   the factory settings: dpi=0 is=b nat=0 o8=0 (not d83/d73: set per machine)\n");
 }
 
 void fbfeat(fbx *x, int f, int line)
@@ -104,6 +106,13 @@ int fbfparam(fbpar *p, const char *a)
         return 1;
     }
     if (!v) return 0;
+    if (!strncmp(a, "d83=", 4) || !strncmp(a, "d73=", 4)) {
+        double d = atof(v + 1);
+        if (d < 0 || (!d && v[1] != '0' && v[1] != '.')) return 0;
+        if (a[1] == '8') p->d83 = d, p->hd83 = 1;
+        else p->d73 = d, p->hd73 = 1;
+        return 1;
+    }
     if (!strncmp(a, "is=", 3) && (v[1] == 'b' || v[1] == 'c' || v[1] == 'B' || v[1] == 'C') && !v[2]) {
         p->is = v[1] | 0x20;
         return 1;

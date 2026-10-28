@@ -364,6 +364,7 @@ static fbs *addst(fbx *x)
     memset(st, 0, sizeof *st);
     st->n = -1;
     st->pair = -1;
+    st->tool = -1;
     if (x->nst == x->cap) {
         int nc = x->cap ? x->cap * 2 : 256;
         fbs **a = (fbs **)fbmalloc((unsigned)(nc * sizeof *a));
