@@ -6,4 +6,5 @@ NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285
 NOTE     loops and jumps use labels L1-L2; do not call this from a loop that uses them
 NOTE     the output needs BOSS 4-7 compatibility mode off
 WROTE    fbwexit.txt
+CHECK    dxsim reads fbwexit.txt cleanly and reaches all 18 FANUC end points in order
 RESULT   ok

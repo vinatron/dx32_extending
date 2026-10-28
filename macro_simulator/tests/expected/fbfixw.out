@@ -4,4 +4,5 @@ NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285
 NOTE     FIX/FUP/ROUND are built on LSR: exact below 4294967296 (TENTATIVE, bench/BFIX.TXT)
 NOTE     the output needs BOSS 4-7 compatibility mode off
 WROTE    fbwfix.txt
+CHECK    dxsim reads fbwfix.txt cleanly and reaches all 0 FANUC end points in order
 RESULT   ok

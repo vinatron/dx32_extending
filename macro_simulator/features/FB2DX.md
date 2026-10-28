@@ -15,7 +15,7 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 | 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | **done** (section 3.10), with exit flags for jumps out of nested structures |
 | 4 | Calls: `M98`/`M99`, `G65` to `#n` macros with caller-side assignments | **done** (section 3.11) |
 | 5 | Motion subset: G0-G3 (with `R`), G81, G83, G90/G91, F, S, T, M | **done** (section 3.12): arcs, dwell, G81/G82/G83/G73 written out as moves, T/M6, G43/G49 |
-| 6 | Checking: `dxsim -lint` on the output, then both programs run and the tool paths compared | not started |
+| 6 | Checking: `dxsim -lint` on the output, then both programs run and the tool paths compared | **done** (section 3.13): `-check`, `-against` |
 
 ## 2. What the control does (facts the translation relies on)
 
@@ -524,12 +524,37 @@ writer refuses a block that ran in two different states.
   - G84-G89, G76.
 
 
+### 3.13 Phase 6 as built: `-check` and `-against`
+
+`src/fbcheck.c`. `fb2dx PROG.NC -w OUT.TXT -check` writes the program, then checks it with dxsim, which runs
+as a separate program (`system()`; only the files it writes are read, so it works under COMMAND.COM):
+1. `dxsim -lint OUT.TXT`: every error is reported, and the result is a STOP.
+2. `dxsim OUT.TXT`: the moves in its trace are compared, in order, with the FANUC tool path.
+   - **The FANUC tool path** is recorded by the evaluator as it runs: lines, arcs (with the centre, for G17
+     I/J arcs), and the drilling holes as `fbout.c` writes them out. It is kept in inches, as dxsim
+     prints it.
+   - **The DX32 program has to reach every FANUC end point in order.** The only extra moves allowed are the
+     two halves of a G0 that the DX32 splits into Z and XY: (the previous XY, the new Z) or (the new XY,
+     the previous Z). A G17 arc must also have the same centre (tolerance 0.00015 in, since dxsim prints
+     4 decimals).
+   - **A difference** is reported with the FANUC line and the line of the output, and the result is a STOP
+     ("do not run it").
+   - **dxsim's warnings** (for example a feed with no M3) go into the report as NOTEs.
+
+- **dxsim** is looked for next to `fb2dx`: `dxsim`, or `DXSIM.EXE` and then `DXSIM32.EXE` on DOS/Windows.
+  `-dxsim PATH` overrides it.
+- **`-against FILE`** compares an existing DX32 program, e.g. one edited by hand after translation, with
+  the FANUC one, in the same way.
+- **Skipped**, with a NOTE: when the unit system of some moves is not known, or the program makes more
+  than 16000 moves.
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
 
 | Kind | Examples |
 |---|---|
+| `CHECK` | `-check`/`-against`: dxsim reads the program cleanly and reaches every FANUC end point in order |
 | `DIALECT` | the series decided on and why, or the option that would settle it (3.7) |
 | `REFUSED` | `line 40 uses G65 H02 (Macro A only), line 12 uses ATAN[a,b] (30i only)`; `#5061 (probe skip position): system variables don't translate`; `#0 vacant: no DX32 equivalent`; `GOTO 20 jumps into a WHILE loop`; `8 backward targets, 7 labels free (canned cycles use L8, L9)`; `X10 without a decimal point: give -fparam dpi= (3.7)` |
 | `NOTE` | `the output needs BOSS 4-7 compatibility mode off`; `FIX built from LSR and a correction (TENTATIVE, bench/BFIX.TXT)`; `EQ on a computed value`; `the output needs the PPPL option (param 285 bit 4)` |
@@ -551,6 +576,9 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **Phase 6:** every translating entry in `fb.lst` runs with `-check`, and its expected report holds the CHECK
+  line. `fbxcen.txt` (one arc centre moved) and `fbxend.txt` (one arc end point moved) are broken copies of the
+  `fbarc` output; `-against` must refuse each of them at the right FANUC line.
 - **Phase 5, drilling:** `fbdrill` (G81 with G99/G98, G82 with a dwell from a variable depth, G83, G73, two
   tool changes with G43) is translated and run in dxsim. dxtest checks the six holes' positions and depths, the
   three G83 pecks and the return levels. `fbdrillx` checks the refusal without d83/d73.
@@ -589,7 +617,7 @@ output.
   ☑ jumps out of a loop to other blocks (exit flags)
 - **4** ☑ `M98`/`M99` (early returns too) ☑ `G65` with arguments and L ☑ depth and recursion checks ☑ labels over the call tree
 - **5** ☑ arcs (G90 absolute centres from a tracked position) ☑ dwell ☑ G81/G82/G83/G73 (as moves) ☑ T, M6, G43/G49
-- **6** ☐ `-check`
+- **6** ☑ `-check` (lint, then the tool path) ☑ `-against` ☑ tests that a wrong program is caught
 
 ## 7. Open questions
 
@@ -606,7 +634,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | Phase 5 done: G81/G82/G83/G73 written out as moves with a peck loop, -fparam d83/d73, T/M6 from the evaluator, G43/G49 left out, axis words with no motion code refused (161 passed) |
+| 2026-10-28 | (this commit) | Phase 6: `-check` and `-against` (`src/fbcheck.c`), the FANUC tool path recorded by the evaluator, broken outputs caught in tests (163 passed). All six phases built |
+| 2026-10-28 | 9a5323e | Phase 5 done: G81/G82/G83/G73 written out as moves with a peck loop, -fparam d83/d73, T/M6 from the evaluator, G43/G49 left out, axis words with no motion code refused (161 passed) |
 | 2026-10-28 | 8872bf5 | Phase 5, arcs: modal state per block from the evaluator, G90 centres from X20/Y20/Z20, R arcs, G18/G19, dwell, G54-G59 G80 G94 (155 passed) |
 | 2026-10-28 | 1408751 | Phase 4 built: G65/M98 as DX32 macros per program and level, caller-side arguments, early M99, labels over the call tree; exit flags for jumps out of nested structures; dxsim path checks for fbbolt, fbcall, fbexit (149 passed) |
 | 2026-10-28 | ff2da1d | Phase 3 built for the main program: WHILE/DO/END, GOTO, IF..GOTO as labels and ?/! regions, checked before writing; breaks out of loops; dxsim path checks (142 passed) |

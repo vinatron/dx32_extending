@@ -6,4 +6,6 @@ NOTE     loops and jumps use labels L1-L1; do not call this from a loop that use
 NOTE     1 called program(s) written as DX32 macros #1-#1, nested 1 deep
 NOTE     the output needs BOSS 4-7 compatibility mode off
 WROTE    fbwbolt.txt
+NOTE     -check: dxsim: L12     WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+CHECK    dxsim reads fbwbolt.txt cleanly and reaches all 19 FANUC end points in order (dxsim warnings above)
 RESULT   ok

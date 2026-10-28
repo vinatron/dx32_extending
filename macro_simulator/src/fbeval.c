@@ -447,6 +447,74 @@ static int args(const fbs *s, val *a)
 
 /* the modal state of the axes, as the FANUC control keeps it (for the writer, FB2DX.md 3.12) */
 static int gabs, gmot, gpl, known[3], gcyc, gret, tool;
+static double pos[3], cz, cr, cq, cinit;   /* the position and the drilling values, program units */
+
+/* a move of the FANUC tool path, in inches like the dxsim trace (-check) */
+static void addmv(int k, double x, double y, double z, int hasc, double cx, double cy)
+{
+    fbmv *m;
+    double f;
+    int u = units ? units : X->par.units;
+    if (!u) {
+        X->mvunk = 1;
+        return;
+    }
+    f = u == 20 ? 1.0 : 1.0 / 25.4;
+    if (X->nmv == X->cmv) {
+        int nc = X->cmv ? X->cmv * 2 : 256;
+        fbmv *a;
+        if (nc > 16000) {
+            X->mvunk = 1;
+            return;
+        }
+        a = (fbmv *)fbmalloc((unsigned)(nc * sizeof *a));
+        if (X->nmv) memcpy(a, X->mv, X->nmv * sizeof *a);
+        if (X->mv) free(X->mv);
+        X->mv = a;
+        X->cmv = nc;
+    }
+    m = &X->mv[X->nmv++];
+    m->k = (char)k;
+    m->line = curline;
+    m->x = x * f;
+    m->y = y * f;
+    m->z = z * f;
+    m->hasc = hasc;
+    m->cx = cx * f;
+    m->cy = cy * f;
+}
+
+/* the moves of one drilling hole, as fbout.c writes them */
+static void holemoves(const fbs *s, int start)
+{
+    int i, n = 0;
+    double v, nx = pos[0], ny = pos[1], dp, dn, ret;
+    for (i = 0; i < s->nw; i++) {
+        int l = s->w[i].l;
+        if (!wval(s, i, &v)) continue;
+        if (l == 'X') nx = gabs == 91 ? pos[0] + v : v;
+        else if (l == 'Y') ny = gabs == 91 ? pos[1] + v : v;
+        else if (l == 'Z') cz = v;
+        else if (l == 'R') cr = v;
+        else if (l == 'Q') cq = v;
+    }
+    if (start) cinit = pos[2];
+    if (nx != pos[0] || ny != pos[1]) addmv('R', nx, ny, pos[2], 0, 0, 0);
+    addmv('R', nx, ny, cr, 0, 0, 0);
+    if (gcyc == 81 || gcyc == 82) addmv('F', nx, ny, cz, 0, 0, 0);
+    else if (cq > 0)
+        for (dp = cr; dp > cz && n < 10000; dp = dn, n++) {
+            dn = dp - cq < cz ? cz : dp - cq;
+            if (gcyc == 83 && dp < cr) addmv('R', nx, ny, dp + X->par.d83, 0, 0, 0);
+            addmv('F', nx, ny, dn, 0, 0, 0);
+            addmv('R', nx, ny, gcyc == 83 ? cr : dn + X->par.d73, 0, 0, 0);
+        }
+    ret = gret == 99 ? cr : cinit;
+    addmv('R', nx, ny, ret, 0, 0, 0);
+    pos[0] = nx;
+    pos[1] = ny;
+    pos[2] = ret;
+}
 
 static void modal(fbs *s)
 {
@@ -500,6 +568,7 @@ static void modal(fbs *s)
             if (!p || s->w[i].l == 'Z' || !wval(s, i, &v)) continue;
             if (gabs == 90) known[p - ax] = 1;
         }
+        holemoves(s, start);
         return;
     }
     s->modes |= gpl == 18 ? MO_P18 : gpl == 19 ? MO_P19 : MO_P17;
@@ -510,6 +579,23 @@ static void modal(fbs *s)
         if (!known[pa] || !known[pb]) s->modes |= MO_UNK;
     } else if (moved && (gmot == 80 || gmot < 0)) s->modes |= MO_NOMOT;
     else if (moved) s->modes |= MO_LIN;
+    if ((s->modes & (MO_ARC | MO_LIN)) && !(s->modes & MO_NOMOT)) {   /* the tool path */
+        double np[3], c[3];
+        int hasc = 0, hasr = 0;
+        np[0] = pos[0], np[1] = pos[1], np[2] = pos[2];
+        c[0] = pos[0], c[1] = pos[1], c[2] = pos[2];
+        for (i = 0; i < s->nw; i++) {
+            static const char ijk[] = "IJK";
+            const char *p = strchr(ax, s->w[i].l), *q = strchr(ijk, s->w[i].l);
+            if (s->w[i].l == 'R') hasr = 1;
+            if (!wval(s, i, &v)) continue;
+            if (p) np[p - ax] = gabs == 91 ? pos[p - ax] + v : v;
+            if (q) c[q - ijk] += v;
+        }
+        if (gmot == 2 || gmot == 3) hasc = !hasr && gpl == 17;
+        addmv(gmot == 0 ? 'R' : gmot == 1 ? 'F' : gmot == 2 ? '2' : '3', np[0], np[1], np[2], hasc, c[0], c[1]);
+        pos[0] = np[0], pos[1] = np[1], pos[2] = np[2];
+    }
     for (i = 0; i < s->nw; i++) {
         const char *p = strchr(ax, s->w[i].l);
         if (!p || !wval(s, i, &v)) continue;
@@ -560,6 +646,9 @@ int fbeval(fbx *x, FILE *out, long limit)
     gcyc = 0;
     gret = 98;
     tool = -1;
+    pos[0] = pos[1] = pos[2] = cz = cr = cq = cinit = 0;
+    x->nmv = 0;
+    x->mvunk = 0;
     known[0] = known[1] = known[2] = 0;
     nvac = 0;
     units = 0;

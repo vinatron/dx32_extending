@@ -5,4 +5,5 @@ NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285
 NOTE     loops and jumps use labels L1-L1; do not call this from a loop that uses them
 NOTE     the output needs BOSS 4-7 compatibility mode off
 WROTE    fbwgoto.txt
+CHECK    dxsim reads fbwgoto.txt cleanly and reaches all 10 FANUC end points in order
 RESULT   ok

@@ -16,17 +16,19 @@ fbm98    fbm98    -eval
 fbm98s0  fbm98    -eval -series 0
 fbspec2  fbspec2  -eval
 fberr    fberr    -eval
-fbstrw   fbstr    -fparam nat=0 -w fbwstr.txt
+fbstrw   fbstr    -fparam nat=0 -w fbwstr.txt -check
 fbthenw  fbthen   -w fbwthen.txt
-fbfixw   fbfix    -w fbwfix.txt
-fbatanw  fbatan   -series 30i -fparam nat=1 -w fbwatan1.txt
-fbboltw  fbbolt   -w fbwbolt.txt
-fbloopw  fbloop   -w fbwloop.txt
-fbgotow  fbgoto   -w fbwgoto.txt
+fbfixw   fbfix    -w fbwfix.txt -check
+fbatanw  fbatan   -series 30i -fparam nat=1 -w fbwatan1.txt -check
+fbboltw  fbbolt   -w fbwbolt.txt -check
+fbloopw  fbloop   -w fbwloop.txt -check
+fbgotow  fbgoto   -w fbwgoto.txt -check
 fbjmpx   fbjmpx   -w fbwjmpx.txt
-fbexitw  fbexit   -w fbwexit.txt
-fbcallw  fbcall   -w fbwcall.txt
-fbarcw   fbarc    -w fbwarc.txt
+fbexitw  fbexit   -w fbwexit.txt -check
+fbcallw  fbcall   -w fbwcall.txt -check
+fbarcw   fbarc    -w fbwarc.txt -check
 fbarcx   fbarcx   -w fbwarcx.txt
-fbdrillw fbdrill  -fparam d83=.5 -fparam d73=.2 -w fbwdrill.txt
+fbdrillw fbdrill  -fparam d83=.5 -fparam d73=.2 -w fbwdrill.txt -check
 fbdrillx fbdrill  -w fbwdrilx.txt
+fbxcen   fbarc    -against fbxcen.txt
+fbxend   fbarc    -against fbxend.txt

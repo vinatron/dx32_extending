@@ -3,4 +3,6 @@ DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 7)
 NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
 NOTE     the output needs BOSS 4-7 compatibility mode off
 WROTE    fbwarc.txt
+NOTE     -check: dxsim: L8      WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+CHECK    dxsim reads fbwarc.txt cleanly and reaches all 9 FANUC end points in order (dxsim warnings above)
 RESULT   ok

@@ -4,4 +4,6 @@ NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285
 NOTE     loops and jumps use labels L1-L2; do not call this from a loop that uses them
 NOTE     the output needs BOSS 4-7 compatibility mode off
 WROTE    fbwloop.txt
+NOTE     -check: dxsim: L13     WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+CHECK    dxsim reads fbwloop.txt cleanly and reaches all 17 FANUC end points in order (dxsim warnings above)
 RESULT   ok

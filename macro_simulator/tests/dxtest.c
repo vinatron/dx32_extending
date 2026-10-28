@@ -716,12 +716,13 @@ static void fbpath(const char *prog, const char *wname, double scale, const char
     n = fbmoves(fx, fy, fz, MAXMV, scale);
     movesx(wname, "");
     for (i = 0; i < nmv && ok; i++) {
-        if (j && near(mvs[i].x, fx[j - 1], 1e-4) && near(mvs[i].y, fy[j - 1], 1e-4) &&
-            near(mvs[i].z, fz[j - 1], 1e-4)) continue;          /* G0 split in Z and XY, or no change */
+        double lx = i ? mvs[i - 1].x : 0, ly = i ? mvs[i - 1].y : 0, lz = i ? mvs[i - 1].z : 0;
+        if (near(mvs[i].x, lx, 1e-4) && near(mvs[i].y, ly, 1e-4) && near(mvs[i].z, lz, 1e-4)) continue;
         if (j < n && near(mvs[i].x, fx[j], 1e-4) && near(mvs[i].y, fy[j], 1e-4) && near(mvs[i].z, fz[j], 1e-4))
             j++;
-        else if (!(near(mvs[i].x, fx[j], 1e-4) && near(mvs[i].y, fy[j], 1e-4)) &&
-                 !(j < n && near(mvs[i].z, fz[j], 1e-4)))
+        else if (!(j < n && mvs[i].k == 'R' &&                /* a G0 split in Z and XY */
+                   ((near(mvs[i].x, fx[j], 1e-4) && near(mvs[i].y, fy[j], 1e-4) && near(mvs[i].z, lz, 1e-4)) ||
+                    (near(mvs[i].x, lx, 1e-4) && near(mvs[i].y, ly, 1e-4) && near(mvs[i].z, fz[j], 1e-4)))))
             ok = 0;
     }
     sprintf(msg, "%s: %d FANUC end points, the DX32 program in dxsim reaches %d of them in order", what, n, j);

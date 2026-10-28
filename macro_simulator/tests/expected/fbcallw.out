@@ -5,4 +5,5 @@ NOTE     loops and jumps use labels L1-L2; do not call this from a loop that use
 NOTE     3 called program(s) written as DX32 macros #1-#3, nested 1 deep
 NOTE     the output needs BOSS 4-7 compatibility mode off
 WROTE    fbwcall.txt
+CHECK    dxsim reads fbwcall.txt cleanly and reaches all 9 FANUC end points in order
 RESULT   ok

@@ -18,6 +18,9 @@ static const char *const usage[] = {
     "  -parse           list the statements as read",
     "  -eval            evaluate the program and trace its NC blocks",
     "  -w FILE          write the DX32 program to FILE (only when nothing is refused)",
+    "  -check           then run dxsim on it (-lint, then the trace) and compare the tool path",
+    "  -against FILE    compare an existing DX32 program (e.g. edited by hand) with the FANUC one",
+    "  -dxsim PATH      the dxsim to run (default: DXSIM next to FB2DX)",
     "  -limit N         stop the evaluation after N blocks (default 100000)",
     "  -o FILE          write the report and the trace to FILE",
     "  -silent          nothing on the console",
@@ -72,12 +75,34 @@ void fbrep(fbx *x, const char *kind, int line, const char *fmt, ...)
     }
 }
 
+/* dxsim next to this program: the same directory, DXSIM.EXE (or DXSIM32.EXE) on DOS/Windows */
+static void dxpath(char *out, const char *argv0)
+{
+    const char *b = argv0, *p;
+    size_t n = strlen(argv0);
+    FILE *fp;
+    for (p = argv0; *p; p++)
+        if (*p == '/' || *p == '\\' || *p == ':') b = p + 1;
+    if (b - argv0 > 200) b = argv0;
+    memcpy(out, argv0, (size_t)(b - argv0));
+    out[b - argv0] = 0;
+    if (n > 4 && (!strcmp(argv0 + n - 4, ".EXE") || !strcmp(argv0 + n - 4, ".exe"))) {
+        size_t d = strlen(out);
+        strcat(out, "DXSIM.EXE");
+        fp = fopen(out, "rb");
+        if (fp) fclose(fp);
+        else strcpy(out + d, "DXSIM32.EXE");
+    } else strcat(out, "dxsim");
+}
+
 int main(int argc, char **argv)
 {
     fbx *x = &gx;
     const char *outf = 0;
     int i, parse = 0, eval = 0, line = 0, ok = 1;
-    const char *wout = 0;
+    const char *wout = 0, *dxsim = 0, *against = 0;
+    char dxdef[260];
+    int chk = 0;
     long limit = 100000;
 
     x->ser = -1;
@@ -114,6 +139,9 @@ int main(int argc, char **argv)
         } else if (!strcmp(a, "-parse")) parse = 1;
         else if (!strcmp(a, "-eval")) eval = 1;
         else if (!strcmp(a, "-w") && i + 1 < argc) wout = argv[++i];
+        else if (!strcmp(a, "-check")) chk = 1;
+        else if (!strcmp(a, "-against") && i + 1 < argc) against = argv[++i];
+        else if (!strcmp(a, "-dxsim") && i + 1 < argc) dxsim = argv[++i];
         else if (!strcmp(a, "-limit") && i + 1 < argc) limit = atol(argv[++i]);
         else if (!strcmp(a, "-o") && i + 1 < argc) outf = argv[++i];
         else if (!strcmp(a, "-silent")) silent = 1;
@@ -162,9 +190,16 @@ int main(int argc, char **argv)
             fbpstmt(x->rep, x->st[i]);
         }
     /* the translator needs the evaluation too: what the program really reads (FB2DX.md 3.2) */
-    if (ok && (eval || wout)) ok = fbeval(x, eval ? x->rep : 0, limit);
+    if (ok && (eval || wout || against)) ok = fbeval(x, eval ? x->rep : 0, limit);
     if (ok && wout) ok = fbwrite(x, wout);
-    else if (ok && !x->stop) fbrep(x, "NOTE", 0, "-w FILE writes the DX32 program (features/FB2DX.md)");
+    if (!dxsim) {
+        dxpath(dxdef, argv[0]);
+        dxsim = dxdef;
+    }
+    if (ok && wout && chk) ok = fbcheck(x, wout, dxsim);
+    else if (chk && !wout) fbrep(x, "NOTE", 0, "-check needs -w FILE");
+    if (ok && against) ok = fbcheck(x, against, dxsim);
+    else if (ok && !x->stop && !wout) fbrep(x, "NOTE", 0, "-w FILE writes the DX32 program (features/FB2DX.md)");
     fprintf(x->rep, "RESULT   %s\n", x->stop ? "stopped: see REFUSED/STOP above" : "ok");
     if (outf) fclose(x->rep);
     return x->stop ? 2 : 0;

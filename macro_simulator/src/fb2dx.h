@@ -140,6 +140,15 @@ typedef struct fbs {
 #define MO_UNKZ 524288L     /* a cycle started while Z was not known */
 #define MO_CYC  (MO_C81 | MO_C82 | MO_C83 | MO_C73)
 
+/* a move of the FANUC tool path (evaluator), in inches, for -check (FB2DX.md 3.13) */
+typedef struct fbmv {
+    char k;             /* R rapid, F feed, 2 / 3 arc */
+    int line;
+    double x, y, z;
+    int hasc;           /* a G17 arc with I J: its centre */
+    double cx, cy;
+} fbmv;
+
 /* ------------------------------------------------------------------ */
 /* shared state                                                         */
 
@@ -159,6 +168,9 @@ typedef struct fbx {
     int nfile;
     int bdelsw;         /* -bdel: -1 not given, 0 off, 1 on */
     char vset[1000];    /* the evaluator set #n at some point (any level) */
+    fbmv *mv;           /* the FANUC tool path */
+    int nmv, cmv;
+    int mvunk;          /* moves in an unknown unit system: no -check */
 } fbx;
 
 /* fbmain.c */
@@ -190,5 +202,8 @@ int fbeval(fbx *x, FILE *out, long limit);
 
 /* fbout.c */
 int fbwrite(fbx *x, const char *path);
+
+/* fbcheck.c */
+int fbcheck(fbx *x, const char *prog, const char *dxsim);
 
 #endif

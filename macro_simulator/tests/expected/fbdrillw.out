@@ -8,4 +8,5 @@ NOTE     T without M6 left out: the DX32 takes T in the M6 block
 NOTE     loops and jumps use labels L1-L1; do not call this from a loop that uses them
 NOTE     the output needs BOSS 4-7 compatibility mode off
 WROTE    fbwdrill.txt
+CHECK    dxsim reads fbwdrill.txt cleanly and reaches all 39 FANUC end points in order
 RESULT   ok

@@ -5,4 +5,5 @@ NOTE     FIX/FUP/ROUND are built on LSR: exact below 4294967296 (TENTATIVE, benc
 NOTE     G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once
 NOTE     the output needs BOSS 4-7 compatibility mode off
 WROTE    fbwstr.txt
+CHECK    dxsim reads fbwstr.txt cleanly and reaches all 4 FANUC end points in order
 RESULT   ok
