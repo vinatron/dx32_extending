@@ -63,7 +63,7 @@ Address table (M table 2-1, 2-2); inch formats, metric `+4.3` for `+3.4`:
 | `D` | tool diameter (`T_D_`) | ±3.4 |
 | `P` | cycle parameters | ±3.4 |
 | `Q` | dwell time (s), cycle parameter | 3.2, .01-327.68 |
-| `F` | feed rate, in/min or mm/min (G95: per revolution) | 3.1, .1-250 ipm |
+| `F` | feed rate, in/min or mm/min (G95: per revolution). Not limited when read; the move runs at no more than param 7 (OPENQ A10) | 3.1, .1-250 ipm |
 | `S` | spindle speed | 4 |
 | `T` | tool number, `T n/tlo/dia` | 1-24 |
 | `M` | miscellaneous function, one per block | 0-99 (more on 6.89) |

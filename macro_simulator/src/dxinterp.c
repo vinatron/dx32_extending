@@ -639,9 +639,11 @@ static void word(dxsim *s, int li)
         if (s->nf == 0) {                   /* 0x1f344 */
             s->nf = 1;
             s->feed = v;
-            if (dxuser(s) && !s->cap && v > (s->metric ? 7500.0 : 295.0)) {
-                sprintf(buf, "F%g is above the maximum feed (%s); the control clamps it",
-                        v, s->metric ? "7500 mm/min" : "295 ipm");
+            /* no limit when F is read: the interpolator caps the vector rate at param 7 and
+               the Z component at param 8 (0x16df6, 0x16e98), after the override */
+            if (dxuser(s) && !s->cap && v > s->rapid * (s->metric ? 25.4 : 1.0) + 0.05) {
+                sprintf(buf, "F%g is above the traverse rate (param 7, %.0f %s); the control runs the "
+                        "move at that rate", v, s->rapid * (s->metric ? 25.4 : 1.0), s->metric ? "mm/min" : "ipm");
                 dxwarn(s, 0, buf);
             }
             if (s->cap) {

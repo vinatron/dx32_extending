@@ -284,7 +284,7 @@ mistake. Warnings are only given for your program's lines, never for the built-i
 | `?P7 tests variable P7, which was never set`, `P3 is used in an expression but was never set` | the same, in a condition or an expression |
 | `'=5.' is ignored: an assignment must start its block` | `N3X1=5.` is not an assignment on the control: the third character must be `=` |
 | `Y1.23456 has more decimals than the input increment allows` | manual ch.2: finer than .0001 in (.001 mm) is an input error |
-| `F400 is above the maximum feed` | the control clamps to 295 ipm / 7500 mm/min |
+| `F500 is above the traverse rate` | the control runs the move at param 7 (472 ipm on both shipped parameter files, or the `-P` value) |
 | `more than one M code in a block` | manual ch.9 |
 | `S5000 is outside the range 1-4200` | manual table 2-2; with `-P`, the machine's spindle maximum (params 73-76) |
 | `feed move with no M3/M4 programmed` | the control stops with SPINDLE NOT ON CANNOT CUT unless the operator started the spindle |
