@@ -289,6 +289,7 @@ typedef struct dxsim {
     int    zchk, zrule;         /* Z limits checked; the Z positive rule (param 98 nibble, param 62) */
     int    g5xblk;              /* G54-G59 in this block: no travel check (0x20dc0, 0x4089 bit 3) */
     double smax;                /* spindle maximum (rpm), params 73-76 */
+    double smin;                /* range 1 minimum: param 74 x param 72 / param 73 (0x364ea), 0 if none */
     int    pppl;                /* param 285 bit 4 */
     int    compat;              /* BOSS 4-7 compatibility (0xaef9 bit 2) */
     int    strip;               /* strip blanks when loading */

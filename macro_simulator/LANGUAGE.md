@@ -164,22 +164,24 @@ DTF and #PI; 6.89 has 36.
 The four functions do not address I/O channels: n picks an entry of a table of 151 (address, type) pairs
 at 0x263a2, and the function reads or writes the 32-bit word at that address. n is rounded; below 0 or
 above 150 it becomes 150. Type 1 entries can be written, type 0 entries only read. Types 2 and 3 would
-raise `PPPL: User IO BUT User AUF not operating` when the user AUF is absent (0x32a4/0x32a8 = 0xbad),
+raise `PPPL: User IO BUT User AUF not operating` when the user AUF (the GPAUF boards) is absent (0x32a4/0x32a8 = 0xbad),
 but no entry in 6.89 has them, so that message cannot occur. Reading or writing entries 0-19 first
-refreshes the AUF copies (0x30b8e: 0x3248 → 0x3220, 0x324c → 0x3224, 0x31f4 → 0x3218, 0x31f0 →
+refreshes the GPAUF1 copies (0x30b8e: 0x3248 → 0x3220, 0x324c → 0x3224, 0x31f4 → 0x3218, 0x31f0 →
 0x321c).
 
 | n | Address | W | What it is |
 |---|---|---|---|
-| 0, 1 | 0x3220, 0x3224 | | AUF inputs: the long-RX primary and secondary words (`../AUF_PACKET_FORMAT.md`) |
-| 2-9 | 0x3228-0x3244 | | not identified |
-| 10, 11 | 0x31f0, 0x31f4 | yes | AUF outputs: the secondary and primary output words. Whether a written bit survives the next servo tick is open (OPENQ L9) |
-| 12-19 | 0x31f8-0x3214 | yes | not identified |
+| 0, 1 | 0x3220, 0x3224 | | GPAUF1 inputs 0-31 and 32-63 (copies of params 277, 278: 0x3248, 0x324c) |
+| 2, 3 | 0x3228, 0x322c | | GPAUF2 inputs 0-31 and 32-63 (params 281, 282) |
+| 4-9 | 0x3230-0x3244 | | not identified |
+| 10, 11 | 0x31f0, 0x31f4 | yes | GPAUF1 outputs 0-31 and 32-63 (params 279, 280). Whether a written bit reaches the board is open (OPENQ L9) |
+| 12, 13 | 0x31f8, 0x31fc | yes | GPAUF2 outputs 0-31 and 32-63 (params 283, 284) |
+| 14-19 | 0x3200-0x3214 | yes | not identified |
 | 20-34 | 0xfd8-0x1010 | | machine parameters 17 onward (axis scaling, section 14a) |
 | 55, 56 | 0xae2e, 0xae3a | | reals: RDI returns them as they are; GET reads the first 4 bytes |
 | 64 | 0x764c | yes | the `MRG` mask |
 | 65, 68, 148 | 0x01200554, 0x01200558, 0x01200738 | yes | dual-port RAM words shared with the PC |
-| 78-81 | 0xaf34, 0xaf10, 0xaf38, 0xaf14 | | spindle range 1 and 2 minimum and maximum (OPENQ A5) |
+| 78-81 | 0xaf34, 0xaf10, 0xaf38, 0xaf14 | | spindle range 1 and 2 minimum and maximum (OPENQ A5, A9) |
 | 93 | 0xaef8 | yes | machine flags (bit 2 probe, bit 7 FPU flag, bit 6 zeroes C9 in the G81 driver) |
 | 102-105 | 0xc5a0-0xc5ac | yes | WRI also appends the low byte to a queue (0xc548, 32 bytes; 0xc569, 16; 0xc57a, 20; 0xc58f, 16); 255 is not queued; a full queue raises the message at 0x33b27, `Number of AND operands has exceeded the max.` |
 | 137 | 0x765c | yes | WRI also appends the byte to a 256-byte buffer at 0x7660; 255 clears it |
@@ -463,11 +465,13 @@ Each violation is a `trap #14` with its message:
   * distances: 1 unit is 10 nm, so 2,540,000 units per inch;
   * rates: units per 4 ms tick, so 169.333 = 1 ipm. Param 7 is 79,925 = 472 ipm.
 
-**Spindle (F, TENTATIVE in detail).** The spindle-speed code at 0x34620 clamps the commanded speed:
-* down to 0xaf34, whose parameter isn't identified;
-* up to param 75 (0xaf14, range #2 maximum), with a machine message.
+**Spindle (F).** The spindle-speed code at 0x34620 clamps the commanded speed, with a machine message:
+* up to range 1's minimum (0xaf34), `Spindle Speed Too Low.`; each range minimum is its maximum ×
+  param 72 / param 73, computed at 0x364ea when the PC installs the parameters (OPENQ A9). Both shipped
+  parameter files have param 72 = 0, so the minimums are 0;
+* down to param 75 (0xaf14, range #2 maximum), `Spindle Speed Too High.`
 
-`dxsim -P` warns above the highest of params 74-76.
+`dxsim -P` warns above the highest of params 74-76 and below the range 1 minimum.
 
 ## 15. Open questions
 

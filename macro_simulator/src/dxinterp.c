@@ -132,6 +132,7 @@ void dxinit(dxsim *s)
     s->dunit = 1.0;
     s->rapid = s->zrapid = 472.0;       /* manual chapter 8 */
     s->smax = 4200.0;                   /* manual table 2-2 */
+    s->smin = 0.0;
     LA = dxlet('A'); LB = dxlet('B'); LC = dxlet('C'); LF = dxlet('F');
     LI = dxlet('I'); LJ = dxlet('J'); LP = dxlet('P'); LQ = dxlet('Q');
     LR = dxlet('R'); LU = dxlet('U'); LV = dxlet('V'); LW = dxlet('W');
@@ -486,7 +487,7 @@ static void word(dxsim *s, int li)
     double v;
     int fl, c = letters[li], n;
     long k;
-    char buf[120];
+    char buf[200];
 
     switch (c) {
     case 'G': gword(s); return;
@@ -695,6 +696,10 @@ static void word(dxsim *s, int li)
                         "the control clamps it", v, s->smax);
             else
                 sprintf(buf, "S%g is outside the range 1-4200 (manual table 2-2)", v);
+            dxwarn(s, 0, buf);
+        } else if (dxuser(s) && v > 0 && v < s->smin) {
+            sprintf(buf, "S%g is below the range 1 minimum %.0f rpm (param 74 x param 72 / param 73); "
+                    "the control raises it: Spindle Speed Too Low.", v, s->smin);
             dxwarn(s, 0, buf);
         }
         return;

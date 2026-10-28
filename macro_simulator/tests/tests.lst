@@ -69,3 +69,4 @@ bfix -d
 eloop5
 eloop6
 fuio -d
+pslow -P P689.SYS -P PZTEST.INI -model SLOW

@@ -7,7 +7,8 @@
  *   7, 8      rapid rate X/Y and Z, units/tick (169.333 = 1 ipm: 10 nm units,
  *             4 ms tick, ../MOTION_PLANNER.md)            -> live preview pacing
  *   17-22     X, Y, Z travel limits, machine coordinates, 2,540,000 units/inch
- *   73-76     spindle motor maximum, range 1-3 maximum (rpm)
+ *   72-76     spindle motor minimum and maximum, range 1-3 maximum (rpm); each range's
+ *             minimum is its maximum x param 72 / param 73 (0x364ea)
  *
  * The limits are checked like the firmware's block check FUN_000231f0 (called
  * from the move finalizer at 0x231d2): the end point of every block, built-in
@@ -168,6 +169,8 @@ void dxpapply(dxsim *s)
         if (pset[k] && pv[k] > s->smax) s->smax = pv[k];
     if (s->smax <= 0 && pset[73]) s->smax = pv[73];
     if (s->smax <= 0) s->smax = 4200.0;
+    s->smin = 0;                                    /* 0x364ea, checked at 0x34636 */
+    if (pset[72] && pset[74] && pv[73] > 0) s->smin = floor(pv[74] * pv[72] / pv[73] + 0.5);
 }
 
 static void fmtlim(const dxsim *s, char *b, int k)
