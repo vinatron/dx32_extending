@@ -1,8 +1,8 @@
-/* fbout.c - write the DX32 program (FB2DX.md phase 2: variables and expressions).
-   Phase 2 writes straight-line programs: assignments, IF..THEN, and NC blocks with
-   G0 G1 G17 G20 G21 G90 G91, X Y Z, F, S and the common M codes.  Anything else
-   is refused with the phase that will translate it.  The output is only kept when
-   nothing was refused. */
+/* fbout.c - write the DX32 program (FB2DX.md phases 2 and 3).
+   Phase 2: assignments, IF..THEN, and NC blocks with G0 G1 G17 G20 G21 G90 G91,
+   X Y Z, F, S and the common M codes.  Phase 3: WHILE/DO/END, GOTO and IF..GOTO as
+   labels (Ln, =Ln) and ?/! regions; the bracket structure of the output is checked
+   before anything is written.  The output is only kept when nothing was refused. */
 
 #include <stdlib.h>
 #include <string.h>
@@ -39,13 +39,45 @@ static void fail(const char *fmt, ...)
     ok = 0;
 }
 
+/* the output is kept in memory until the structure is checked (3.10).  Special lines:
+   MARK id   where a skip from region id must resume (not written)
+   LAB id    the label of label region id (written Ln once n is known)
+   JMP id    a jump to it (written =Ln) */
+#define LN_MARK '\001'
+#define LN_LAB  '\002'
+#define LN_JMP  '\003'
+
+static char **ln;
+static int nln, cln;
+
+static void addln(const char *t)
+{
+    if (nln == cln) {
+        int nc = cln ? cln * 2 : 512;
+        char **a = (char **)fbmalloc((unsigned)(nc * sizeof *a));
+        if (nln) memcpy(a, ln, nln * sizeof *a);
+        if (ln) free(ln);
+        ln = a;
+        cln = nc;
+    }
+    ln[nln++] = fbstrdup(t);
+}
+
 static void out(const char *fmt, ...)
 {
+    char b[480];
     va_list ap;
     va_start(ap, fmt);
-    vfprintf(W, fmt, ap);
+    vsprintf(b, fmt, ap);
     va_end(ap);
-    fputs("\r\n", W);
+    addln(b);
+}
+
+static void special(int kind, int id)
+{
+    char b[16];
+    sprintf(b, "%c%d", kind, id);
+    addln(b);
 }
 
 /* a DX32 number: always with a decimal point, up to 9 decimals */
@@ -322,10 +354,12 @@ static void xe(const fbn *e, char *b)
 static const char *const cmpn[] = { "", "EQ", "NE", "GT", "GE", "LT", "LE" };
 static const int mirror[] = { 0, CM_EQ, CM_NE, CM_LT, CM_LE, CM_GT, CM_GE };
 
-static void opencmp(const fbn *c)
+static const int negate[] = { 0, CM_NE, CM_EQ, CM_LE, CM_LT, CM_GE, CM_GT };
+
+static void opencmp(const fbn *c, int neg)
 {
     const fbn *a = c->a, *bb = c->b;
-    int op = c->op;
+    int op = neg ? negate[c->op] : c->op;
     char r[48];
     const char *l;
     if (a->k == EN_NUM && bb->k == EN_VAR && bb->a->k == EN_NUM) {     /* 5. LT #1 -> #1 GT 5. */
@@ -346,7 +380,7 @@ static const char *flag(const fbn *c)
     if (c->k == EN_CMP) {
         f = tmp();
         out("%s=0.", f);
-        opencmp(c);
+        opencmp(c, 0);
         out("%s=1.!", f);
         return f;
     }
@@ -371,10 +405,11 @@ static const char *flag(const fbn *c)
     return f;
 }
 
-static void opencond(const fbn *c)
+/* open a ? region that runs when c holds (neg = 0) or when it does not (neg = 1) */
+static void opencond(const fbn *c, int neg)
 {
-    if (c->k == EN_CMP) opencmp(c);
-    else out("?%s<EQ>1.", flag(c));
+    if (c->k == EN_CMP) opencmp(c, neg);
+    else out("?%s<EQ>%s", flag(c), neg ? "0." : "1.");
 }
 
 /* ------------------------------------------------------------------ */
@@ -551,15 +586,231 @@ static void prescan(const fbn *e)
     prescan(e->b);
 }
 
+/* ------------------------------------------------------------------ */
+/* phase 3: jumps and loops (FB2DX.md 3.5, 3.10)                        */
+
+#define MAXST 256
+
+typedef struct fwd {    /* a forward GOTO: a ? region from statement i to just before t */
+    int i, t, id;
+} fwd;
+
+typedef struct lab {    /* a label region: the label before statement t, jumps up to statement e */
+    int t, e, loop;
+    int line, lastjmp;  /* output lines, filled in while writing */
+    int n;              /* the label number */
+} lab;
+
+static fwd fw[MAXST];
+static lab lb[MAXST];
+static int nfw, nlb, nreg;
+static int ropen[2 * MAXST], rmark[2 * MAXST], rline[2 * MAXST];
+static int stfw[2 * MAXST];     /* region id of the ? opened by each statement, -1 if none */
+
+static int newreg(int line)
+{
+    if (nreg == 2 * MAXST) {
+        fail("more than %d jumps and loops", 2 * MAXST);
+        return 0;
+    }
+    ropen[nreg] = rmark[nreg] = -1;
+    rline[nreg] = line;
+    return nreg++;
+}
+
+static int newlab(int t, int e, int loop)
+{
+    if (nlb == MAXST) {
+        fail("more than %d labels", MAXST);
+        return 0;
+    }
+    lb[nlb].t = t;
+    lb[nlb].e = e;
+    lb[nlb].loop = loop;
+    lb[nlb].line = lb[nlb].lastjmp = -1;
+    lb[nlb].n = 0;
+    return nlb++;
+}
+
+/* the statement a GOTO in statement i goes to, as the FANUC control searches: forward, then from the top */
+static int target(fbx *x, int i, int s0, int end)
+{
+    const fbn *e = x->st[i]->lhs;
+    long n;
+    int j;
+    if (e->k != EN_NUM) {
+        fail("GOTO to a computed sequence number does not translate");
+        return -1;
+    }
+    n = (long)e->v;
+    for (j = i + 1; j < end; j++)
+        if (x->st[j]->n == n) return j;
+    for (j = s0; j <= i; j++)
+        if (x->st[j]->n == n) return j;
+    fail("GOTO %ld: no such sequence number in this program", n);
+    return -1;
+}
+
+/* find the jumps and loops of statements s0..end-1 */
+static void structure(fbx *x, int s0, int end)
+{
+    int i, j;
+    nfw = nlb = nreg = 0;
+    for (i = s0; i < end; i++) {
+        fbs *s = x->st[i];
+        stfw[i - s0 < 2 * MAXST ? i - s0 : 0] = -1;
+        if (s->bdel && x->bdelsw == 1 &&
+            (s->k == ST_GOTO || s->k == ST_IFGOTO || s->k == ST_WHILE || s->k == ST_DO || s->k == ST_END)) {
+            curline = s->line;
+            fail("a deleted (/) block that is part of a jump or a loop does not translate");
+            continue;
+        }
+        if (i - s0 >= 2 * MAXST) {
+            curline = s->line;
+            fail("a program longer than %d blocks with jumps does not translate yet", 2 * MAXST);
+            return;
+        }
+        if (s->k == ST_WHILE || s->k == ST_DO) newlab(i, s->pair, 1);
+        if (s->k == ST_GOTO || s->k == ST_IFGOTO) {
+            int t;
+            curline = s->line;
+            t = target(x, i, s0, end);
+            stfw[i - s0] = -3;          /* refused, until it is placed */
+            if (t < 0) continue;
+            /* against every loop around the GOTO or around its target */
+            for (j = s0; j < end; j++) {
+                fbs *w = x->st[j];
+                int e = w->pair, in_i, in_t;
+                if (w->k != ST_WHILE && w->k != ST_DO) continue;
+                in_i = j < i && i < e;
+                in_t = j < t && t <= e;
+                if (!in_i && in_t) {
+                    fail("GOTO into a WHILE/DO loop (line %d); FANUC does not allow it either", w->line);
+                    t = -1;
+                    break;
+                }
+                if (in_i && !in_t && t > e + 1) {
+                    fail("GOTO out of the loop at line %d to a block other than the one right after its END "
+                         "is not translated yet", w->line);
+                    t = -1;
+                    break;
+                }
+            }
+            if (t < 0) continue;
+            if (t > i) {
+                if (nfw == MAXST) { fail("more than %d forward jumps", MAXST); continue; }
+                fw[nfw].i = i;
+                fw[nfw].t = t;
+                fw[nfw].id = newreg(s->line);
+                stfw[i - s0] = nfw++;
+            } else {
+                stfw[i - s0] = -1;
+                for (j = 0; j < nlb; j++)
+                    if (!lb[j].loop && lb[j].t == t) break;
+                if (j == nlb) j = newlab(t, i, 0);
+                else lb[j].e = i;
+            }
+        }
+    }
+}
+
+/* lines that open (?) and close (!) a skip */
+static int opens(const char *l)
+{
+    return l[0] == '?';
+}
+
+static int closes(const char *l)
+{
+    size_t n = strlen(l);
+    return n && l[n - 1] == '!';
+}
+
+/* check the written structure: every skip resumes where the FANUC jump goes, every
+   label is defined before its jumps can run, labels nest; then number the labels */
+static void check(void)
+{
+    int *match = (int *)fbmalloc((unsigned)(nln * sizeof(int)));
+    int *stk = (int *)fbmalloc((unsigned)(nln * sizeof(int)));
+    int i, j, sp = 0;
+    for (i = 0; i < nln; i++) {
+        match[i] = -1;
+        if (opens(ln[i])) stk[sp++] = i;
+        if (closes(ln[i])) {
+            if (!sp) {
+                fail("internal: a ! without a ?");
+                break;
+            }
+            sp--;
+            match[stk[sp]] = i;
+            match[i] = stk[sp];
+        }
+    }
+    if (sp) fail("internal: a ? without a !");
+    for (j = 0; j < nreg && ok; j++) {
+        int o = ropen[j], c = o >= 0 ? match[o] : -1, m = rmark[j], k;
+        curline = rline[j];
+        if (o < 0 || m < 0 || c < 0) {
+            fail("this jump crosses a loop or another jump; it cannot be written with ?/!");
+            continue;
+        }
+        /* the skip resumes after line c, the jump goes to m: only no-op lines (!) may lie between */
+        {
+            int lo = c + 1 < m ? c + 1 : m, hi = c + 1 < m ? m : c + 1;
+            for (k = lo; k < hi; k++)
+                if (strcmp(ln[k], "!") && ln[k][0] != LN_MARK) break;
+            if (k < hi) k = -1;
+        }
+        if (k < 0) {
+            fail("this jump leaves a loop to a block other than the one right after its END; not translated yet");
+            continue;
+        }
+        /* a skip over a label whose jumps come after the skip: the label would not be set */
+        for (k = 0; k < nlb; k++)
+            if (lb[k].line > o && lb[k].line < c && lb[k].lastjmp > c) {
+                fail("this jump goes into the middle of a loop");
+                break;
+            }
+    }
+    /* labels must nest; the number is the nesting depth (L1 outermost) */
+    for (i = 0; i < nlb && ok; i++) {
+        int d = 1;
+        curline = 0;
+        for (j = 0; j < nlb; j++) {
+            if (j == i) continue;
+            if (lb[j].line < lb[i].line && lb[j].lastjmp > lb[i].lastjmp) d++;
+            else if ((lb[j].line < lb[i].line && lb[j].lastjmp > lb[i].line && lb[j].lastjmp < lb[i].lastjmp) ||
+                     (lb[i].line < lb[j].line && lb[i].lastjmp > lb[j].line && lb[i].lastjmp < lb[j].lastjmp)) {
+                curline = 0;
+                fail("two loops or backward jumps overlap without one containing the other");
+                break;
+            }
+        }
+        if (d > 7) fail("loops and backward jumps nested %d deep: the DX32 has L1-L7 (L8, L9 belong to the cycles)", d);
+        lb[i].n = d;
+    }
+    free(match);
+    free(stk);
+}
+
+static int maxlab(void)
+{
+    int i, m = 0;
+    for (i = 0; i < nlb; i++)
+        if (lb[i].n > m) m = lb[i].n;
+    return m;
+}
+
 int fbwrite(fbx *x, const char *path)
 {
-    int i, j, end, nprog = 0;
+    int i, j, end, s0, nprog = 0;
     char line[200], t[48];
 
     X = x;
     ok = 1;
     units = nassign = ng0z = nfix = 0;
     ntemp = maxtemp = 0;
+    nln = 0;
     memset(used, 0, sizeof used);
     memset(map, 0, sizeof map);
     /* reserved: X20 Y20 Z20 (current position, phase 5) and the word carriers */
@@ -568,14 +819,8 @@ int fbwrite(fbx *x, const char *path)
     take('Y', 20);
     take('Z', 20);
 
-    W = fopen(path, "wb");
-    if (!W) {
-        fbrep(x, "STOP", 0, "cannot write %s", path);
-        x->stop = 1;
-        return 0;
-    }
-    /* phase 2: the first program only */
-    i = x->nst && x->st[0]->k == ST_PROG ? 1 : 0;
+    /* phases 2-3: the first program only */
+    s0 = i = x->nst && x->st[0]->k == ST_PROG ? 1 : 0;
     for (end = i; end < x->nst && x->st[end]->k != ST_PROG; end++) {
         fbs *s = x->st[end];
         prescan(s->lhs);
@@ -585,6 +830,7 @@ int fbwrite(fbx *x, const char *path)
     }
     for (j = end; j < x->nst; j++)
         if (x->st[j]->k == ST_PROG) nprog++;
+    structure(x, s0, end);
 
     fbsnames(line, x->cand);
     out("; fb2dx: %s, FANUC series %s, for the DX32 (BMDC 6.89)", x->fname[0], line);
@@ -603,9 +849,25 @@ int fbwrite(fbx *x, const char *path)
 
     for (; i < end; i++) {
         fbs *s = x->st[i];
-        int n;
+        int n, k, best;
         curline = s->line;
         ntemp = 0;
+        /* forward jumps that land here: close their regions, innermost (latest) first */
+        for (k = nfw - 1; k >= 0; k--)
+            if (fw[k].t == i) {
+                out("!");
+                rmark[fw[k].id] = nln;
+                special(LN_MARK, fw[k].id);
+            }
+        /* labels that start here, outermost (furthest-reaching) first */
+        for (;;) {
+            best = -1;
+            for (k = 0; k < nlb; k++)
+                if (lb[k].t == i && lb[k].line < 0 && (best < 0 || lb[k].e > lb[best].e)) best = k;
+            if (best < 0) break;
+            lb[best].line = nln;
+            special(LN_LAB, best);
+        }
         if (s->bdel && x->bdelsw == 1) continue;
         if (s->vacbad) {
             fail("uses a vacant variable where the DX32 would use 0 (it has no vacant values)");
@@ -624,23 +886,82 @@ int fbwrite(fbx *x, const char *path)
             assign(s->lhs, s->e, 0);
             break;
         case ST_IFTHEN:
-            opencond(s->e);
+            opencond(s->e, 0);
             assign(s->lhs, s->e2, 1);
             break;
         case ST_NC:
             nc(s);
             break;
+        case ST_WHILE:                  /* label (above), then ? on the condition */
+            opencond(s->e, 0);
+            j = newreg(s->line);
+            ropen[j] = nln - 1;
+            stfw[i - s0] = -2 - j;      /* END closes it */
+            break;
+        case ST_DO:
+            break;
+        case ST_END:
+            for (k = 0; k < nlb; k++)
+                if (lb[k].loop && lb[k].t == s->pair) break;
+            lb[k].lastjmp = nln;
+            special(LN_JMP, k);
+            if (x->st[s->pair]->k == ST_WHILE && stfw[s->pair - s0] <= -2) {
+                j = -2 - stfw[s->pair - s0];
+                out("!");
+                rmark[j] = nln;
+                special(LN_MARK, j);
+            }
+            break;
+        case ST_GOTO:
+        case ST_IFGOTO:
+            if (stfw[i - s0] == -3) break;      /* already refused */
+            if (stfw[i - s0] >= 0) {    /* forward: skip the blocks up to the target */
+                fwd *f = &fw[stfw[i - s0]];
+                if (s->k == ST_IFGOTO) opencond(s->e, 1);
+                else {
+                    const char *z = tmp();
+                    out("%s=0.", z);
+                    out("?%s<EQ>1.", z);
+                }
+                ropen[f->id] = nln - 1;
+            } else {                    /* backward: a jump to the label at the target */
+                int tg = target(x, i, s0, end);
+                for (k = 0; k < nlb; k++)
+                    if (!lb[k].loop && lb[k].t == tg) break;
+                if (k == nlb) { fail("internal: no label for this GOTO"); break; }
+                if (s->k == ST_IFGOTO) opencond(s->e, 0);
+                lb[k].lastjmp = nln;
+                special(LN_JMP, k);
+                if (s->k == ST_IFGOTO) out("!");
+            }
+            break;
         case ST_UNSUP:
             fail("%s does not translate", s->text);
             break;
         default:
-            fail("IF..GOTO, GOTO and WHILE/DO/END are translated in phase 3");
             break;
         }
     }
-    fclose(W);
     curline = 0;
+    if (ok) check();
     if (nprog) fbrep(x, "NOTE", 0, "%d more program(s) after the first: called programs come with phase 4", nprog);
+    if (ok) {
+        W = fopen(path, "wb");
+        if (!W) {
+            fbrep(x, "STOP", 0, "cannot write %s", path);
+            ok = 0;
+        } else {
+            for (i = 0; i < nln; i++) {
+                if (ln[i][0] == LN_MARK) continue;
+                if (ln[i][0] == LN_LAB) fprintf(W, "L%d\r\n", lb[atoi(ln[i] + 1)].n);
+                else if (ln[i][0] == LN_JMP) fprintf(W, "=L%d\r\n", lb[atoi(ln[i] + 1)].n);
+                else fprintf(W, "%s\r\n", ln[i]);
+            }
+            fclose(W);
+        }
+    }
+    for (i = 0; i < nln; i++) free(ln[i]);
+    nln = 0;
     if (!ok) {
         remove(path);
         fbrep(x, "STOP", 0, "%s not written: see REFUSED above", path);
@@ -650,6 +971,7 @@ int fbwrite(fbx *x, const char *path)
     if (nassign) fbrep(x, "NOTE", 0, "the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)");
     if (nfix) fbrep(x, "NOTE", 0, "FIX/FUP/ROUND are built on LSR: exact below 4294967296 (TENTATIVE, bench/BFIX.TXT)");
     if (ng0z) fbrep(x, "NOTE", 0, "G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once");
+    if (nlb) fbrep(x, "NOTE", 0, "loops and jumps use labels L1-L%d; do not call this from a loop that uses them", maxlab());
     fbrep(x, "NOTE", 0, "the output needs BOSS 4-7 compatibility mode off");
     fbrep(x, "WROTE", 0, "%s", path);
     return 1;

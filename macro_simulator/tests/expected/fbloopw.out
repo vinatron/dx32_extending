@@ -1,0 +1,7 @@
+FILE     fbloop.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 3)
+NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
+NOTE     loops and jumps use labels L1-L2; do not call this from a loop that uses them
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwloop.txt
+RESULT   ok

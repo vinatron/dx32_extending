@@ -21,3 +21,6 @@ fbthenw  fbthen   -w fbwthen.txt
 fbfixw   fbfix    -w fbwfix.txt
 fbatanw  fbatan   -series 30i -fparam nat=1 -w fbwatan1.txt
 fbboltw  fbbolt   -w fbwbolt.txt
+fbloopw  fbloop   -w fbwloop.txt
+fbgotow  fbgoto   -w fbwgoto.txt
+fbjmpx   fbjmpx   -w fbwjmpx.txt

@@ -12,7 +12,7 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 | 0 | Firmware checks the design depends on | **done** (section 2) |
 | 1 | FANUC front end: dialect table, series detection and `-series`, reader, expression parser, statement list, small evaluator | **done** (section 3.8) |
 | 2 | Variables and expressions: allocation, PPPL output, numbers always with a point | **done** for straight-line programs (section 3.9) |
-| 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | not started |
+| 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | **done** for the main program (section 3.10); jumps out of a loop to anywhere but the block after its END are refused |
 | 4 | Calls: `M98`/`M99`, `G65` to `#n` macros with caller-side assignments | not started |
 | 5 | Motion subset: G0-G3 (with `R`), G81, G83, G90/G91, F, S, T, M | not started |
 | 6 | Checking: `dxsim -lint` on the output, then both programs run and the tool paths compared | not started |
@@ -389,6 +389,44 @@ refused; otherwise the file is removed and the report lists every refusal.
   - G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once;
   - BOSS 4-7 compatibility mode off.
 
+### 3.10 Phase 3 as built
+
+`fbout.c` translates the jumps and loops of the main program:
+
+| FANUC | DX32 |
+|---|---|
+| `WHILE [c] DOm` ... `ENDm` | `Lk`, the condition's own blocks, `?c` ... `=Lk`, `!` |
+| `DOm` ... `ENDm` (no WHILE) | `Lk` ... `=Lk` |
+| `IF [c] GOTO n`, n further down | `?(not c)` ... `!` just before block n |
+| `GOTO n`, n further down | a temporary set to 0, `?T<EQ>1.` ... `!` |
+| `IF [c] GOTO n`, n further up or this block | `Lk` before block n; `?c`, `=Lk`, `!` |
+| `GOTO n`, n further up | `Lk` before block n; `=Lk` |
+
+The condition is negated without a flag where it can be (`EQ`↔`NE`, `GT`↔`LE`, `GE`↔`LT`). The target is found
+as the FANUC control finds it: the next block with that N number, then from the top of the program. A
+computed target (`GOTO #1`) is refused.
+
+**Leaving a loop.** `IF [c] GOTO n` from inside a loop to the block right after its `END` works by itself:
+- The skip that starts at the GOTO's `?` ends at the loop's own `!`, since the DX32 skip counter only counts
+  `?` and `!` (`../LANGUAGE.md` section 5).
+- Execution then goes on after the loop, and the GOTO's `!` that follows is a no-op.
+- This was checked in dxsim before it was relied on.
+
+A jump out of a loop to any other block is refused for now. A jump into a loop is refused: FANUC does not
+allow it either.
+
+**The check before writing.** The output is kept in memory with markers, and nothing is written unless all
+of these hold:
+1. Every `?` that a jump or a loop opens is matched, by the textual `?`/`!` count, with a `!` after which only
+   no-op `!` lines stand before the block where the FANUC jump goes.
+2. No skip passes over a label whose `=Lk` comes after the skip, which would leave the label unset.
+3. Label regions (from the label to its last `=Lk`) nest without overlapping.
+
+**Label numbers.** The number is the nesting depth: L1 is the outermost. Siblings reuse a number, which is
+safe because the DX32 keeps the latest definition of each label. Deeper than 7 is refused, because L8 and L9
+belong to the canned cycles. The report notes which labels the program uses: a caller that loops on the same
+labels around it would break (phase 4 numbers labels over the whole call tree).
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
@@ -416,6 +454,10 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **Phase 3, built:**
+  - `fbloop` (nested WHILE) and `fbgoto` (a backward GOTO loop, forward skips, breaks out of WHILE and DO) are
+    translated and run in dxsim, and their end points are compared, in order, with the FANUC evaluation.
+  - `fbjmpx` checks the refusals.
 - **Phase 2, built:** `fb.lst` entries with `-w` compare the written DX32 program too (`fbstr`, `fbfix`, `fbatan`
   with nat=1, and refusals for `fbthen` and `fbbolt`). `dxtest` runs the written programs in dxsim and checks
   `FIX`/`FUP`/`ROUND` on 15 values (halves, negatives, 0.4999999) and `ATAN`/`ASIN`/`ACOS` in every quadrant
@@ -437,7 +479,8 @@ output.
   ☑ evaluator with vacant tracking
 - **2** ☑ variable pool and map ☑ PPPL writer ☑ `FIX`/`FUP`/`ROUND`/`ATAN`/`ASIN`/`MOD` expansions ☑ word carriers
   ☑ vacancy checks from the evaluation
-- **3** ☐ flow graph ☐ structure check ☐ `?`/`!` and label writer
+- **3** ☑ jumps and loops found (`structure`) ☑ structure check (`check`) ☑ `?`/`!` and label writer
+  ☐ jumps out of a loop to other blocks (with a flag)
 - **4** ☐ `M98`/`M99` ☐ `G65` ☐ depth and recursion checks
 - **5** ☐ motion words ☐ G81/G83
 - **6** ☐ `-check`
@@ -457,7 +500,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | Phase 2 built for straight-line programs: `-w`, `src/fbout.c`, variable pool and carriers, PPPL expressions, `FIX`/`FUP`/`ROUND`/`ATAN`/`ASIN`/`MOD` expansions checked in dxsim, vacancy refusals (134 passed) |
+| 2026-10-28 | (this commit) | Phase 3 built for the main program: WHILE/DO/END, GOTO, IF..GOTO as labels and ?/! regions, checked before writing; breaks out of loops; dxsim path checks (142 passed) |
+| 2026-10-28 | 7101cae | Phase 2 built for straight-line programs: `-w`, `src/fbout.c`, variable pool and carriers, PPPL expressions, `FIX`/`FUP`/`ROUND`/`ATAN`/`ASIN`/`MOD` expansions checked in dxsim, vacancy refusals (134 passed) |
 | 2026-10-27 | da366b4 | Phase 1 built: `fb2dx` reads, detects the series, evaluates (`-eval`, `-parse`, `-series list`); tests `fb.lst` and 4 hand checks (122 passed) |
 | 2026-10-27 | 9689d77 | All FANUC series (owner's request): section 3.7, dialect table, series detection, `-series`, `-fparam`, Macro A; M98 shares the caller's locals; Q5 answered, Q6 added |
 | 2026-10-27 | ebcc885 | Document created. Phase 0: `*` invalid in PPPL (0x262a6 → 0x24fba); the 32-bit functions round (fmove.l, default FPCR), dxsim changed from truncation, `bench/BFIX.TXT`, test `bfix`; exact `FIX`/`FUP`/`ROUND` built on `LSR` with a correction; word values need same-letter variables, G90 arc centres are absolute |

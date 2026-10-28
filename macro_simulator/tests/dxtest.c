@@ -676,6 +676,58 @@ static int fbxy(double *x, double *y, double *z, int max)
     return n;
 }
 
+/* the end points of the moves in an fb2dx -eval trace (modal X Y Z), in inches */
+static int fbmoves(double *x, double *y, double *z, int max, double scale)
+{
+    char line[256], *p;
+    double cx = 0, cy = 0, cz = 0;
+    int n = 0;
+    FILE *fp = fopen(TMPOUT, "r");
+    if (!fp) return 0;
+    while (fgets(line, sizeof line, fp) && n < max) {
+        int any = 0;
+        if (!strstr(line, " NC ")) continue;
+        for (p = strtok(line + 13, " \n"); p; p = strtok(0, " \n")) {
+            if (*p == 'X') { cx = atof(p + 1) * scale; any = 1; }
+            if (*p == 'Y') { cy = atof(p + 1) * scale; any = 1; }
+            if (*p == 'Z') { cz = atof(p + 1) * scale; any = 1; }
+        }
+        if (!any || (n ? near(x[n - 1], cx, 1e-6) && near(y[n - 1], cy, 1e-6) && near(z[n - 1], cz, 1e-6)
+                       : near(cx, 0, 1e-6) && near(cy, 0, 1e-6) && near(cz, 0, 1e-6)))
+            continue;                       /* no movement (the start is X0 Y0 Z0) */
+        x[n] = cx;
+        y[n] = cy;
+        z[n] = cz;
+        n++;
+    }
+    fclose(fp);
+    return n;
+}
+
+/* translate PROG.nc, run the DX32 program in dxsim, and compare its moves with the
+   FANUC evaluation: the end points in order (mm programs: scale 1/25.4) */
+static void fbpath(const char *prog, const char *wname, double scale, const char *what)
+{
+    static double fx[MAXMV], fy[MAXMV], fz[MAXMV];
+    char args[120], msg[200];
+    int n, i, j = 0, ok = 1;
+    sprintf(args, "%.20s.nc -eval -w %.20s.txt", prog, wname);
+    fb(args);
+    n = fbmoves(fx, fy, fz, MAXMV, scale);
+    movesx(wname, "");
+    for (i = 0; i < nmv && ok; i++) {
+        if (j && near(mvs[i].x, fx[j - 1], 1e-4) && near(mvs[i].y, fy[j - 1], 1e-4) &&
+            near(mvs[i].z, fz[j - 1], 1e-4)) continue;          /* G0 split in Z and XY, or no change */
+        if (j < n && near(mvs[i].x, fx[j], 1e-4) && near(mvs[i].y, fy[j], 1e-4) && near(mvs[i].z, fz[j], 1e-4))
+            j++;
+        else if (!(near(mvs[i].x, fx[j], 1e-4) && near(mvs[i].y, fy[j], 1e-4)) &&
+                 !(j < n && near(mvs[i].z, fz[j], 1e-4)))
+            ok = 0;
+    }
+    sprintf(msg, "%s: %d FANUC end points, the DX32 program in dxsim reaches %d of them in order", what, n, j);
+    check(ok && j == n && n > 0, msg);
+}
+
 static void fbhand(void)
 {
     double x[16], y[16], z[16];
@@ -735,6 +787,10 @@ static void fbhand(void)
             if (!fbget("fbwatan.txt", 1 + i, &v) || !near(v, want[i], 1e-4)) bad++;
         check(!bad, "fb2dx ATAN[a]/[b] 0..360 on all quadrants and axes, ASIN 270..90, ACOS, run in dxsim");
     }
+
+    /* phase 3: loops and jumps, run in dxsim against the FANUC evaluation */
+    fbpath("fbloop", "fbwloop", 1 / 25.4, "fb2dx nested WHILE loops (3 x 2 grid)");
+    fbpath("fbgoto", "fbwgoto", 1 / 25.4, "fb2dx backward GOTO loop, forward skips, breaks out of WHILE and DO");
 
     /* M98 P30100: three passes, the subprogram adds 1 to the caller's #1 */
     fb("fbm98.nc -eval -series 0");
