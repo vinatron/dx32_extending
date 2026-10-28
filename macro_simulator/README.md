@@ -75,7 +75,7 @@ dxsim [options] program.txt
   -d         dump the variables set, at the end     -cov  list the built-in blocks executed
   -M FILE    load M-macro definitions (M<n>: ... |)
   -t T=D[,L] tool T diameter (and length offset)    -x V=val   preset a variable (-x X1=2.5)
-  -i N=val   user input N for RDI()/GET()           -n N  block limit (endless loops)
+  -i N=val   start value of RDI/GET table entry N   -n N  block limit (endless loops)
   -m / -mm   metric power-on mode / show mm         -peck V    param 272 (default .05 in)
   -nopppl    machine without the PPPL option        -boss      BOSS 4-7 compatibility mode
   -keep      keep blanks in blocks                  -del       block delete switch on

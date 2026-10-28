@@ -154,10 +154,42 @@ DTF and #PI; 6.89 has 36.
 | `LSR LSL ROR ROL (n,v)` | shift/rotate **v by n**: the first argument is the count (FP7/FP6 order at 0x253c8) | CONFIRMED (F) |
 | `SET CLR TST (n,v)` | set / clear / test bit n of v | CONFIRMED (F) |
 | (all 32-bit functions) | arguments are converted with `fmove.l fp,dn` under the default FPCR: **rounded to nearest, ties to even**, not truncated (`LSR(0,2.7)` = 3, `LSR(0,2.5)` = 2, `NOT(-1.5)` = 1). Values ≥ 2³¹ have 2³¹ taken off first (LSR 0x25d66, NOT 0x25aa6); FPCR is only changed inside library routines (0x374d6+) | TENTATIVE (F); `bench/BFIX.TXT` |
-| `MRG(a,b)` | (a and mask) or (b and not mask), mask at 0x764c (nothing found that sets it). `dxsim`: a or b | TENTATIVE |
-| `RDI(n) GET(n)` | read user input n (0-150) / input word; "User IO but User AUF not operating" (O) | TENTATIVE; `dxsim -i n=v` supplies values |
+| `MRG(a,b)` | (a and mask) or (b and not mask) (0x25b5c). The mask is entry 64 of the variable table below (0x764c): 0 at power-up, so `MRG(a,b)` = b until a program sets it with `WRI(64,m)` | CONFIRMED (F) |
+| `RDI(n) GET(n)` | read entry n of the variable table below: RDI as a signed 32-bit number (entries 55 and 56 as reals), GET as unsigned (0x255a8, 0x2566a) | CONFIRMED (F); `dxsim -i n=v` gives the value an entry holds at the start |
 | `RDP(n) WRP(n,v)` | read / write user byte n at 0xac06[n-1] | CONFIRMED (F) |
-| `WRI(n,v) PUT(n,v)` | write user output / output word | TENTATIVE; `dxsim` traces it as `IO` |
+| `WRI(n,v) PUT(n,v)` | write v to entry n if the entry is writable, and return v (signed / unsigned); a read-only entry is left alone (0x25724, 0x259b8) | CONFIRMED (F); `dxsim` traces each write as `IO` |
+
+### The variable table (`RDI GET WRI PUT`, CONFIRMED F)
+
+The four functions do not address I/O channels: n picks an entry of a table of 151 (address, type) pairs
+at 0x263a2, and the function reads or writes the 32-bit word at that address. n is rounded; below 0 or
+above 150 it becomes 150. Type 1 entries can be written, type 0 entries only read. Types 2 and 3 would
+raise `PPPL: User IO BUT User AUF not operating` when the user AUF is absent (0x32a4/0x32a8 = 0xbad),
+but no entry in 6.89 has them, so that message cannot occur. Reading or writing entries 0-19 first
+refreshes the AUF copies (0x30b8e: 0x3248 → 0x3220, 0x324c → 0x3224, 0x31f4 → 0x3218, 0x31f0 →
+0x321c).
+
+| n | Address | W | What it is |
+|---|---|---|---|
+| 0, 1 | 0x3220, 0x3224 | | AUF inputs: the long-RX primary and secondary words (`../AUF_PACKET_FORMAT.md`) |
+| 2-9 | 0x3228-0x3244 | | not identified |
+| 10, 11 | 0x31f0, 0x31f4 | yes | AUF outputs: the secondary and primary output words. Whether a written bit survives the next servo tick is open (OPENQ L9) |
+| 12-19 | 0x31f8-0x3214 | yes | not identified |
+| 20-34 | 0xfd8-0x1010 | | machine parameters 17 onward (axis scaling, section 14a) |
+| 55, 56 | 0xae2e, 0xae3a | | reals: RDI returns them as they are; GET reads the first 4 bytes |
+| 64 | 0x764c | yes | the `MRG` mask |
+| 65, 68, 148 | 0x01200554, 0x01200558, 0x01200738 | yes | dual-port RAM words shared with the PC |
+| 78-81 | 0xaf34, 0xaf10, 0xaf38, 0xaf14 | | spindle range 1 and 2 minimum and maximum (OPENQ A5) |
+| 93 | 0xaef8 | yes | machine flags (bit 2 probe, bit 7 FPU flag, bit 6 zeroes C9 in the G81 driver) |
+| 102-105 | 0xc5a0-0xc5ac | yes | WRI also appends the low byte to a queue (0xc548, 32 bytes; 0xc569, 16; 0xc57a, 20; 0xc58f, 16); 255 is not queued; a full queue raises the message at 0x33b27, `Number of AND operands has exceeded the max.` |
+| 137 | 0x765c | yes | WRI also appends the byte to a 256-byte buffer at 0x7660; 255 clears it |
+| 144 | 0x3c60 | | the block-search target |
+| 149 | 0x765c | yes | WRI also builds a three-part message at 0x33c79 (first write: `LO/HI` or `HI/LO` by v = 1; then two numbers) and copies it to 0x99e0 |
+| 135, 138-140 | 0 | | address 0 (the reset stack pointer) |
+
+The writable flag of every entry is in `uiowr()` in `src/dxexpr.c`. `dxsim` keeps the values written in the run (a later RDI/GET returns them, and the
+`MRG` mask is entry 64), starts each entry at its `-i` value or 0, and does not model the queues,
+the buffer at 0x7660, the message of entry 149 or what the AUF does with entries 10 and 11.
 
 ## 5. Conditionals (CONFIRMED, M ch.10 + F)
 
@@ -453,7 +485,7 @@ All open questions, with how to answer each one (firmware trace, bench test, or 
    position 0x40d6 − 0xacae) / 250000, or 0 without a 4th axis, and the C word handler (0x1f0f6) turns it
    back into a 4th-axis target. It holds the C axis; it never moves X, Y or Z. `dxsim` ignores C words.
 4. The load pass that registers `#n` definitions was not traced. (The `=N` loop handler is answered: section 7.)
-5. `MRG` mask (0x764c) and the exact I/O channel map of RDI/WRI.
+5. (Answered: the `MRG` mask and the RDI/WRI table are in section 4.) Whether WRI(11) reaches the AUF outputs: OPENQ L9.
 6. What BXX does to a program on load (blanks, CR/LF, `%` tape leaders).
 
 ## 16. Firmware index (6.89)

@@ -26,7 +26,7 @@ static const char *const help[] = {
     "  -m         metric power-on mode (G71); -mm show results in mm",
     "  -t T=D[,L] tool T diameter D (and length offset L), e.g. -t 1=.5",
     "  -x V=val   preset a variable, e.g. -x X1=2.5",
-    "  -i N=val   value of user input N for RDI()/GET()",
+    "  -i N=val   start value of entry N of the RDI/GET/WRI/PUT table (0-150)",
     "  -n N       stop after N blocks (default 500000)",
     "  -nopppl    the PPPL option is off (assignments in the program fail)",
     "  -boss      BOSS 4-7 compatibility mode",

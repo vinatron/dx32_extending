@@ -155,6 +155,7 @@ void dxreset(dxsim *s)
             }
     }
     memset(s->uout, 0, sizeof s->uout);
+    memset(s->uwr, 0, sizeof s->uwr);
     memset(s->labset, 0, sizeof s->labset);
     memset(s->subset, 0, sizeof s->subset);
     memset(s->warned, 0, sizeof s->warned);

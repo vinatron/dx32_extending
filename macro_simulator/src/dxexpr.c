@@ -229,6 +229,34 @@ static double fromu32(unsigned long u)
     return (double)(u & 0xffffffffUL);
 }
 
+/* RDI GET WRI PUT(n): entry n of the firmware's table of 151 variables at 0x263a2
+   (LANGUAGE.md section 4, "The variable table").
+   n is rounded; below 0 or above 150 it is 150 (an unsigned compare, 0x255bc). */
+static int uioent(double x)
+{
+    x = rneven(x);
+    if (x < 0.0 || x > 150.0) return 150;
+    return (int)x;
+}
+
+/* the entries WRI/PUT write (type 1 in the table); the others are read-only */
+static int uiowr(int n)
+{
+    static const unsigned char wr[] = { 64, 65, 66, 68, 69, 71, 72, 73, 74, 75, 76, 77, 82, 83, 84, 87,
+        92, 93, 94, 96, 97, 98, 99, 100, 131, 132, 133, 134, 136, 137, 141, 147, 148, 149, 0 };
+    int i;
+    if ((n >= 10 && n <= 19) || (n >= 102 && n <= 130)) return 1;
+    for (i = 0; wr[i]; i++)
+        if (wr[i] == n) return 1;
+    return 0;
+}
+
+/* what entry n holds: the value written in this run, else the -i value, else 0 */
+static double uioval(dxsim *s, int n)
+{
+    return s->uwr[n] ? s->uout[n] : s->uin[n];
+}
+
 static unsigned long rotr(unsigned long v, unsigned n)
 {
     n &= 31;
@@ -267,17 +295,14 @@ static double func1(ev *e, const char *name, double x)
             if (u & (1UL << n)) return (double)n;
         return 31.0;    /* BFFFO finds nothing: offset 32, ~32 & 31 */
     }
-    if (!strcmp(name, "RDI")) {
-        n = (int)x;
-        if (n < 0) n = 0;
-        if (n >= DX_NUIO) n = DX_NUIO - 1;
-        return s->uin[n];
-    }
-    if (!strcmp(name, "GET")) {
-        n = (int)x;
-        if (n < 0) n = 0;
-        if (n >= DX_NUIO) n = DX_NUIO - 1;
-        return s->uin[n];
+    if (!strcmp(name, "RDI") || !strcmp(name, "GET")) {
+        unsigned long u;
+        n = uioent(x);
+        if (!strcmp(name, "RDI") && (n == 55 || n == 56))
+            return uioval(s, n);        /* 0xae2e / 0xae3a are read as extended reals (0x25622) */
+        u = tou32(uioval(s, n));
+        if (name[0] == 'G' || u < 0x80000000UL) return fromu32(u);
+        return -(double)((0xffffffffUL - u) + 1UL);  /* RDI: signed (0x2561a) */
     }
     if (!strcmp(name, "RDP")) {
         n = (int)x - 1;
@@ -307,15 +332,21 @@ static double func2(ev *e, const char *name, double a, double b)
     if (!strcmp(name, "SET")) return fromu32(ub | (1UL << (ua & 31)));
     if (!strcmp(name, "CLR")) return fromu32(ub & ~(1UL << (ua & 31)));
     if (!strcmp(name, "TST")) return (ub >> (ua & 31)) & 1UL ? 1.0 : 0.0;
-    if (!strcmp(name, "MRG")) return fromu32(ua | ub);     /* mask 0x764c unknown */
+    if (!strcmp(name, "MRG")) {                 /* 0x25b5c: the mask is entry 64 (0x764c) */
+        unsigned long m = tou32(uioval(s, 64));
+        return fromu32((ua & m) | (ub & ~m));
+    }
     if (!strcmp(name, "WRI") || !strcmp(name, "PUT")) {
-        n = (int)a;
-        if (n < 0) n = 0;
-        if (n >= DX_NUIO) n = DX_NUIO - 1;
-        s->uout[n] = b;
-        sprintf(buf, "IO    %s(%d) <- %.6g", name, n, b);
+        n = uioent(a);
+        if (uiowr(n)) {
+            s->uout[n] = fromu32(ub);
+            s->uwr[n] = 1;
+            sprintf(buf, "IO    %s(%d) <- %.6g", name, n, b);
+        } else
+            sprintf(buf, "IO    %s(%d) <- %.6g (read-only entry: not written)", name, n, b);
         dxtline(s, buf);
-        return b;
+        if (name[0] == 'P' || ub < 0x80000000UL) return fromu32(ub);
+        return -(double)((0xffffffffUL - ub) + 1UL);
     }
     if (!strcmp(name, "WRP")) {
         n = (int)a - 1;

@@ -32,7 +32,7 @@
 #define DX_NPARAM   64      /* '*' macro parameters (0x3368 area) */
 #define DX_NMAC     120     /* M<n>: definitions (0x3b44 list) */
 #define DX_NTOOL    25      /* tools 1..24 */
-#define DX_NUIO     151     /* user I/O channels 0..150 (RDI/WRI) */
+#define DX_NUIO     151     /* RDI/GET/WRI/PUT entries 0..150 (the variable table at 0x263a2) */
 
 /* ---- number reader flags (d7 bits of 0x23b2c) ---- */
 #define DXN_POINT   1       /* bit 0: decimal point seen */
@@ -154,7 +154,8 @@ typedef struct dxsim {
     /* ---- variables and user I/O ---- */
     double var[26][DX_NVAR];
     unsigned char setv[26][DX_NVAR]; /* assigned at least once */
-    double uin[DX_NUIO], uout[DX_NUIO];
+    double uin[DX_NUIO], uout[DX_NUIO];  /* -i values; values written with WRI/PUT */
+    unsigned char uwr[DX_NUIO];         /* written in this run: RDI reads uout */
     unsigned char upar[256];
 
     /* ---- flow control tables ---- */

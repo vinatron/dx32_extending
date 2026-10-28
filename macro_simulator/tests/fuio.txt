@@ -1,0 +1,14 @@
+; FUIO: RDI GET WRI PUT address the firmware's variable table (0x263a2); MRG's mask is entry 64
+A1=MRG(255,3840)
+A2=WRI(64,15)
+A3=MRG(255,3840)
+A4=RDI(64)
+A5=WRI(0,7)
+A6=RDI(0)
+A7=PUT(11,3000000000.)
+A8=GET(11)
+A9=RDI(11)
+B1=WRI(-1,5)
+B2=RDI(151)
+B3=RDI(10)
+M2
