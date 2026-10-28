@@ -24,3 +24,5 @@ fbboltw  fbbolt   -w fbwbolt.txt
 fbloopw  fbloop   -w fbwloop.txt
 fbgotow  fbgoto   -w fbwgoto.txt
 fbjmpx   fbjmpx   -w fbwjmpx.txt
+fbexitw  fbexit   -w fbwexit.txt
+fbcallw  fbcall   -w fbwcall.txt

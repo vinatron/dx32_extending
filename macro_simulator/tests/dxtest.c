@@ -791,6 +791,11 @@ static void fbhand(void)
     /* phase 3: loops and jumps, run in dxsim against the FANUC evaluation */
     fbpath("fbloop", "fbwloop", 1 / 25.4, "fb2dx nested WHILE loops (3 x 2 grid)");
     fbpath("fbgoto", "fbwgoto", 1 / 25.4, "fb2dx backward GOTO loop, forward skips, breaks out of WHILE and DO");
+    fbpath("fbexit", "fbwexit", 1 / 25.4, "fb2dx GOTO out of two loops and past blocks after a loop (exit flags)");
+
+    /* phase 4: calls, run in dxsim against the FANUC evaluation */
+    fbpath("fbbolt", "fbwbolt", 1 / 25.4, "fb2dx G65 bolt circle (arguments set by the caller)");
+    fbpath("fbcall", "fbwcall", 1 / 25.4, "fb2dx M98 sharing locals, G65 in a loop, L repeats, early M99");
 
     /* M98 P30100: three passes, the subprogram adds 1 to the caller's #1 */
     fb("fbm98.nc -eval -series 0");

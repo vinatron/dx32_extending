@@ -12,8 +12,8 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 | 0 | Firmware checks the design depends on | **done** (section 2) |
 | 1 | FANUC front end: dialect table, series detection and `-series`, reader, expression parser, statement list, small evaluator | **done** (section 3.8) |
 | 2 | Variables and expressions: allocation, PPPL output, numbers always with a point | **done** for straight-line programs (section 3.9) |
-| 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | **done** for the main program (section 3.10); jumps out of a loop to anywhere but the block after its END are refused |
-| 4 | Calls: `M98`/`M99`, `G65` to `#n` macros with caller-side assignments | not started |
+| 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | **done** (section 3.10), with exit flags for jumps out of nested structures |
+| 4 | Calls: `M98`/`M99`, `G65` to `#n` macros with caller-side assignments | **done** (section 3.11) |
 | 5 | Motion subset: G0-G3 (with `R`), G81, G83, G90/G91, F, S, T, M | not started |
 | 6 | Checking: `dxsim -lint` on the output, then both programs run and the tool paths compared | not started |
 
@@ -412,8 +412,8 @@ computed target (`GOTO #1`) is refused.
 - Execution then goes on after the loop, and the GOTO's `!` that follows is a no-op.
 - This was checked in dxsim before it was relied on.
 
-A jump out of a loop to any other block is refused for now. A jump into a loop is refused: FANUC does not
-allow it either.
+A jump out of a loop to any other block uses an exit flag (below). A jump into a loop is refused: FANUC
+does not allow it either.
 
 **The check before writing.** The output is kept in memory with markers, and nothing is written unless all
 of these hold:
@@ -426,6 +426,48 @@ of these hold:
 safe because the DX32 keeps the latest definition of each label. Deeper than 7 is refused, because L8 and L9
 belong to the canned cycles. The report notes which labels the program uses: a caller that loops on the same
 labels around it would break (phase 4 numbers labels over the whole call tree).
+
+**Exit flags** (added with phase 4). Some jumps leave a structure that does not end at the jump's target:
+- a GOTO out of two nested loops;
+- a GOTO from a loop to a block further down than the one after its `END`;
+- an `M99` inside an `IF..GOTO` region.
+
+These get a flag variable `F` from the pool, set to 0 at the top of the program:
+- **At the jump:** `F=1.` (inside `?c` ... `!` for `IF..GOTO`), then `?F<EQ>0.`, which skips to the end of
+  the innermost structure around the jump.
+- **Guards:** after each enclosing structure that does not hold the target, `?F<EQ>0.` keeps skipping to
+  the end of the next one, and the last guard skips to the target.
+- **At the target:** `F=0.`
+
+Every region still nests, so the check above verifies these too. A GOTO into a loop is still refused.
+
+### 3.11 Phase 4 as built
+
+`fb2dx` finds every program the main program calls (`callgraph`): `G65 P` and `M98 P`, with constant P
+and L (L up to 99).
+- **Instances:** each pair of a called program and its local level is one DX32 macro `#n`.
+  - `G65` calls at the caller's level + 1, `M98` at the caller's own level, as on FANUC.
+  - The same program called at two levels is written twice.
+  - A program that is not in the input, or a computed P, is refused. Recursion is refused, and so are
+    calls deeper than 8 levels (DX32 6.89); more than 4 gets a NOTE (the manuals' limit).
+- **Locals:** each level's `#1-#33` get their own DX32 variables. The map at the top of the output lists
+  them as `level n: ...`.
+- **Arguments:** the caller assigns them, then calls `=#n`, because `*` can't be used in an expression
+  (fact 1). An argument the called program never reads is not assigned.
+  - The numbering follows specification I, or II for repeated I J K.
+  - Constants without a point are scaled like the address (TENTATIVE, 3.8).
+- **Repeats:** `L` repeats the arguments and the call; `M98 P` with the count in front, per the series.
+- **Layout:** the macros are defined at the top of the output, `#n; O<number>` ... `$`, then the main
+  program.
+- **Returns:**
+  - `M99` at the end becomes the `$`.
+  - An `M99` before the last block is an early return: a forward jump to the `$` (with an exit flag
+    when needed).
+  - `M30`/`M2` in a called program and `M99` in the main program are refused.
+- **Labels over the call tree:** the programs are written callers first. A called macro's labels start
+  above the labels its callers have open around the call: `O200` called from inside the main program's
+  L1 loop uses L2. The total must stay within L1-L7.
+- **Temporaries and carriers** are only used inside one statement, so calls can't disturb them.
 
 ## 4. Errors and warnings (the report)
 
@@ -454,6 +496,9 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **Phase 4, built:** `fbbolt` (G65 with arguments), `fbcall` (M98 sharing the caller's locals, G65 inside a
+  loop, L repeats, an early M99 inside an IF..GOTO region) and `fbexit` (exit flags) are translated, run in
+  dxsim and compared with the FANUC evaluation.
 - **Phase 3, built:**
   - `fbloop` (nested WHILE) and `fbgoto` (a backward GOTO loop, forward skips, breaks out of WHILE and DO) are
     translated and run in dxsim, and their end points are compared, in order, with the FANUC evaluation.
@@ -480,8 +525,8 @@ output.
 - **2** ☑ variable pool and map ☑ PPPL writer ☑ `FIX`/`FUP`/`ROUND`/`ATAN`/`ASIN`/`MOD` expansions ☑ word carriers
   ☑ vacancy checks from the evaluation
 - **3** ☑ jumps and loops found (`structure`) ☑ structure check (`check`) ☑ `?`/`!` and label writer
-  ☐ jumps out of a loop to other blocks (with a flag)
-- **4** ☐ `M98`/`M99` ☐ `G65` ☐ depth and recursion checks
+  ☑ jumps out of a loop to other blocks (exit flags)
+- **4** ☑ `M98`/`M99` (early returns too) ☑ `G65` with arguments and L ☑ depth and recursion checks ☑ labels over the call tree
 - **5** ☐ motion words ☐ G81/G83
 - **6** ☐ `-check`
 
@@ -500,7 +545,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | Phase 3 built for the main program: WHILE/DO/END, GOTO, IF..GOTO as labels and ?/! regions, checked before writing; breaks out of loops; dxsim path checks (142 passed) |
+| 2026-10-28 | (this commit) | Phase 4 built: G65/M98 as DX32 macros per program and level, caller-side arguments, early M99, labels over the call tree; exit flags for jumps out of nested structures; dxsim path checks for fbbolt, fbcall, fbexit (149 passed) |
+| 2026-10-28 | ff2da1d | Phase 3 built for the main program: WHILE/DO/END, GOTO, IF..GOTO as labels and ?/! regions, checked before writing; breaks out of loops; dxsim path checks (142 passed) |
 | 2026-10-28 | 7101cae | Phase 2 built for straight-line programs: `-w`, `src/fbout.c`, variable pool and carriers, PPPL expressions, `FIX`/`FUP`/`ROUND`/`ATAN`/`ASIN`/`MOD` expansions checked in dxsim, vacancy refusals (134 passed) |
 | 2026-10-27 | da366b4 | Phase 1 built: `fb2dx` reads, detects the series, evaluates (`-eval`, `-parse`, `-series list`); tests `fb.lst` and 4 hand checks (122 passed) |
 | 2026-10-27 | 9689d77 | All FANUC series (owner's request): section 3.7, dialect table, series detection, `-series`, `-fparam`, Macro A; M98 shares the caller's locals; Q5 answered, Q6 added |

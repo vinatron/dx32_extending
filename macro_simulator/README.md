@@ -382,9 +382,10 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
 
 `fb2dx` translates FANUC custom macro programs (Macro A and Macro B, any series) into DX32 programs.
 `features/FB2DX.md` has the design.
-- **Built:** it reads the program, decides the FANUC series, evaluates the program, and writes the main
-  program as DX32: assignments, `IF..THEN`, `WHILE`/`DO`/`END`, `GOTO` and `IF..GOTO`, and G0/G1 moves.
-- **Next:** calls (phase 4) and the rest of the motion words (phase 5).
+- **Built:** it reads the program, decides the FANUC series, evaluates the program, and writes it as DX32.
+  That covers assignments, `IF..THEN`, `WHILE`/`DO`/`END`, `GOTO` and `IF..GOTO`, `G65`/`M98` calls as
+  DX32 `#n` macros, and G0/G1 moves.
+- **Next:** the rest of the motion words (phase 5: arcs, canned cycles, tool changes).
 
 ```
 fb2dx -series list                    the series, what exists on which, the -fparam settings

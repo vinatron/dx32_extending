@@ -9,7 +9,7 @@ change the order.
 | 2 | Cutter diameter compensation (G41/G42) | **simulated** (phases 0-5); bench check on the machine pending, see `features/CUTCOMP.md` |
 | 3 | Fillets and corner radii (G22/G23) | **simulated**; bench check pending, see `features/FILLET.md` |
 | 4 | Program flow view: main program → macros → cycles | **done**: `-flow`, `-pc`, preview call stack and step over, `-map`; see `features/FLOW.md` |
-| 5 | FANUC Macro A/B to DX32 translator (`fb2dx`), all FANUC series | **in progress**: phases 0 (firmware checks), 1 (reader, series detection, evaluator), 2 (expressions) and 3 (jumps and loops) done; see `features/FB2DX.md` |
+| 5 | FANUC Macro A/B to DX32 translator (`fb2dx`), all FANUC series | **in progress**: phases 0 (firmware checks), 1 (reader, series detection, evaluator), 2 (expressions), 3 (jumps and loops) and 4 (calls) done; see `features/FB2DX.md` |
 | 6 | z/OS port with GDDM plots | deferred ("way down the road") |
 | - | G9 P corner blending (the control inserts short sub-segments at corners) | candidate, low priority (`features/OPENQ.md` F2) |
 
