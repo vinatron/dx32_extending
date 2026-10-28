@@ -841,6 +841,24 @@ static void fbhand(void)
               "fb2dx drilling: G83 in 3 pecks, G99 back to R, G98 back to the initial level");
     }
 
+    /* G41 with a 10 mm tool in dxsim: the approach ends at (-5,-5), the first side is cut at X-5
+       (not at X0: the gouge a plain copy of the G41 block gives), the far side at X55 */
+    {
+        static const double px[] = { -5, -5, 55 }, py[] = { -5, 50, 0 };
+        int found = 0, gouge = 0, k;
+        fb("fbcomp.nc -fparam default -w fbwcomp.txt");
+        movesx("fbwcomp", "-t 3=.3937");
+        for (k = 0; k < 3; k++)
+            for (i = 0; i < nmv; i++)
+                if (mvs[i].k == 'F' && near(mvs[i].x, px[k] / 25.4, 2e-4) && near(mvs[i].y, py[k] / 25.4, 2e-4)) {
+                    found++;
+                    break;
+                }
+        for (i = 0; i < nmv; i++)
+            if (mvs[i].k == 'F' && near(mvs[i].x, 0, 1e-4) && mvs[i].y > 0) gouge++;
+        check(found == 3 && !gouge, "fb2dx G41 in dxsim with a 10 mm tool: the sides are offset by 5 mm, no gouge");
+    }
+
     /* M98 P30100: three passes, the subprogram adds 1 to the caller's #1 */
     fb("fbm98.nc -eval -series 0");
     n = fbxy(x, y, z, 16);

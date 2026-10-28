@@ -35,3 +35,6 @@ fbxend   fbarc    -against fbxend.txt
 fbjobw   fbjob    -g28 m25 -w fbwjob.txt -check
 fbjobx   fbjob    -w fbwjobx.txt
 fbvarg   fbvarg   -w fbwvarg.txt
+fbcompw  fbcomp   -fparam default -w fbwcomp.txt -check
+fbcompx  fbcomp   -w fbwcompx.txt
+fbcompb  fbcomp   -fparam sup=1 -fparam dpi=0 -w fbwcompb.txt

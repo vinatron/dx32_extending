@@ -16,6 +16,7 @@ static const char *const usage[] = {
     "  -inch | -mm      the unit system when the program has no G20/G21",
     "  -bdel on|off     the block delete switch, for programs with / blocks",
     "  -g28 m25|drop    G91 G28 Z0: the DX32 quill home (M25), or leave it out",
+    "  -comp dx32       G41/G42 with FANUC start-up type B: accept the DX32's lead-in (FB2DX.md 3.15)",
     "  -parse           list the statements as read",
     "  -eval            evaluate the program and trace its NC blocks",
     "  -w FILE          write the DX32 program to FILE (only when nothing is refused)",
@@ -108,7 +109,7 @@ int main(int argc, char **argv)
 
     x->ser = -1;
     x->bdelsw = -1;
-    x->par.dpi = x->par.nat = x->par.is = x->par.o8 = x->par.avar = -1;
+    x->par.dpi = x->par.nat = x->par.is = x->par.o8 = x->par.avar = x->par.sup = -1;
     x->rep = stdout;
     for (i = 1; i < argc; i++) {
         const char *a = argv[i];
@@ -141,7 +142,13 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-eval")) eval = 1;
         else if (!strcmp(a, "-w") && i + 1 < argc) wout = argv[++i];
         else if (!strcmp(a, "-check")) chk = 1;
-        else if (!strcmp(a, "-g28") && i + 1 < argc) {
+        else if (!strcmp(a, "-comp") && i + 1 < argc) {
+            if (strcmp(argv[++i], "dx32")) {
+                fprintf(stderr, "fb2dx: -comp dx32\n");
+                return 1;
+            }
+            x->par.comp = 1;
+        } else if (!strcmp(a, "-g28") && i + 1 < argc) {
             a = argv[++i];
             x->par.g28 = !strcmp(a, "m25") ? 1 : !strcmp(a, "drop") ? 2 : -1;
             if (x->par.g28 < 0) {

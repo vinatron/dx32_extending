@@ -81,7 +81,8 @@ void fbslist(FILE *fp)
     fprintf(fp, "            not a parameter, not covered by -fparam default: check the Macro A manual\n");
     fprintf(fp, "  d83=N     G83 clearance before each peck (parameter 5115), in program units\n");
     fprintf(fp, "  d73=N     G73 retract after each peck (parameter 5114), in program units\n");
-    fprintf(fp, "  default   the factory settings: dpi=0 is=b nat=0 o8=0 (not d83/d73: set per machine)\n");
+    fprintf(fp, "  sup=0|1   G41/G42 start-up type A (0) or B (1); parameter 5003 bit 0 (SUP)\n");
+    fprintf(fp, "  default   the factory settings: dpi=0 is=b nat=0 o8=0 sup=0 (not d83/d73: set per machine)\n");
 }
 
 void fbfeat(fbx *x, int f, int line)
@@ -103,6 +104,7 @@ int fbfparam(fbpar *p, const char *a)
         if (p->is < 0) p->is = 'b';
         if (p->nat < 0) p->nat = 0;
         if (p->o8 < 0) p->o8 = 0;
+        if (p->sup < 0) p->sup = 0;
         return 1;
     }
     if (!v) return 0;
@@ -122,6 +124,7 @@ int fbfparam(fbpar *p, const char *a)
     else if (!strncmp(a, "nat=", 4)) p->nat = v[1] - '0';
     else if (!strncmp(a, "o8=", 3)) p->o8 = v[1] - '0';
     else if (!strncmp(a, "avar=", 5)) p->avar = v[1] - '0';
+    else if (!strncmp(a, "sup=", 4)) p->sup = v[1] - '0';
     else return 0;
     return 1;
 }

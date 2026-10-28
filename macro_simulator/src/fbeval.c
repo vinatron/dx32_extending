@@ -532,11 +532,13 @@ static void modal(fbs *s)
 {
     static const char ax[] = "XYZ";
     int i, a, moved = 0, cw = 0, g4 = 0, pa, pb, newcyc = 0, start = 0, g43 = 0, hole = 0, g28 = 0;
-    double v, h = -1;
+    double v, h = -1, d = -1;
+    int g41 = 0;
     for (i = 0; i < s->nw; i++) {
         int l = s->w[i].l;
         if (l == 'T' && wval(s, i, &v)) tool = (int)v;
         if (l == 'H' && wval(s, i, &v)) h = v;
+        if (l == 'D' && wval(s, i, &v)) d = v;
         if (l == 'M' && wval(s, i, &v) && v == 6) {
             if (s->tool == -1) s->tool = tool;
             else if (s->tool != tool) s->tool = -2;
@@ -550,6 +552,7 @@ static void modal(fbs *s)
         else if (v == 81 || v == 82 || v == 83 || v == 73) newcyc = (int)v;
         else if (v == 98 || v == 99) gret = (int)v;
         else if (v == 43) g43 = 1;
+        else if (v == 41 || v == 42) g41 = 1;
         else if (v == 28) g28 = 1;
     }
     if (g28) {                          /* to the reference point: where that is, is not known */
@@ -560,6 +563,7 @@ static void modal(fbs *s)
         return;
     }
     if (g43 && h != tool) s->modes |= MO_HBAD;
+    if (g41 && d >= 0 && d != tool) s->modes |= MO_DBAD;
     if (g4) return;
     if (newcyc) {
         if (!gcyc) start = 1;

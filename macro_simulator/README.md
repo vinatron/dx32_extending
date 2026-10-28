@@ -385,7 +385,7 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
 - **Built:** it reads the program, decides the FANUC series, evaluates the program, and writes it as DX32.
   That covers assignments, `IF..THEN`, `WHILE`/`DO`/`END`, `GOTO` and `IF..GOTO`, `G65`/`M98` calls as
   DX32 `#n` macros, G0/G1 moves, arcs, dwell, the drilling cycles G81/G82/G83/G73 (written out as moves),
-  and tool changes.
+  tool changes, and G41/G42 cutter compensation (written so that FANUC's start-up move is the DX32 approach).
 - **`-check`** runs dxsim on the written program (`-lint`, then the trace) and compares its moves with the FANUC
   tool path. `-against FILE` does the same for a DX32 program edited by hand.
 
@@ -399,7 +399,7 @@ fb2dx PROG.NC -w PROG.TXT -check      write the DX32 program (only when nothing 
 The series is detected from what the program uses, or given with `-series a|0|6|10|15|16|0i|30i`. Where
 the meaning of a block depends on the series or on a machine parameter, `fb2dx` stops and says which
 option settles it (`-series`, `-fparam dpi=`, `nat=`, `is=`, `o8=`, `avar=`, `d83=`, `d73=`, or `-fparam default`
-for the factory settings; `-g28 m25|drop` for `G91 G28 Z0`). It never guesses.
+for the factory settings; `-g28 m25|drop` for `G91 G28 Z0`, `-fparam sup=` or `-comp dx32` for G41/G42). It never guesses.
 
 ## Not simulated (yet)
 

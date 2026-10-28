@@ -47,6 +47,8 @@ typedef struct fbpar {
     int units;      /* 20 inch, 21 metric, 0 unknown (-inch/-mm) */
     int dflt;       /* -fparam default given */
     int g28;        /* -g28: 0 not given, 1 m25 (quill home), 2 drop */
+    int comp;       /* -comp dx32: the DX32's own G41/G42 lead-in is accepted for start-up type B */
+    int sup;        /* FANUC start-up type of G41/G42 (parameter 5003 bit 0 SUP): 0 type A, 1 type B */
     double d83, d73;    /* G83 clearance, G73 retract (parameters 5115, 5114 on 16/0i/30i), program units */
     int hd83, hd73;     /* given */
 } fbpar;
@@ -142,6 +144,7 @@ typedef struct fbs {
 #define MO_NOMOT 131072L    /* axis words with no G0-G3 in force (after G80, or at the start) */
 #define MO_HBAD 262144L     /* G43 H other than the tool in the spindle */
 #define MO_UNKZ 524288L     /* a cycle started while Z was not known */
+#define MO_DBAD 1048576L    /* G41/G42 D other than the tool in the spindle */
 #define MO_CYC  (MO_C81 | MO_C82 | MO_C83 | MO_C73)
 
 /* a move of the FANUC tool path (evaluator), in inches, for -check (FB2DX.md 3.13) */

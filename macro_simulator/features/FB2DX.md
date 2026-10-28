@@ -518,7 +518,6 @@ writer refuses a block that ran in two different states.
 - **Axis words with no G0-G3 in force** (after G80, or before the first motion code) are refused, because
   FANUC's motion there depends on the control (power-on G0 or G1 is a parameter).
 - **Not translated yet**, refused with the reason:
-  - cutter compensation G40/G41/G42 (D numbers against the DX32's T table);
   - G68 rotation, G51 scaling;
   - G28/G30, G10, G52, G53;
   - G84-G89, G76.
@@ -580,6 +579,32 @@ What typical FANUC jobs contain, beyond the phases above:
   Any other G28 is refused. After a G28 the evaluator treats those axes as not known, so a G90 arc or a
   G98 cycle that needs them is refused until an absolute move.
 
+### 3.15 Cutter compensation (G40/G41/G42)
+
+- **How the two controls start compensation:**
+  - **DX32** (`CUTCOMP.md`, traced in the 6.89 firmware): the G41/G42 block moves to its point
+    uncompensated. The move after it is the approach, which ends on the normal to the element after that.
+  - **FANUC start-up type A** (parameter 5003 bit 0 SUP = 0, the factory setting): the G41 block itself is
+    the approach, and it ends on the normal to the next block's start.
+- **The plain copy gouges.** Copying the G41 block as it is makes the profile's first side the DX32
+  approach, cut uncompensated. With a 10 mm tool on a 50 mm square, that side was cut at X0 instead of
+  X-5: a gouge of the tool radius, seen in dxsim.
+- **So fb2dx writes `G41`/`G42` on a block of its own**, just before the FANUC G41 block's move. That move
+  is then the DX32 approach and ends where FANUC type A ends.
+- **Cancel:** G40 ends the same way on both controls: the last element ends on its normal, then the G40
+  block moves uncompensated.
+- **Start-up type B** (SUP = 1) starts differently. It is refused unless `-comp dx32` accepts the type-A
+  approach. `-fparam sup=0|1` gives the type; `-fparam default` takes type A.
+- **D:**
+  - The D number must be the tool in the spindle (the evaluator checks it, as for G43 H), because the
+    DX32 takes the diameter from its tool table for that tool.
+  - D is not written.
+- **Outside corners:** the DX32 rounds them with blend arcs (G49, its reset state). FANUC's corner moves
+  differ, but only in the air off the part.
+- **`-check`** runs dxsim without a tool table, so the diameter is 0, the compensated path is the
+  programmed one, and the end points still have to match. dxtest also runs the job with a 10 mm tool and
+  checks the offset corners and that the first side is not cut at X0.
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
@@ -608,6 +633,10 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **Cutter compensation:**
+  - `fbcomp` (a square profile with G41 D3) translates with `-fparam default` and `-check`, and in dxsim with a
+    10 mm tool its sides are offset by 5 mm with no gouge.
+  - Without the start-up type it is refused, and with type B it needs `-comp dx32`.
 - **Shop programs:**
   - `fbjob` is a typical job: a safety line, `G91 G28 Z0`, `T1 M6`, `G43`, two G65 bolt circles drilled with G81,
     and argument checks with `#3000` alarms. It is translated with `-check`; without `-g28` it is refused.
@@ -670,7 +699,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | Shop programs (3.14): safety-line cancel codes, G40, argument checks folded from the evaluation, #3000/#3006 alarms, `-g28 m25|drop`; test `fbjob` (169 passed) |
+| 2026-10-28 | (this commit) | Cutter compensation (3.15): G41/G42 on a block of their own so FANUC's start-up move is the DX32 approach (type A), D checked against the tool, `-fparam sup`, `-comp dx32` for type B; the gouge of a plain copy found in dxsim and tested against (176 passed) |
+| 2026-10-28 | 36ae51d | Shop programs (3.14): safety-line cancel codes, G40, argument checks folded from the evaluation, #3000/#3006 alarms, `-g28 m25|drop`; test `fbjob` (169 passed) |
 | 2026-10-28 | 788551b | Phase 6: `-check` and `-against` (`src/fbcheck.c`), the FANUC tool path recorded by the evaluator, broken outputs caught in tests (163 passed). All six phases built |
 | 2026-10-28 | 9a5323e | Phase 5 done: G81/G82/G83/G73 written out as moves with a peck loop, -fparam d83/d73, T/M6 from the evaluator, G43/G49 left out, axis words with no motion code refused (161 passed) |
 | 2026-10-28 | 8872bf5 | Phase 5, arcs: modal state per block from the evaluator, G90 centres from X20/Y20/Z20, R arcs, G18/G19, dwell, G54-G59 G80 G94 (155 passed) |

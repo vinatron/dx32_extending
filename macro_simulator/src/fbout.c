@@ -450,7 +450,7 @@ static void opencond(const fbn *c, int neg)
 /* statements                                                           */
 
 static const fbs *cursta;       /* the statement being written */
-static int ncancel, ng28, nalarm;
+static int ncancel, ng28, nalarm, ncomp;
 
 /* a condition that tests a vacant variable (#0), e.g. an argument check: the evaluation ran
    every call of the program, so if it always came out the same, it is that constant
@@ -747,7 +747,7 @@ static void nc(const fbs *s)
     static const char axes[] = "XYZ", ctr[] = "IJK";
     char blk[420], t[48], txt[3][48], ctxt[3][48];
     int i, npre = 0, nm = 0, hasg0 = 0, hasz = 0, hasxy = 0, m98 = hasm(s, 98), g4 = 0, arc, plane, a;
-    int hasax[3] = { 0, 0, 0 }, hasc[3] = { 0, 0, 0 }, hasr = 0;
+    int hasax[3] = { 0, 0, 0 }, hasc[3] = { 0, 0, 0 }, hasr = 0, compg = 0;
     double v;
     blk[0] = 0;
     for (i = 0; i < s->nw; i++) {
@@ -819,8 +819,25 @@ static void nc(const fbs *s)
             continue;
         }
         if (g == 98 || g == 99) continue;   /* the return level of the holes (written by hole()) */
-        if (!(g <= 3 || (g >= 17 && g <= 21) || (g >= 54 && g <= 59) || g == 40 || g == 80 || g == 90 ||
-              g == 91 || g == 94)) {
+        if (g == 41 || g == 42) {       /* FB2DX.md 3.15: G41/G42 on a block of its own, before the move */
+            if (X->par.sup < 0) {
+                fail("G%d: give the FANUC start-up type, -fparam sup=0 (type A) or 1 (type B), or -fparam default", g);
+                continue;
+            }
+            if (X->par.sup == 1 && !X->par.comp) {
+                fail("G%d with start-up type B: the DX32 approaches like type A; -comp dx32 accepts that", g);
+                continue;
+            }
+            if (s->modes & MO_DBAD) {
+                fail("G%d D other than the tool in the spindle: the DX32 takes the diameter of the tool itself", g);
+                continue;
+            }
+            compg = g;
+            ncomp++;
+            continue;
+        }
+        if (!(g <= 3 || (g >= 17 && g <= 21) || (g >= 54 && g <= 59) || (g >= 40 && g <= 42) || g == 80 ||
+              g == 90 || g == 91 || g == 94)) {
             fail("G%d does not translate yet", g);
             continue;
         }
@@ -834,6 +851,7 @@ static void nc(const fbs *s)
         const char *p;
         if (l == 'G' || (m98 && (l == 'P' || l == 'L'))) continue;
         if (l == 'H' && findg(s, 43)) continue;
+        if (l == 'D' && (findg(s, 41) || findg(s, 42))) continue;  /* checked against the tool (above) */
         if (l == 'T') {                 /* the DX32 takes T with M6 (written there) */
             if (!hasm(s, 6)) ntsel++;
             continue;
@@ -937,6 +955,9 @@ static void nc(const fbs *s)
     }
     if (hasg0 && hasz && hasxy) ng0z++;
     for (i = 0; i < npre; i++) out("%s", pre[i]);
+    /* the DX32 moves the G41/G42 block itself uncompensated and makes the next move the approach, which
+       ends on the normal to the element after it: G41 alone, then FANUC's start-up move, is type A */
+    if (compg) out("G%d", compg);
     if (blk[0]) out("%s", blk);
     /* the position, for the absolute arc centres */
     if (needpos && (hasax[0] || hasax[1] || hasax[2])) {
@@ -1688,7 +1709,7 @@ int fbwrite(fbx *x, const char *path)
     else if (g20) fbrep(x, "NOTE", 0, "the program switches between G20 and G21");
 
     /* arcs: G75 (multi-quadrant) at the top; G90 arcs need the position kept in X20 Y20 Z20 */
-    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = nalarm = 0;
+    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = nalarm = ncomp = 0;
     cursta = 0;
     for (k = 0; k < nins; k++)
         for (i = ins[k].s0; i < ins[k].end; i++) {
@@ -1781,6 +1802,10 @@ int fbwrite(fbx *x, const char *path)
     if (ntlen) fbrep(x, "NOTE", 0, "G43/G49 left out: the DX32 applies the tool length of the tool in the spindle "
                      "from its table (TENTATIVE)");
     if (ntsel) fbrep(x, "NOTE", 0, "T without M6 left out: the DX32 takes T in the M6 block");
+    if (ncomp) fbrep(x, "NOTE", 0, "G41/G42: written on a block of their own, so FANUC's start-up move is the DX32 "
+                     "approach (type A%s). The diameter comes from the DX32 tool table; outside corners get the "
+                     "DX32's blend arcs (G49). dxsim -t n=dia shows the path", x->par.sup == 1 ? "; this program was "
+                     "for type B, accepted with -comp dx32" : "");
     if (ncancel) fbrep(x, "NOTE", 0, "G15/G50/G50.1/G64/G69/G13.1 left out: what they cancel never translates");
     if (ng28) fbrep(x, "NOTE", 0, "G28 Z0 %s (-g28)", x->par.g28 == 1 ? "written as M25, the DX32 quill home "
                     "(TENTATIVE: check that it goes where FANUC's reference point is)" :

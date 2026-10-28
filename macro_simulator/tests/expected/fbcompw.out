@@ -1,0 +1,9 @@
+FILE     fbcomp.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     G41/G42: written on a block of their own, so FANUC's start-up move is the DX32 approach (type A). The diameter comes from the DX32 tool table; outside corners get the DX32's blend arcs (G49). dxsim -t n=dia shows the path
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwcomp.txt
+NOTE     -check: dxsim: L8      WARN  G41/G42 with tool diameter 0: cutter compensation is not active (manual p.59)
+CHECK    dxsim reads fbwcomp.txt cleanly and reaches all 10 FANUC end points in order (dxsim warnings above)
+RESULT   ok
