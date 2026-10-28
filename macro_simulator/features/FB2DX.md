@@ -14,7 +14,7 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 | 2 | Variables and expressions: allocation, PPPL output, numbers always with a point | **done** for straight-line programs (section 3.9) |
 | 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | **done** (section 3.10), with exit flags for jumps out of nested structures |
 | 4 | Calls: `M98`/`M99`, `G65` to `#n` macros with caller-side assignments | **done** (section 3.11) |
-| 5 | Motion subset: G0-G3 (with `R`), G81, G83, G90/G91, F, S, T, M | not started |
+| 5 | Motion subset: G0-G3 (with `R`), G81, G83, G90/G91, F, S, T, M | **in progress**: arcs and dwell done (section 3.12); drilling cycles and tool changes next |
 | 6 | Checking: `dxsim -lint` on the output, then both programs run and the tool paths compared | not started |
 
 ## 2. What the control does (facts the translation relies on)
@@ -469,6 +469,29 @@ and L (L up to 99).
   L1 loop uses L2. The total must stay within L1-L7.
 - **Temporaries and carriers** are only used inside one statement, so calls can't disturb them.
 
+### 3.12 Phase 5 as built: arcs, dwell, more G codes
+
+The evaluator records, for every NC block it runs, the modal state it ran in (`fbs.modes`): G90 or G91, the
+plane, G0/G1 or G2/G3, whether the current position in the arc's plane was known, and a negative R. The
+writer refuses a block that ran in two different states.
+
+- **Arcs** (G2/G3 in G17, G18, G19):
+  - **G91:** I J K are written as they are, because both controls measure them from the start point. A
+    centre word that is left out is written as 0.
+  - **G90:** the DX32 wants the absolute centre (fact 13). fb2dx keeps the current position in X20, Y20 and
+    Z20. They are set after every block that moves an axis: to the word's value in G90, or by adding it
+    in G91. They are set only when the program has a G90 arc. Each centre is then written as
+    `I21=X20+(i)` before the arc. A G90 arc at a point where the position isn't known yet (no absolute
+    move on those axes since the start) is refused.
+  - **R:** written as it is. The DX32 R arc is always the short one (fact 14), so an R below 0 (FANUC's long
+    arc) is refused, as is R together with I/J/K.
+  - **Refused:** a helical arc (the third axis in the arc block), and centre words of another plane.
+  - **G75** (multi-quadrant) is written at the top of the main program when there are arcs.
+- **Dwell:** `G4 P<ms>` or `G4 X<s>` becomes `G4Q<s>` (sets the time) and then a lone `G4` (dwells),
+  `../LANGUAGE.md` section 11. The time is .01-327.68 s in steps of .01, otherwise it is refused.
+- **More G codes passed through:** G2 G3 G18 G19, G54-G59, G80, G94.
+- **Word order:** the G codes, then X Y Z, then the rest.
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
@@ -496,6 +519,9 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **Phase 5, arcs:** `fbarc` is translated and run in dxsim. Its end points are compared with the FANUC
+  evaluation, and its arc centres with values worked out by hand. `fbarcx` checks the refusals (unknown
+  position, R below 0, helix).
 - **Phase 4, built:** `fbbolt` (G65 with arguments), `fbcall` (M98 sharing the caller's locals, G65 inside a
   loop, L repeats, an early M99 inside an IF..GOTO region) and `fbexit` (exit flags) are translated, run in
   dxsim and compared with the FANUC evaluation.
@@ -527,7 +553,7 @@ output.
 - **3** ☑ jumps and loops found (`structure`) ☑ structure check (`check`) ☑ `?`/`!` and label writer
   ☑ jumps out of a loop to other blocks (exit flags)
 - **4** ☑ `M98`/`M99` (early returns too) ☑ `G65` with arguments and L ☑ depth and recursion checks ☑ labels over the call tree
-- **5** ☐ motion words ☐ G81/G83
+- **5** ☑ arcs (G90 absolute centres from a tracked position) ☑ dwell ☐ G81/G82/G83/G73 ☐ T, M6, G43/G49
 - **6** ☐ `-check`
 
 ## 7. Open questions
@@ -545,7 +571,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | Phase 4 built: G65/M98 as DX32 macros per program and level, caller-side arguments, early M99, labels over the call tree; exit flags for jumps out of nested structures; dxsim path checks for fbbolt, fbcall, fbexit (149 passed) |
+| 2026-10-28 | (this commit) | Phase 5, arcs: modal state per block from the evaluator, G90 centres from X20/Y20/Z20, R arcs, G18/G19, dwell, G54-G59 G80 G94 (155 passed) |
+| 2026-10-28 | 1408751 | Phase 4 built: G65/M98 as DX32 macros per program and level, caller-side arguments, early M99, labels over the call tree; exit flags for jumps out of nested structures; dxsim path checks for fbbolt, fbcall, fbexit (149 passed) |
 | 2026-10-28 | ff2da1d | Phase 3 built for the main program: WHILE/DO/END, GOTO, IF..GOTO as labels and ?/! regions, checked before writing; breaks out of loops; dxsim path checks (142 passed) |
 | 2026-10-28 | 7101cae | Phase 2 built for straight-line programs: `-w`, `src/fbout.c`, variable pool and carriers, PPPL expressions, `FIX`/`FUP`/`ROUND`/`ATAN`/`ASIN`/`MOD` expansions checked in dxsim, vacancy refusals (134 passed) |
 | 2026-10-27 | da366b4 | Phase 1 built: `fb2dx` reads, detects the series, evaluates (`-eval`, `-parse`, `-series list`); tests `fb.lst` and 4 hand checks (122 passed) |

@@ -111,7 +111,19 @@ typedef struct fbs {
     char *text;         /* the block as written, comments removed */
     long nexec;         /* times the evaluator ran it */
     int vacbad;         /* the evaluator saw it use a vacant variable in a way the DX32 can't copy */
+    int modes;          /* MO_ bits: the modal state the evaluator saw it run in */
 } fbs;
+
+/* fbs.modes */
+#define MO_ABS    1     /* ran in G90 */
+#define MO_INC    2     /* ran in G91 */
+#define MO_LIN    4     /* moved the axes with G0/G1 */
+#define MO_ARC    8     /* moved them with G2/G3 */
+#define MO_UNK   16     /* an arc while the position in its plane was not known (G90 needs it) */
+#define MO_NEGR  32     /* an R below 0 (the long arc) */
+#define MO_P17   64     /* plane G17 / G18 / G19 */
+#define MO_P18  128
+#define MO_P19  256
 
 /* ------------------------------------------------------------------ */
 /* shared state                                                         */

@@ -797,6 +797,21 @@ static void fbhand(void)
     fbpath("fbbolt", "fbwbolt", 1 / 25.4, "fb2dx G65 bolt circle (arguments set by the caller)");
     fbpath("fbcall", "fbwcall", 1 / 25.4, "fb2dx M98 sharing locals, G65 in a loop, L repeats, early M99");
 
+    /* phase 5: arcs.  The end points against the FANUC evaluation, and the centres by hand:
+       (0,0), (-10,10) for the R arc (the short one), (-5,0) with J left out, (5,0) in G91,
+       (5,0) for the full circle */
+    fbpath("fbarc", "fbwarc", 1 / 25.4, "fb2dx arcs: G90 and G91, I J and R, a full circle, G18, dwell");
+    {
+        static const double cx[] = { 0, -10, -5, 5, 5 }, cy[] = { 0, 10, 0, 0, 0 };
+        int na = 0, bad = 0;
+        for (i = 0; i < nmv; i++)
+            if (mvs[i].k == '2' || mvs[i].k == '3') {
+                if (na < 5 && !(near(mvs[i].cx, cx[na] / 25.4, 1e-4) && near(mvs[i].cy, cy[na] / 25.4, 1e-4))) bad++;
+                na++;
+            }
+        check(na == 6 && !bad, "fb2dx arcs: the DX32 centres (absolute in G90) are the FANUC ones");
+    }
+
     /* M98 P30100: three passes, the subprogram adds 1 to the caller's #1 */
     fb("fbm98.nc -eval -series 0");
     n = fbxy(x, y, z, 16);

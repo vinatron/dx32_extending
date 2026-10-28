@@ -463,17 +463,121 @@ static int hasm(const fbs *s, double m)
     return 0;
 }
 
+static int needpos, anyarc;     /* a G90 arc somewhere: keep the position in X20 Y20 Z20 */
+
+/* the DX32 text of dimension word i: a number in the unit's format, or the word letter's
+   carrier, assigned in pre[] (FB2DX.md 3.6).  0 when it can't be written. */
+static int dimval(const fbs *s, int i, char *txt, int *npre)
+{
+    int l = s->w[i].l;
+    const fbn *e = s->w[i].e;
+    double v;
+    char t[48];
+    if (!units && l != 'F') units = X->par.units;
+    if (!units && l != 'F') {
+        fail("the unit system is not known: G20/G21 before this block, or -inch/-mm");
+        return 0;
+    }
+    if (whole(e, &v)) {
+        const fbn *n = e->k == EN_NEG ? e->a : e;
+        int dec = units == 20 ? 4 : 3;
+        double r;
+        if (l != 'F' && !n->pt && X->par.dpi == 0) v *= incr(l);
+        if (l == 'F') dec = 3;
+        r = floor(fabs(v) * pow(10.0, dec) + 0.5) / pow(10.0, dec);
+        if (v < 0) r = -r;
+        if (fabs(r - v) > 1e-9) {
+            fail("%c%g: more decimals than the DX32 takes (%d)", l, v, dec);
+            return 0;
+        }
+        dxnum(txt, r);
+        return 1;
+    }
+    {                                   /* a variable or an expression: the word letter's carrier */
+        char b[420];
+        carrier(txt, l);
+        b[0] = 0;
+        if (e->k == EN_FUN && e->op == FN_ROUND) {      /* ROUND in an address: to the increment */
+            const char *q = tmp();
+            char x[420];
+            x[0] = 0;
+            xe(e->a, x);
+            dxnum(t, incr(l));
+            out("%s=(%s)/%s", q, x, t);
+            sprintf(b, "%s*%s", fixlike(FN_ROUND, q), t);
+        } else xe(e, b);
+        if (X->macroa && X->par.avar == 0 && l != 'F') {
+            dxnum(t, incr(l));
+            sprintf(pre[(*npre)++], "%s=(%s)*%s", txt, b, t);
+        } else sprintf(pre[(*npre)++], "%s=%s", txt, b);
+    }
+    return 1;
+}
+
+/* a word from dimval()'s text: a number gets the letter, a carrier is the word itself */
+static void word(char *blk, int l, const char *txt)
+{
+    if (txt[0] >= 'A' && txt[0] <= 'Z') strcat(blk, txt);
+    else sprintf(blk + strlen(blk), "%c%s", l, txt);
+}
+
+static int findw(const fbs *s, int l)
+{
+    int i;
+    for (i = 0; i < s->nw; i++)
+        if (s->w[i].l == l) return i;
+    return -1;
+}
+
+/* G4: FANUC G4 P<ms> or G4 X<s>; the DX32 sets the time with G4Q and dwells with a lone G4 */
+static void dwell(const fbs *s)
+{
+    int ip = findw(s, 'P'), ix = findw(s, 'X'), i;
+    double v, r;
+    char t[48];
+    for (i = 0; i < s->nw; i++)
+        if (!strchr("GPX", s->w[i].l)) {
+            fail("G4 with %c in the same block does not translate", s->w[i].l);
+            return;
+        }
+    if (ip >= 0 && whole(s->w[ip].e, &v)) v /= 1000.0;
+    else if (ix >= 0 && whole(s->w[ix].e, &v) && (s->w[ix].e->k == EN_NUM ? s->w[ix].e->pt : 1)) ;
+    else {
+        fail("G4 needs a constant P (ms) or X with a decimal point (s)");
+        return;
+    }
+    r = floor(v * 100.0 + 0.5) / 100.0;
+    if (fabs(r - v) > 1e-9 || r < .01 || r > 327.68) {
+        fail("G4 of %g s: the DX32 dwell is .01-327.68 s in steps of .01", v);
+        return;
+    }
+    dxnum(t, r);
+    out("G4Q%s", t);
+    out("G4");
+}
+
 static void nc(const fbs *s)
 {
-    char blk[420], t[48];
-    int i, npre = 0, nm = 0, hasg0 = 0, hasz = 0, hasxy = 0, m98 = hasm(s, 98);
+    static const char axes[] = "XYZ", ctr[] = "IJK";
+    char blk[420], t[48], txt[3][48], ctxt[3][48];
+    int i, npre = 0, nm = 0, hasg0 = 0, hasz = 0, hasxy = 0, m98 = hasm(s, 98), g4 = 0, arc, plane, a;
+    int hasax[3] = { 0, 0, 0 }, hasc[3] = { 0, 0, 0 }, hasr = 0;
     double v;
     blk[0] = 0;
-    for (i = 0; i < s->nw; i++)                 /* modal calls: one refusal for the whole block */
-        if (whole(s->w[i].e, &v) && s->w[i].l == 'G' && (v == 66 || v == 67)) {
+    for (i = 0; i < s->nw; i++) {
+        if (s->w[i].l != 'G' || !whole(s->w[i].e, &v)) continue;
+        if (v == 66 || v == 67) {
             fail("G%.0f: modal macro calls do not translate", v);
             return;
         }
+        if (v == 4) g4 = 1;
+    }
+    if (g4) {
+        dwell(s);
+        return;
+    }
+    arc = (s->modes & MO_ARC) != 0;
+    plane = s->modes & MO_P18 ? 18 : s->modes & MO_P19 ? 19 : 17;
     /* G codes first: G20/G21 decide how the dimension words in the block are written */
     for (i = 0; i < s->nw; i++) {
         int g;
@@ -484,9 +588,9 @@ static void nc(const fbs *s)
         }
         g = (int)v;
         if (g == 20 || g == 21) units = g;
-
-        if (g != 0 && g != 1 && g != 17 && g != 20 && g != 21 && g != 90 && g != 91) {
-            fail("G%d is translated in phase 5 (motion)", g);
+        if (!(g <= 3 || (g >= 17 && g <= 21) || (g >= 54 && g <= 59) || g == 80 || g == 90 || g == 91 ||
+              g == 94)) {
+            fail("G%d does not translate yet", g);
             continue;
         }
         if (g == 0) hasg0 = 1;
@@ -496,13 +600,14 @@ static void nc(const fbs *s)
     for (i = 0; i < s->nw; i++) {
         int l = s->w[i].l;
         const fbn *e = s->w[i].e;
+        const char *p;
         if (l == 'G' || (m98 && (l == 'P' || l == 'L'))) continue;
         if (l == 'M') {
             if (!whole(e, &v)) { fail("M with a variable value does not translate"); continue; }
             if (v == 98 || v == 99) continue;   /* the call or the return: written by the caller of nc() */
             if (v != 0 && v != 1 && v != 2 && v != 3 && v != 4 && v != 5 && v != 7 && v != 8 && v != 9 &&
                 v != 30) {
-                fail("M%.0f is translated in phase 5", v);
+                fail("M%.0f does not translate yet", v);
                 continue;
             }
             if (++nm > 1) { fail("more than one M code in a block (the DX32 takes one)"); continue; }
@@ -516,58 +621,92 @@ static void nc(const fbs *s)
             cat(blk, t);
             continue;
         }
-        if (l != 'X' && l != 'Y' && l != 'Z' && l != 'F') {
-            fail("address %c is translated in phase 5 (motion)", l);
+        if ((p = strchr(axes, l)) != 0) {
+            a = (int)(p - axes);
+            if (!dimval(s, i, txt[a], &npre)) continue;
+            hasax[a] = 1;
+            if (l == 'Z') hasz = 1;
+            else hasxy = 1;
             continue;
         }
-        if (l == 'Z') hasz = 1;
-        else if (l != 'F') hasxy = 1;
-        if (!units && l != 'F') units = X->par.units;
-        if (!units && l != 'F') {
-            fail("the unit system is not known: G20/G21 before this block, or -inch/-mm");
+        if ((p = strchr(ctr, l)) != 0 && arc) {
+            a = (int)(p - ctr);
+            if (dimval(s, i, ctxt[a], &npre)) hasc[a] = 1;
             continue;
         }
-        if (whole(e, &v)) {
-            const fbn *n = e->k == EN_NEG ? e->a : e;
-            int dec = units == 20 ? 4 : 3;
-            double r;
-            if (l != 'F' && !n->pt && X->par.dpi == 0) v *= incr(l);
-            if (l == 'F') dec = 3;
-            r = floor(fabs(v) * pow(10.0, dec) + 0.5) / pow(10.0, dec);
-            if (v < 0) r = -r;
-            if (fabs(r - v) > 1e-9) {
-                fail("%c%g: more decimals than the DX32 takes (%d)", l, v, dec);
-                continue;
+        if (l == 'R' && arc) {
+            if (s->modes & MO_NEGR) { fail("R below 0 (the long arc): the DX32 R arc is always the short one"); continue; }
+            if (dimval(s, i, t, &npre)) {
+                hasr = 1;
+                word(blk, 'R', t);
             }
-            dxnum(t, r);
-            sprintf(blk + strlen(blk), "%c%s", l, t);
             continue;
         }
-        /* a variable or an expression: through a carrier of the word's own letter */
-        {
-            char cn[8], b[420];
-            const fbn *ee = e;
-            b[0] = 0;
-            carrier(cn, l);
-            if (e->k == EN_FUN && e->op == FN_ROUND) {      /* ROUND in an address: to the increment */
-                const char *q = tmp();
-                char x[420];
-                x[0] = 0;
-                xe(e->a, x);
-                dxnum(t, incr(l));
-                out("%s=(%s)/%s", q, x, t);
-                sprintf(b, "%s*%s", fixlike(FN_ROUND, q), t);
-            } else xe(ee, b);
-            if (X->macroa && X->par.avar == 0 && l != 'F') {
-                dxnum(t, incr(l));
-                sprintf(pre[npre++], "%s=(%s)*%s", cn, b, t);
-            } else sprintf(pre[npre++], "%s=%s", cn, b);
-            sprintf(blk + strlen(blk), "%s", cn);
+        if (l == 'F') {
+            if (dimval(s, i, t, &npre)) word(blk, 'F', t);
+            continue;
         }
+        fail("address %c does not translate yet", l);
+    }
+    if (arc) {                          /* FB2DX.md 3.12 */
+        int pa = plane == 18 ? 2 : plane == 19 ? 1 : 0, pb = plane == 18 ? 0 : plane == 19 ? 2 : 1;
+        int abs = (s->modes & MO_ABS) != 0;
+        if (s->modes & MO_LIN) fail("this block runs as an arc and as a line in different passes");
+        else if ((s->modes & MO_ABS) && (s->modes & MO_INC)) fail("this arc runs in G90 and in G91");
+        else if ((s->modes & MO_P17 ? 1 : 0) + (s->modes & MO_P18 ? 1 : 0) + (s->modes & MO_P19 ? 1 : 0) > 1)
+            fail("this arc runs in more than one plane");
+        else if (hasax[3 - pa - pb]) fail("a helical arc (the third axis in an arc) does not translate");
+        else if (hasr && (hasc[0] || hasc[1] || hasc[2])) fail("an arc with R and I/J/K does not translate");
+        else if (!hasr && abs && (s->modes & MO_UNK))
+            fail("a G90 arc where the position is not known yet: the DX32 needs the absolute centre");
+        else if (!hasr) {
+            int k;
+            for (k = 0; k < 2; k++) {
+                int c = k ? pb : pa;    /* FANUC I J K: from the start; DX32 in G90: absolute (fact 13) */
+                char cn[8];
+                carrier(cn, ctr[c]);
+                if (abs) {
+                    if (hasc[c])
+                        sprintf(pre[npre++], "%s=%c20%s%s", cn, axes[c], ctxt[c][0] == '-' ? "" : "+", ctxt[c]);
+                    else sprintf(pre[npre++], "%s=%c20", cn, axes[c]);
+                    strcpy(ctxt[c], cn);
+                } else if (!hasc[c]) strcpy(ctxt[c], "0.");
+                word(blk, ctr[c], ctxt[c]);
+            }
+        }
+        for (a = 0; a < 3; a++)
+            if (hasc[a] && a != pa && a != pb) fail("%c is not a centre word in G%d", ctr[a], plane);
+    }
+    /* the axis words after the G codes, before the centre, as the DX32 manual writes them */
+    t[0] = 0;
+    for (a = 0; a < 3; a++)
+        if (hasax[a]) word(t, axes[a], txt[a]);
+    {
+        char b2[420];
+        size_t gl = 0;
+        while (blk[gl] == 'G' || (blk[gl] >= '0' && blk[gl] <= '9')) gl++;
+        sprintf(b2, "%.*s%s%s", (int)gl, blk, t, blk + gl);
+        strcpy(blk, b2);
     }
     if (hasg0 && hasz && hasxy) ng0z++;
     for (i = 0; i < npre; i++) out("%s", pre[i]);
     if (blk[0]) out("%s", blk);
+    /* the position, for the absolute arc centres */
+    if (needpos && (hasax[0] || hasax[1] || hasax[2])) {
+        if (!(s->modes & (MO_ABS | MO_INC))) {
+            fail("not reached when evaluated: its G90/G91 state, which the arc centres need, is not known");
+            return;
+        }
+        if ((s->modes & MO_ABS) && (s->modes & MO_INC)) {
+            fail("this block moves in G90 and in G91 in different passes; the arc centres need one");
+            return;
+        }
+        for (a = 0; a < 3; a++)
+            if (hasax[a]) {
+                if (s->modes & MO_ABS) out("%c20=%s", axes[a], txt[a]);
+                else out("%c20=%c20%s%s", axes[a], axes[a], txt[a][0] == '-' ? "" : "+", txt[a]);
+            }
+    }
 }
 
 /* reads of variables the evaluation never set, in a statement it never reached */
@@ -1122,6 +1261,7 @@ static void emit(fbx *x, int k)
     nln = 0;
     ncl = 0;
     structure(x, in->s0, in->end, sub);
+    if (!sub && anyarc) out("G75");
     for (i = 0; i < nflg; i++) out("%s=0.", flg[i]);
     for (i = in->s0; i < in->end; i++) {
         fbs *s = x->st[i];
@@ -1305,6 +1445,14 @@ int fbwrite(fbx *x, const char *path)
             }
     if (g20 != g21) x->par.units = g20 ? 20 : 21;
     else if (g20) fbrep(x, "NOTE", 0, "the program switches between G20 and G21");
+
+    /* arcs: G75 (multi-quadrant) at the top; G90 arcs need the position kept in X20 Y20 Z20 */
+    needpos = anyarc = 0;
+    for (k = 0; k < nins; k++)
+        for (i = ins[k].s0; i < ins[k].end; i++) {
+            if (x->st[i]->modes & MO_ARC) anyarc = 1;
+            if ((x->st[i]->modes & MO_ARC) && (x->st[i]->modes & MO_ABS) && findw(x->st[i], 'R') < 0) needpos = 1;
+        }
 
     /* the variables of each program at its level */
     for (k = 0; k < nins && ok; k++) {

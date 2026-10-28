@@ -445,6 +445,46 @@ static int args(const fbs *s, val *a)
     return 1;
 }
 
+/* the modal state of the axes, as the FANUC control keeps it (for the writer, FB2DX.md 3.12) */
+static int gabs, gmot, gpl, known[3];
+
+static void modal(fbs *s)
+{
+    static const char ax[] = "XYZ";
+    int i, a, moved = 0, cw = 0, g4 = 0, pa, pb;
+    double v;
+    for (i = 0; i < s->nw; i++) {
+        int l = s->w[i].l;
+        if (l != 'G' || !wval(s, i, &v)) continue;
+        if (v == 0 || v == 1 || v == 2 || v == 3) gmot = (int)v;
+        else if (v == 90 || v == 91) gabs = (int)v;
+        else if (v == 17 || v == 18 || v == 19) gpl = (int)v;
+        else if (v == 4) g4 = 1;
+    }
+    if (g4) return;
+    for (i = 0; i < s->nw; i++) {
+        int l = s->w[i].l;
+        const char *p = strchr(ax, l);
+        if (l == 'I' || l == 'J' || l == 'K' || l == 'R') cw = 1;
+        if (l == 'R' && wval(s, i, &v) && v < 0) s->modes |= MO_NEGR;
+        if (p && wval(s, i, &v)) moved = 1;
+    }
+    s->modes |= gabs == 91 ? MO_INC : MO_ABS;
+    s->modes |= gpl == 18 ? MO_P18 : gpl == 19 ? MO_P19 : MO_P17;
+    if ((gmot == 2 || gmot == 3) && (moved || cw)) {
+        s->modes |= MO_ARC;
+        pa = gpl == 18 ? 2 : gpl == 19 ? 1 : 0;
+        pb = gpl == 18 ? 0 : gpl == 19 ? 2 : 1;
+        if (!known[pa] || !known[pb]) s->modes |= MO_UNK;
+    } else if (moved) s->modes |= MO_LIN;
+    for (i = 0; i < s->nw; i++) {
+        const char *p = strchr(ax, s->w[i].l);
+        if (!p || !wval(s, i, &v)) continue;
+        a = (int)(p - ax);
+        if (gabs == 90) known[a] = 1;
+    }
+}
+
 static void ncout(const fbs *s, const char *skip)
 {
     char b[420], t[48];
@@ -481,6 +521,10 @@ int fbeval(fbx *x, FILE *out, long limit)
     O = out;
     err = 0;
     lvl = 0;
+    gabs = 90;
+    gmot = -1;
+    gpl = 17;
+    known[0] = known[1] = known[2] = 0;
     nvac = 0;
     units = 0;
     for (i = 0; i < 1000; i++) com[i].vac = 1, com[i].v = 0;
@@ -658,6 +702,7 @@ int fbeval(fbx *x, FILE *out, long limit)
                 break;
             }
             ncout(s, "");
+            modal(s);
             if (m == 30 || m == 2) {
                 tr("END    M%.0f\n", m);
                 return !x->stop;

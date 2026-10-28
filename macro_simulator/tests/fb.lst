@@ -26,3 +26,5 @@ fbgotow  fbgoto   -w fbwgoto.txt
 fbjmpx   fbjmpx   -w fbwjmpx.txt
 fbexitw  fbexit   -w fbwexit.txt
 fbcallw  fbcall   -w fbwcall.txt
+fbarcw   fbarc    -w fbwarc.txt
+fbarcx   fbarcx   -w fbwarcx.txt
