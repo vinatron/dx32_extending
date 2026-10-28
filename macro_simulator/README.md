@@ -385,7 +385,7 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
 - **Built:** it reads the program, decides the FANUC series, evaluates the program, and writes it as DX32.
   That covers assignments, `IF..THEN`, `WHILE`/`DO`/`END`, `GOTO` and `IF..GOTO`, `G65`/`M98` calls as
   DX32 `#n` macros, G0/G1 moves, arcs, dwell, the drilling and boring cycles G81/G82/G83/G73/G85/G86/G89 in G90 or G91 with K/L repeats (written out as moves),
-  tool changes, and G41/G42 cutter compensation (written so that FANUC's start-up move is the DX32 approach).
+  tool changes, G68 rotation and G52 shifts, and G41/G42 cutter compensation (written so that FANUC's start-up move is the DX32 approach).
 - **`-check`** runs dxsim on the written program (`-lint`, then the trace) and compares its moves with the FANUC
   tool path. `-against FILE` does the same for a DX32 program edited by hand.
 

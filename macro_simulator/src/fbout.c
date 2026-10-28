@@ -530,6 +530,9 @@ static int anyhole;
 static char cyz[4], cyr[4], cyi[4], cyq[4], cyp[4];    /* drilling: Z, R, initial level, Q, dwell */
 static int curlab;              /* the label region of the statement being written (peck loops) */
 static int nm3;                 /* G86: spindle restarted with M3 */
+static int nxf;                 /* G68/G69/G52 written */
+static int anyxf;               /* G68/G69/G52 used: the variables below hold their state */
+static char xra[4], xrx[4], xry[4], xsx[4], xsy[4], xsz[4];
 
 /* the DX32 text of dimension word i: a number in the unit's format, or the word letter's
    carrier, assigned in pre[] (FB2DX.md 3.6).  0 when it can't be written. */
@@ -604,6 +607,75 @@ static int findw(const fbs *s, int l)
     for (i = 0; i < s->nw; i++)
         if (s->w[i].l == l) return i;
     return -1;
+}
+
+/* the DX32 fixture offset for FANUC's G52 shift and G68 centre: the DX32 rotates about X0 Y0
+   (G73 A), so a rotation about (cx,cy) is that plus a shift of c - R c (FB2DX.md 3.17) */
+static void g97(void)
+{
+    out("X21=%s+%s-((%s*COS(%s))-(%s*SIN(%s)))", xsx, xrx, xrx, xra, xry, xra);
+    out("Y21=%s+%s-((%s*SIN(%s))+(%s*COS(%s)))", xsy, xry, xrx, xra, xry, xra);
+    out("Z21=%s", xsz);
+    out("G97X21Y21Z21");
+}
+
+/* G68 X Y R, G69, G52 X Y Z */
+static void xform(const fbs *s)
+{
+    int i, g = findg(s, 68) ? 68 : findg(s, 69) ? 69 : 52, npre = 0;
+    char t[48];
+    double v;
+    if ((s->modes & MO_INC) || !(s->modes & MO_ABS)) {
+        fail("G%d in G91 (or not reached) does not translate", g);
+        return;
+    }
+    if (s->modes & (MO_P18 | MO_P19)) {
+        fail("G%d outside G17 does not translate", g);
+        return;
+    }
+    if (g == 68 && (findw(s, 'X') < 0 || findw(s, 'Y') < 0 || findw(s, 'R') < 0)) {
+        fail("G68 needs X, Y (the centre) and R here (without them FANUC takes the current position)");
+        return;
+    }
+    for (i = 0; i < s->nw; i++) {
+        int l = s->w[i].l;
+        const fbn *e = s->w[i].e;
+        if (l == 'G' && whole(e, &v) && (v == 68 || v == 69 || v == 52 || v == 17 || v == 90)) continue;
+        if (g == 68 && l == 'R') {      /* an angle: the decimal point rule is not the one for lengths */
+            const fbn *n = e->k == EN_NEG ? e->a : e;
+            if (n->k == EN_NUM && !n->pt && X->par.dpi != 1 && n->v != 0) {
+                fail("G68 R without a decimal point: its unit (0.001 degree?) is not known; write R with a point");
+                return;
+            }
+            t[0] = 0;
+            {
+                char b[420];
+                b[0] = 0;
+                xe(e, b);
+                sprintf(pre[npre++], "%s=%s", xra, b);
+            }
+            continue;
+        }
+        if ((g == 68 && (l == 'X' || l == 'Y')) || (g == 52 && (l == 'X' || l == 'Y' || l == 'Z'))) {
+            if (!dimval(s, i, t, &npre)) return;
+            sprintf(pre[npre++], "%s=%s", g == 68 ? (l == 'X' ? xrx : xry) : l == 'X' ? xsx : l == 'Y' ? xsy : xsz, t);
+            continue;
+        }
+        fail("%c in a G%d block does not translate", l, g);
+        return;
+    }
+    for (i = 0; i < npre; i++) out("%s", pre[i]);
+    if (g == 68) {
+        out("A21=%s", xra);
+        out("G73A21");
+    } else if (g == 69) {
+        out("%s=0.", xra);
+        out("%s=0.", xrx);
+        out("%s=0.", xry);
+        out("G72");
+    }
+    g97();
+    nxf++;
 }
 
 /* G4: FANUC G4 P<ms> or G4 X<s>; the DX32 sets the time with G4Q and dwells with a lone G4 */
@@ -797,6 +869,10 @@ static void nc(const fbs *s)
     }
     if (g4) {
         dwell(s);
+        return;
+    }
+    if (findg(s, 68) || findg(s, 69) || findg(s, 52)) {
+        xform(s);
         return;
     }
     if (findg(s, 28)) {                 /* G91 G28 Z0: the DX32 quill home (M25), or left out */
@@ -1545,6 +1621,14 @@ static void emit(fbx *x, int k)
     ncl = 0;
     structure(x, in->s0, in->end, sub);
     if (!sub && anyarc) out("G75");
+    if (!sub && anyxf) {                /* no rotation, no shift at the start */
+        out("%s=0.", xra);
+        out("%s=0.", xrx);
+        out("%s=0.", xry);
+        out("%s=0.", xsx);
+        out("%s=0.", xsy);
+        out("%s=0.", xsz);
+    }
     for (i = 0; i < nflg; i++) out("%s=0.", flg[i]);
     for (i = in->s0; i < in->end; i++) {
         fbs *s = x->st[i];
@@ -1746,7 +1830,7 @@ int fbwrite(fbx *x, const char *path)
     else if (g20) fbrep(x, "NOTE", 0, "the program switches between G20 and G21");
 
     /* arcs: G75 (multi-quadrant) at the top; G90 arcs need the position kept in X20 Y20 Z20 */
-    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = nalarm = ncomp = nm3 = 0;
+    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = nalarm = ncomp = nm3 = anyxf = nxf = 0;
     cursta = 0;
     for (k = 0; k < nins; k++)
         for (i = ins[k].s0; i < ins[k].end; i++) {
@@ -1756,6 +1840,16 @@ int fbwrite(fbx *x, const char *path)
             if ((x->st[i]->modes & MO_HOLE) && (x->st[i]->modes & (MO_R98 | MO_INC))) needpos = 1;
         }
 
+    for (i = 0; i < x->nst; i++)
+        if (x->st[i]->k == ST_NC && (findg(x->st[i], 68) || findg(x->st[i], 69) || findg(x->st[i], 52))) anyxf = 1;
+    if (anyxf) {
+        alloc(xra);
+        alloc(xrx);
+        alloc(xry);
+        alloc(xsx);
+        alloc(xsy);
+        alloc(xsz);
+    }
     if (anyhole) {
         alloc(cyz);
         alloc(cyr);
@@ -1845,6 +1939,8 @@ int fbwrite(fbx *x, const char *path)
                      "for type B, accepted with -comp dx32" : "");
     if (nm3) fbrep(x, "NOTE", 0, "G86 restarts the spindle with M3 after each hole (TENTATIVE: FANUC restarts it in the "
                    "direction it had)");
+    if (nxf) fbrep(x, "NOTE", 0, "G68/G69/G52 written as G73 A (rotation about X0 Y0), G72 and G97 (fixture offset): "
+                   "a rotation about (cx,cy) is G73 plus an offset of c - R c; the G52 shift is added to it");
     if (ncancel) fbrep(x, "NOTE", 0, "G15/G50/G50.1/G64/G69/G13.1 left out: what they cancel never translates");
     if (ng28) fbrep(x, "NOTE", 0, "G28 Z0 %s (-g28)", x->par.g28 == 1 ? "written as M25, the DX32 quill home "
                     "(TENTATIVE: check that it goes where FANUC's reference point is)" :

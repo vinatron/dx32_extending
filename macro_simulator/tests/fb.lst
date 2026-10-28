@@ -40,3 +40,6 @@ fbcompx  fbcomp   -w fbwcompx.txt
 fbcompb  fbcomp   -fparam sup=1 -fparam dpi=0 -w fbwcompb.txt
 fbroww   fbrow    -series 16 -w fbwrow.txt -check
 fbrowx   fbrow    -w fbwrowx.txt
+fbrotw   fbrot    -fparam default -w fbwrot.txt -check
+fbrotx   fbrotx   -fparam default -w fbwrotx.txt
+fbxrot   fbrot    -fparam default -against fbxrot.txt

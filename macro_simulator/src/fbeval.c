@@ -461,6 +461,24 @@ static int args(const fbs *s, val *a)
 static int gabs, gmot, gpl, known[3], gcyc, gret, tool;
 static double pos[3], cz, cr, cq, cinit;   /* the position and the drilling values, program units */
 static int cycabs;              /* G90 or G91 when the cycle started */
+static double ra, rcx, rcy, sh[3];  /* G68 angle and centre, G52 shift (program units) */
+
+/* program coordinates -> the coordinates the tool path is drawn in (G68 about its centre, then G52) */
+static void tform(double *x, double *y, double *z)
+{
+    double c = cos(ra * PI / 180.0), sn = sin(ra * PI / 180.0), dx = *x - rcx, dy = *y - rcy;
+    *x = rcx + dx * c - dy * sn + sh[0];
+    *y = rcy + dx * sn + dy * c + sh[1];
+    *z += sh[2];
+}
+
+static void untform(double *x, double *y, double *z)
+{
+    double c = cos(ra * PI / 180.0), sn = sin(ra * PI / 180.0), dx = *x - sh[0] - rcx, dy = *y - sh[1] - rcy;
+    *x = rcx + dx * c + dy * sn;
+    *y = rcy - dx * sn + dy * c;
+    *z -= sh[2];
+}
 
 /* a move of the FANUC tool path, in inches like the dxsim trace (-check) */
 static void addmv(int k, double x, double y, double z, int hasc, double cx, double cy)
@@ -485,6 +503,11 @@ static void addmv(int k, double x, double y, double z, int hasc, double cx, doub
         if (X->mv) free(X->mv);
         X->mv = a;
         X->cmv = nc;
+    }
+    tform(&x, &y, &z);
+    if (hasc) {
+        double cz = 0;
+        tform(&cx, &cy, &cz);
     }
     m = &X->mv[X->nmv++];
     m->k = (char)k;
@@ -540,6 +563,32 @@ static void holemoves(const fbs *s, int start, long k)
     }
 }
 
+/* G68 X Y R, G69, G52 X Y Z: the tool stays, its program coordinates change (FB2DX.md 3.17) */
+static void xformblk(fbs *s, int g)
+{
+    static const char ax[] = "XYZ";
+    int i;
+    double v, m[3];
+    s->modes |= gabs == 91 ? MO_INC : MO_ABS;
+    s->modes |= gpl == 18 ? MO_P18 : gpl == 19 ? MO_P19 : MO_P17;
+    m[0] = pos[0], m[1] = pos[1], m[2] = pos[2];
+    tform(&m[0], &m[1], &m[2]);
+    if (g == 69) ra = rcx = rcy = 0;
+    for (i = 0; i < s->nw; i++) {
+        const char *p = strchr(ax, s->w[i].l);
+        if (!wval(s, i, &v)) continue;
+        if (g == 68) {
+            if (s->w[i].l == 'X') rcx = v;
+            else if (s->w[i].l == 'Y') rcy = v;
+            else if (s->w[i].l == 'R') ra = v;
+        } else if (g == 52 && p) sh[p - ax] = v;
+    }
+    untform(&m[0], &m[1], &m[2]);
+    pos[0] = m[0], pos[1] = m[1], pos[2] = m[2];
+    known[0] = known[1] = 0;            /* an absolute move first, before G90 arcs and G91 holes */
+    if (g == 52) known[2] = 0;
+}
+
 static void modal(fbs *s)
 {
     static const char ax[] = "XYZ";
@@ -566,6 +615,10 @@ static void modal(fbs *s)
         else if (v == 43) g43 = 1;
         else if (v == 41 || v == 42) g41 = 1;
         else if (v == 28) g28 = 1;
+        else if (v == 68 || v == 69 || v == 52) {
+            xformblk(s, (int)v);
+            return;
+        }
     }
     if (g28) {                          /* to the reference point: where that is, is not known */
         for (i = 0; i < s->nw; i++) {
@@ -696,6 +749,7 @@ int fbeval(fbx *x, FILE *out, long limit)
     gret = 98;
     tool = -1;
     pos[0] = pos[1] = pos[2] = cz = cr = cq = cinit = 0;
+    ra = rcx = rcy = sh[0] = sh[1] = sh[2] = 0;
     x->nmv = 0;
     x->mvunk = 0;
     known[0] = known[1] = known[2] = 0;

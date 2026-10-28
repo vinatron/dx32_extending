@@ -628,6 +628,30 @@ What typical FANUC jobs contain, beyond the phases above:
   Then G98/G99 as for the other cycles.
 - **Still refused:** G84/G74 tapping (the spindle has to reverse in step with the feed), G76/G87/G88.
 
+### 3.17 Rotation and local shift (G68, G69, G52)
+
+- **The DX32 side:** the DX32 rotates about X0 Y0 (`G73 A`, cancelled by `G72`) and has a fixture offset
+  (`G97 X Y Z`, from the base system). It applies rotation first and the offsets last
+  (`../LANGUAGE.md` 12; dxsim does the same).
+- **The FANUC side:** G68 X cx Y cy R a rotates about (cx, cy), and G52 shifts the local coordinate
+  system. So:
+  - FANUC's point is c + R(p − c) + s = R p + (c − R c + s);
+  - fb2dx writes `G73 A a`, then `G97` with X = s.x + c.x − (c.x cos a − c.y sin a) and
+    Y = s.y + c.y − (c.x sin a + c.y cos a), Z = s.z.
+- **State:** the angle, the centre and the shift live in six pool variables, set to 0 at the top. G69
+  writes `G72` and clears the rotation; G52 sets the shift for the axes it gives (TENTATIVE: the others
+  keep theirs).
+- **In the evaluator:** the same transformation is applied to the FANUC tool path, and the program
+  coordinates of the tool are recomputed when it changes, because the tool doesn't move. `-check`
+  therefore compares dxsim's transformed path with FANUC's.
+- **After G68, G69 or G52, X/Y count as not known** until an absolute move. G90 arcs and G91 holes, which
+  need the position, are refused until then.
+- **Refused:**
+  - G68 without X, Y and R (FANUC then takes the current position);
+  - G68 outside G17, and in G91;
+  - R without a decimal point (its angle unit is not known);
+  - G51 scaling.
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
@@ -656,6 +680,11 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **Rotation:**
+  - `fbrot` (a rectangle with an I/J arc, rotated 30 degrees about X50 Y20, then a G52 shift) translates with
+    `-check`.
+  - `fbxrot.txt`, the same output with the angle's sign flipped, is refused at the first rotated move.
+  - `fbrotx` checks the refusals.
 - **More drilling:** `fbrow` (a G91 G81 row with K5, then G85, G89 and G86) translates with `-series 16` and
   `-check`. dxtest checks its 8 holes and the two feeds back out to R. Without `-series`, K is refused.
 - **Cutter compensation:**
@@ -724,7 +753,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | More drilling (3.16): G91 cycles, K/L repeats by series, G85 G86 G89 written out; test `fbrow` (181 passed) |
+| 2026-10-28 | (this commit) | Rotation and shift (3.17): G68/G69/G52 as G73 A, G72 and G97, applied to the FANUC tool path too; tests `fbrot`, `fbxrot`, `fbrotx` (186 passed) |
+| 2026-10-28 | d7f5113 | More drilling (3.16): G91 cycles, K/L repeats by series, G85 G86 G89 written out; test `fbrow` (181 passed) |
 | 2026-10-28 | 49b47ab | Cutter compensation (3.15): G41/G42 on a block of their own so FANUC's start-up move is the DX32 approach (type A), D checked against the tool, `-fparam sup`, `-comp dx32` for type B; the gouge of a plain copy found in dxsim and tested against (176 passed) |
 | 2026-10-28 | 36ae51d | Shop programs (3.14): safety-line cancel codes, G40, argument checks folded from the evaluation, #3000/#3006 alarms, `-g28 m25|drop`; test `fbjob` (169 passed) |
 | 2026-10-28 | 788551b | Phase 6: `-check` and `-against` (`src/fbcheck.c`), the FANUC tool path recorded by the evaluator, broken outputs caught in tests (163 passed). All six phases built |
