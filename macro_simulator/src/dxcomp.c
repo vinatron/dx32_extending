@@ -513,8 +513,10 @@ void dxcmove(dxsim *s, const dxseg *g)
     r->cw = g->arc == DXM_CW;
     r->c[0] = g->c[0];
     r->c[1] = g->c[1];
-    r->rad = sqrt((g->p0[0] - g->c[0]) * (g->p0[0] - g->c[0]) +
-                  (g->p0[1] - g->c[1]) * (g->p0[1] - g->c[1]));
+    /* from the end point, like 0x1d7f4 (0x4010 - 0x4058): end and centre after G73 rotation and
+       scale, so with unequal scales the record is a circle through the scaled end */
+    r->rad = sqrt((g->p1[0] - g->c[0]) * (g->p1[0] - g->c[0]) +
+                  (g->p1[1] - g->c[1]) * (g->p1[1] - g->c[1]));
     r->sweep = g->sweep;
     r->feed = s->feed;                      /* the modal F, also for a G0 block */
     r->g45 = s->g45;

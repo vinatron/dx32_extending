@@ -100,6 +100,7 @@ TENTATIVE marks an interpretation that the code does not settle on its own.
 | **G48 / G49:** 0x32ec bit 7 set / clear (bit 7 = corner rounding **off**) | 0x20db0, 0x20db8 | CONFIRMED |
 | **Tolerance:** 0x4adc = 1270 units = 0.0005 in. It decides tangent corners, coincident points, tangent intersections and parallel lines (determinant) | 0x24144 | CONFIRMED |
 | **Coordinates:** the records take the block targets 0x4010.. after G73 rotation and mirror. That fits the side swap under mirror: compensation works in the transformed path | 0x1d822 | CONFIRMED (inference from the mirror swap) |
+| **Arc radius:** the record's radius 0x4720 is the distance from the block's **end** point (0x4010/0x401c) to the centre (0x4058/0x4064), both after the G73 transform: rotation, then X × 0x3eb4 and Y × 0x3ec0 (0x22574-0x226d2). With unequal scales the record is the circle about the scaled centre through the scaled end, so it does not start where the previous element ended; the firmware has no special case for it | 0x1d7f4-0x1d81c | CONFIRMED (F) |
 | `Parser: Cannot Comp "C" Axis` (0x32f46) is raised by the C-word handler while 0x32f5 ≠ 0. 0x32f5 is the **fillet** state (`FILLET.md`), so the message means a C word inside a G22/G23 sequence, not cutter compensation | 0x1f1f6 | CONFIRMED |
 | Fillet moves (G22/G23) are handed to the compensation state machine like any others (0x1c55a) | 0x1c55a | CONFIRMED |
 | The built-in canned-cycle text never uses G41/G42; the G170 cycles offset by R1 themselves | `../corpus_689.txt` | CONFIRMED |
@@ -227,8 +228,8 @@ dxmotion.c  --dxseg (programmed, base coordinates)-->  dxcomp.c  --dxseg (tool c
   for programs that don't use compensation.
 - The offset is computed **after** the transformations, in base part coordinates. With exactly one axis
   mirrored the side is swapped, as the firmware does (2.2). Rotation and uniform scale keep the geometry,
-  so offsetting afterwards gives the same result. A non-uniform G73 scale turns arcs into ellipses; that
-  case is reported (section 4) rather than guessed.
+  so offsetting afterwards gives the same result. A non-uniform G73 scale would turn arcs into ellipses; the
+  firmware keeps a circle through the scaled end point (2.2), dxcomp does the same and warns (section 4).
 - **dxcomp follows the firmware's model step by step** (2.2-2.4): the A/B/C records, the states, the
   order of emission, the 0.0005 in tolerance, and the same formulas. Where the manual and the code differ,
   the code wins, and the difference is noted here.
@@ -432,7 +433,7 @@ Closed by phase 1:
 
 Still open (all are also in `OPENQ.md`, C1-C7, with how to answer them):
 1. ~~Mirror flags~~: answered, G31 sets bit 3 (X), G32 bit 4 (Y) (`OPENQ.md` A1).
-2. **Non-uniform G73 scale with arcs:** what the control does. dxsim will warn.
+2. ~~Non-uniform G73 scale with arcs~~: answered, the radius is taken from the scaled end point (`OPENQ.md` A11). dxsim does the same and still warns.
 3. **Behaviour in cases the manual forbids** (M codes, Z-only pairs): only the machine can show it.
    dxsim warns and does what the code would do.
 6. **Blocks without a move** (an F, S or T word alone, an assignment or a condition) while compensating:
