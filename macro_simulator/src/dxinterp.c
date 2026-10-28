@@ -1151,7 +1151,7 @@ static void sysret(dxsim *s)
 static void loopbeg(dxsim *s, dxpos next)
 {
     if (s->nloop) {                         /* =Nseq/count: the loop starts after this block */
-        if (s->ldepth >= DX_LOOPS) dxerror(s, "Parser: #8 Internal Addressing Error");
+        if (s->ldepth >= DX_LOOPS) dxerror(s, "Parser: #14 Internal Addressing Error");  /* 0x204a6 */
         s->lend[s->ldepth] = s->nloopseq;
         s->lcnt[s->ldepth] = s->nloopcnt < 1 ? 1 : s->nloopcnt;
         s->lstart[s->ldepth] = next;

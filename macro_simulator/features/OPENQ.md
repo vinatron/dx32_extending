@@ -22,6 +22,8 @@ code if it changes behaviour.
 | A3 | What sets 0x4089 bit 3, which skips the travel check? | **G54-G59** (0x20dc0, which also stores the shift number at 0x41d6). The bit is cleared at each block start, so a block containing G54-G59 is not travel-checked | F: 0x20dc0, G table entries 54-59 | **changed**: test `pg54` |
 | A4 | `Parser: Cannot Comp "C" Axis` | a C word during a fillet sequence (state 0x32f5) | F: 0x1f1f6 | recorded in `CUTCOMP.md`, `FILLET.md` |
 | A5 | What is 0xaf34 (the spindle minimum)? | A table of **8 per-range minimum speeds** at 0xaf34, next to the 8 range maximums at 0xaf10 (params 74-81). An S is placed in the first range whose [min, max] holds it; if none does, a machine message. What *writes* 0xaf34 is still open (P1) | F: 0xe8b8-0xe8e8, 0x34620 | no change |
+| A6 | The `=N` loop handler: depth, end blocks (L4) | Five levels, not the manual's four: the push (0x20468) traps at the sixth with `Parser: #14 Internal Addressing Error` (0x204a6). Each block with an N counts a pass of the innermost loop ending there, and drops finished loops so the next one out is checked against the same block (0x1cc5a): end blocks can be shared | F: 0x20468, 0x204a6, 0x1cc5a; the message table at 0x32f63 | **changed**: 5 levels and #14 (was 4 and #8); tests `eloop5`, `eloop6`; `bench/BLOOP.TXT` confirms it on the machine |
+| A7 | What C9 does in the G81 driver, `G0U1V1C9` (L3) | 0x20882-0x208ae: C9 (0x4e08) = (4th-axis position 0x40d6 − 0xacae) / 250000, or 0 when 0xaef8 bit 6 is set (no 4th axis). The C word handler (0x1f0f6) multiplies by 250000 and makes it the 4th-axis target (0xac72). So C9 returns the C axis to where it was relative to 0xacae: it never moves X, Y or Z and is not a Z correction | F: 0x20878-0x208ae, 0x1f0f6 | no change (dxsim ignores C words, which is right for a 3-axis machine) |
 
 ## Open
 
@@ -31,8 +33,6 @@ code if it changes behaviour.
 |---|---|---|---|
 | L1 | Is `?Q7<NE>0W8=1.27!` (G87 body, 0x2757b) an assignment? The firmware's fixed-position test says no; the context says yes | G87's behaviour when Q7 ≠ 0 | **B:** `bench/BQ7.TXT`. At M0, W8 = 1.27 means an assignment, 0 means literal. dxsim predicts 0 |
 | L2 | 6.89 limits against the 1994 manual: variable indices to 50, 36 functions, macro nesting 8 | dxsim follows 6.89 | **B:** `bench/BLIMITS.TXT` (X50 = 1.5, Q19 = 2, A1 = 1, A2 = 2.3013, A3 = 4 at M0, then an error at `Q20=1.`); `bench/BNEST.TXT` (an error when the 9th level is called; dxsim stops at `=#9` with `Parser: #1 Internal Addressing Error`) |
-| L3 | What C9 does in the G81 driver (`G0U1V1C9`, 0x208aa stores a Z difference / 250000 in C9) | dxsim ignores C words; this matters only on machines with a 4th axis or if it shifts Z | **F:** trace 0x20880-0x208b0 (where fp0 comes from), then the C word handler's branch for 0x32e3 bit 7 (0x1f13a: it adjusts 0x3e3c/0x3f78 and 0xac72). That decides whether C9 moves the C axis or acts as a Z correction |
-| L4 | The `=N` loop handler (0x1f732) and the load pass that registers `#n` | Loop nesting, shared end blocks; dxsim follows the manual | **F:** trace 0x1f732 (count stack, depth, end-block match). **B:** a 5-deep `=N` nest should fail at the 5th level if the limit is 4 |
 | L5 | The `MRG` mask (0x764c) and the RDI/WRI channel map | `MRG` results; I/O in macros | **F:** 0x764c appears only in a data table at 0x265a2, next to the dual-port RAM address 0x01200554, so it is probably written by the PC through the mailbox: find the code that indexes that table, and the mailbox command (`../../PROTOCOL_NOTES.md`). **X:** BXX's writes to it. The channel map belongs to the G/M-code track (`../../IO_CTL.md`); ask through `../HANDOFF.md` |
 | L6 | What BXX does to a program on load: blanks, CR/LF, `%` leaders | Whether `X1 = 5.` with blanks is an assignment | **B:** `bench/BBLANKS.TXT`. Look at the block in the editor, and X1 at M0: 5 = the blanks were removed (dxsim's default), 0 = kept (dxsim `-keep`). **X:** BXX's program loader |
 | L7 | In `?Q1<LT>5`, is the 5 a number or variable Q5? (The variable rule with the left-hand letter) | Conditions written without a decimal point | **B:** `bench/BVARRULE.TXT`: Q9 = 0 at M0 means variable (dxsim), 1 means number |
@@ -84,6 +84,7 @@ The cutter-compensation and fillet sheets (`CUTCOMP.md` and `FILLET.md`, section
 | `BNEST.TXT` | L2 | error when `=#9` calls the 9th level | |
 | `BBLANKS.TXT` | L6 | X1 = 5 (blanks removed on load) | |
 | `BZMOVE.TXT` | F1 | Z goes to .5 with the line into the corner | |
+| `BLOOP.TXT` | A6 (confirms) | an error at the 6th `=N` line, #14 | |
 | `BFIX.TXT` | L8 | A1=2 A2=4 A3=3 A4=2 A5=1 | |
 
 **Preconditions:**

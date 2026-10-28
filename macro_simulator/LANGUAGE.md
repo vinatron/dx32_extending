@@ -196,8 +196,28 @@ and drilling canned cycles").
 =Nseq/count      run the following blocks up to and including block Nseq, count times (1-16384)
 ```
 
-Loops nest 4 deep; nested loops may share their end block. `dxsim` implements the manual's rules (the
-firmware N handler 0x1f732 was not traced; TENTATIVE in detail).
+How the firmware does it (CONFIRMED, F):
+- **Starting a loop:** the `/count` handler (0x20468, with the `=` and N flags from the N handler 0x1f732)
+  pushes the loop onto a stack of five entries at 0x3b88:
+  - the end N (0x3b8c);
+  - the passes left (0x3bd4; a count below 1 counts as 1);
+  - the return point (0x3bf8);
+  - the macro parameter pointer (0x3bb0).
+
+  It also clears the block's own N flag, so the `=N` block itself does not end a loop.
+- **Too deep:** with five loops open, the push traps (0x204a6) with `Parser: #14 Internal Addressing Error`.
+  **6.89 allows five levels**; the manual says four. dxsim follows the firmware (tests `eloop5`, `eloop6`;
+  the bench program `bench/BLOOP.TXT` confirms it on the machine).
+- **Ending a loop:** at the end of every block that has an N number (0x1cc5a), while it matches the
+  innermost loop's end N:
+  - one pass is counted;
+  - if passes are left, the loop goes back to its return point;
+  - if not, the loop is dropped and the next one out is checked against the same block.
+
+  So nested loops can share their end block, as the manual says.
+- **Detail dxsim does not copy:** the return point is the text right after `/count`. Words written after
+  the count in the same block would run again on every pass; dxsim starts each pass at the next block.
+  The manual and the built-in text always put `=Nseq/count` on a block of its own.
 
 ## 8. Macros (subroutines) `#n ... $` (CONFIRMED, M ch.10 + F)
 
@@ -429,9 +449,10 @@ All open questions, with how to answer each one (firmware trace, bench test, or 
    `dxsim` follows the firmware literally.
 2. 6.89 differs from the 1994 manual in several limits: variable indices (1-19/50 vs 1-9), macro nesting
    (8 vs 4), 36 functions vs 7, M-macros. Bench tests should confirm the 6.89 behaviour.
-3. `C9` in the G81 driver (`G0U1V1C9`): 0x208aa stores a Z-height difference / 250000 in C9; its use by the
-   C word handler (0x1f088) was not traced. `dxsim` ignores C words.
-4. The `=N` loop handler (0x1f732) and the load pass that registers `#n` definitions were not traced.
+3. `C9` in the G81 driver (`G0U1V1C9`) (answered, `features/OPENQ.md` A7): 0x20882 sets C9 = (4th-axis
+   position 0x40d6 − 0xacae) / 250000, or 0 without a 4th axis, and the C word handler (0x1f0f6) turns it
+   back into a 4th-axis target. It holds the C axis; it never moves X, Y or Z. `dxsim` ignores C words.
+4. The load pass that registers `#n` definitions was not traced. (The `=N` loop handler is answered: section 7.)
 5. `MRG` mask (0x764c) and the exact I/O channel map of RDI/WRI.
 6. What BXX does to a program on load (blanks, CR/LF, `%` tape leaders).
 

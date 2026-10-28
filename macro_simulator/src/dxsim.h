@@ -27,7 +27,7 @@
 #define DX_NLABEL   30      /* labels L1..L29 (0x3c74) */
 #define DX_GOSUB    8       /* =# / M-macro nesting (0x32fc stack) */
 #define DX_SYSSTK   5       /* =% nesting (0x3c1c stack) */
-#define DX_LOOPS    4       /* =N loops (manual: 4 levels) */
+#define DX_LOOPS    5       /* =N loops: 5 in 6.89 (the push at 0x2048c traps when 5 are open; manual: 4) */
 #define DX_NSRC     12      /* colours for -pc (the 12th is shared) */
 #define DX_NPARAM   64      /* '*' macro parameters (0x3368 area) */
 #define DX_NMAC     120     /* M<n>: definitions (0x3b44 list) */
