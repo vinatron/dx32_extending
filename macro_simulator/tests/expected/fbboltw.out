@@ -1,0 +1,6 @@
+FILE     fbbolt.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 8)
+REFUSED  line 5: G65: calls are translated in phase 4
+NOTE     1 more program(s) after the first: called programs come with phase 4
+STOP     fbwbolt.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

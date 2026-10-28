@@ -1,6 +1,6 @@
 /* fbmain.c - fb2dx: FANUC custom macro (Macro A / Macro B) to DX32 translator.
-   Phase 1 (FB2DX.md): read the program, decide the FANUC series, and evaluate it.
-   The DX32 output comes with phases 2-5. */
+   Read the program, decide the FANUC series, evaluate it (phase 1), and write the DX32
+   program (-w; phase 2 covers straight-line programs, FB2DX.md). */
 
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +17,7 @@ static const char *const usage[] = {
     "  -bdel on|off     the block delete switch, for programs with / blocks",
     "  -parse           list the statements as read",
     "  -eval            evaluate the program and trace its NC blocks",
+    "  -w FILE          write the DX32 program to FILE (only when nothing is refused)",
     "  -limit N         stop the evaluation after N blocks (default 100000)",
     "  -o FILE          write the report and the trace to FILE",
     "  -silent          nothing on the console",
@@ -76,6 +77,7 @@ int main(int argc, char **argv)
     fbx *x = &gx;
     const char *outf = 0;
     int i, parse = 0, eval = 0, line = 0, ok = 1;
+    const char *wout = 0;
     long limit = 100000;
 
     x->ser = -1;
@@ -111,6 +113,7 @@ int main(int argc, char **argv)
             }
         } else if (!strcmp(a, "-parse")) parse = 1;
         else if (!strcmp(a, "-eval")) eval = 1;
+        else if (!strcmp(a, "-w") && i + 1 < argc) wout = argv[++i];
         else if (!strcmp(a, "-limit") && i + 1 < argc) limit = atol(argv[++i]);
         else if (!strcmp(a, "-o") && i + 1 < argc) outf = argv[++i];
         else if (!strcmp(a, "-silent")) silent = 1;
@@ -158,8 +161,10 @@ int main(int argc, char **argv)
             else fprintf(x->rep, "       ");
             fbpstmt(x->rep, x->st[i]);
         }
-    if (ok && eval) ok = fbeval(x, x->rep, limit);
-    if (ok && !x->stop) fbrep(x, "NOTE", 0, "the DX32 output comes with phases 2-5 (features/FB2DX.md)");
+    /* the translator needs the evaluation too: what the program really reads (FB2DX.md 3.2) */
+    if (ok && (eval || wout)) ok = fbeval(x, eval ? x->rep : 0, limit);
+    if (ok && wout) ok = fbwrite(x, wout);
+    else if (ok && !x->stop) fbrep(x, "NOTE", 0, "-w FILE writes the DX32 program (features/FB2DX.md)");
     fprintf(x->rep, "RESULT   %s\n", x->stop ? "stopped: see REFUSED/STOP above" : "ok");
     if (outf) fclose(x->rep);
     return x->stop ? 2 : 0;

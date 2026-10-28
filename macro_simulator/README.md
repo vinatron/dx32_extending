@@ -380,14 +380,17 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
 
 ## FANUC macro translator (`fb2dx`, in progress)
 
-`fb2dx` will translate FANUC custom macro programs (Macro A and Macro B, any series) into DX32 programs.
-`features/FB2DX.md` has the design. Phase 1 is built: it reads the program, decides the FANUC series and
-evaluates the program. The DX32 output comes with the next phases.
+`fb2dx` translates FANUC custom macro programs (Macro A and Macro B, any series) into DX32 programs.
+`features/FB2DX.md` has the design.
+- **Built:** it reads the program, decides the FANUC series, evaluates the program, and writes straight-line
+  programs as DX32 (assignments, `IF..THEN`, G0/G1 moves).
+- **Next:** `GOTO`/`WHILE` (phase 3), calls (phase 4) and the rest of the motion words (phase 5).
 
 ```
 fb2dx -series list                    the series, what exists on which, the -fparam settings
 fb2dx -eval PROG.NC [SUB.NC ...]      decide the series and trace the program as the FANUC control runs it
 fb2dx -parse PROG.NC                  list the statements as read
+fb2dx PROG.NC -w PROG.TXT             write the DX32 program (only when nothing is refused)
 ```
 
 The series is detected from what the program uses, or given with `-series a|0|6|10|15|16|0i|30i`. Where

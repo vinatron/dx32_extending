@@ -109,6 +109,8 @@ typedef struct fbs {
     int nw;
     fbw *w;             /* ST_NC words */
     char *text;         /* the block as written, comments removed */
+    long nexec;         /* times the evaluator ran it */
+    int vacbad;         /* the evaluator saw it use a vacant variable in a way the DX32 can't copy */
 } fbs;
 
 /* ------------------------------------------------------------------ */
@@ -129,6 +131,7 @@ typedef struct fbx {
     char *fname[8];
     int nfile;
     int bdelsw;         /* -bdel: -1 not given, 0 off, 1 on */
+    char vset[1000];    /* the evaluator set #n at some point (any level) */
 } fbx;
 
 /* fbmain.c */
@@ -147,6 +150,7 @@ int fbpair(fbx *x);
 /* fbdial.c */
 int fbsfind(const char *key);
 const char *fbskey(int ser);
+void fbsnames(char *buf, int mask);
 void fbslist(FILE *fp);
 int fbdetect(fbx *x);
 int fbmacroa(fbx *x);
@@ -156,5 +160,8 @@ void fbmean(fbx *x, int m, int line);
 
 /* fbeval.c */
 int fbeval(fbx *x, FILE *out, long limit);
+
+/* fbout.c */
+int fbwrite(fbx *x, const char *path);
 
 #endif

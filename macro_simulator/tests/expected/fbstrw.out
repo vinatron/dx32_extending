@@ -1,0 +1,8 @@
+FILE     fbstr.nc (from line 1)
+DIALECT  series 0i 30i (Macro B at line 3, THEN at line 6, POW/ADP/ATAN[a,b]/ATAN[x]/MOD at line 4, AND/OR of conditions at line 6)
+NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
+NOTE     FIX/FUP/ROUND are built on LSR: exact below 4294967296 (TENTATIVE, bench/BFIX.TXT)
+NOTE     G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwstr.txt
+RESULT   ok

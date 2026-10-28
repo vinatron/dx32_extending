@@ -7,5 +7,5 @@ L5     JUMP   GOTO 10 -> line 7
 L7     SET    #5 = 135.
 L8     NC     M30
 END    M30
-NOTE     the DX32 output comes with phases 2-5 (features/FB2DX.md)
+NOTE     -w FILE writes the DX32 program (features/FB2DX.md)
 RESULT   ok

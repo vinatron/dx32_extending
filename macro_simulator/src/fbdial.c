@@ -123,7 +123,7 @@ static int exists(int f, int ser)
     return c == 'y' || c == '?' || c == 'o';
 }
 
-static void names(char *buf, int mask)
+void fbsnames(char *buf, int mask)
 {
     int i;
     buf[0] = 0;
@@ -205,7 +205,7 @@ int fbdetect(fbx *x)
             ok = 0;
         }
         if (!(mask & m) && x->ser < 0) {
-            names(nm, mask);
+            fbsnames(nm, mask);
             fbrep(x, "REFUSED", x->featl[f], "%s does not exist on the series the lines before need (%s)",
                   feats[f].name, nm);
             ok = 0;
@@ -222,7 +222,7 @@ int fbdetect(fbx *x)
         return 0;
     }
     x->cand = x->ser >= 0 ? 1 << x->ser : mask;
-    names(nm, x->cand);
+    fbsnames(nm, x->cand);
     if (x->ser >= 0) fbrep(x, "DIALECT", 0, "series %s (given)", nm);
     else fbrep(x, "DIALECT", 0, "series %s (%s)", nm, why[0] ? why : "nothing series-specific used");
 

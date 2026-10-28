@@ -11,7 +11,7 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 |---|---|---|
 | 0 | Firmware checks the design depends on | **done** (section 2) |
 | 1 | FANUC front end: dialect table, series detection and `-series`, reader, expression parser, statement list, small evaluator | **done** (section 3.8) |
-| 2 | Variables and expressions: allocation, PPPL output, numbers always with a point | not started |
+| 2 | Variables and expressions: allocation, PPPL output, numbers always with a point | **done** for straight-line programs (section 3.9) |
 | 3 | Control flow: `IF`/`GOTO`/`WHILE` to `?`/`!`, `Ln`/`=Ln`; refuse what does not fit | not started |
 | 4 | Calls: `M98`/`M99`, `G65` to `#n` macros with caller-side assignments | not started |
 | 5 | Motion subset: G0-G3 (with `R`), G81, G83, G90/G91, F, S, T, M | not started |
@@ -43,8 +43,11 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 ### 3.1 Program shape
 
 ```
-fb2dx [options] in.nc [out.txt]
-  -report file     the line-by-line report (default: stderr)
+fb2dx [options] main.nc [sub.nc ...]
+  -w file          write the DX32 program (only when nothing is refused)
+  -o file          the line-by-line report (default: the console)
+  -eval, -parse    the evaluation trace, the statements as read
+  -bdel on|off     the block delete switch
   -series KEY      the FANUC series the program was written for (section 3.7); otherwise detected
   -fparam N=V      a FANUC parameter setting that changes what the program means (3.7); repeatable
   -fparam default  take the factory setting for every such parameter, and say so in the report
@@ -333,6 +336,59 @@ scaling), `CALL`, `AGAIN`, `RET`, `JUMP` and `END` lines.
   least increments of that address).
 - **Limit:** stops after `-limit` blocks (default 100000).
 
+### 3.9 Phase 2 as built
+
+`src/fbout.c`, option `-w FILE`. The evaluator always runs first (silently without `-eval`), because the
+writer needs to know what the program really did. The DX32 program is written only when nothing is
+refused; otherwise the file is removed and the report lists every refusal.
+
+- **Program shape:** phase 2 writes straight-line programs:
+  - assignments and `IF..THEN`;
+  - NC blocks with G0 G1 G17 G90 G91, G20/G21 (written G70/G71), X Y Z, F, S;
+  - M0 M1 M2 M3 M4 M5 M7 M8 M9 M30, one M per block (the DX32 takes one).
+
+  Everything else is refused with the phase that will translate it: `GOTO`/`WHILE` (3), calls (4), other G
+  codes and addresses (5).
+- **Header:** two kinds of comment lines. `; fb2dx: FILE, FANUC series ...` names the source, and
+  `; #1=D20 #2=D22 ...` gives the variable map.
+- **Variables:**
+  - **Pool:** FANUC variables get pool variables in order of first appearance: D20-D50, then C, A, K, J, I,
+    R, F 20-50, eight letters with 31 variables each (none of them used by the built-in cycles).
+  - **Reserved:** index 21 of every letter with a second bank, and index 19 of the others, are the word
+    carriers. X20, Y20 and Z20 are kept for the current position (phase 5).
+  - **Temporaries** come from the same pool, reused from one statement to the next.
+- **Expressions:**
+  - Every number has a decimal point, with up to 9 decimals; sub-expressions are in parentheses.
+  - `SIN COS TAN ACOS ATAN[x] SQRT ABS LN EXP` → `SIN COS TAN ACS ATN SQR ABS LGE E2X`. `AND OR XOR` →
+    `AND( , ) LOR( , ) XOR( , )`.
+  - **Expanded with `?`/`!`:**
+    - `FIX FUP ROUND`: 3.3, exact below 2³²;
+    - `ATAN[a]/[b]`: 0..360, or -180..180 with nat=1; the b = 0 case is a branch, never a division;
+    - `ASIN`: 270..90 with nat=0.
+  - **Others:** `MOD` → `a-b*FIX[a/b]`. `POW` with a whole constant exponent 0-8 → a product; any other
+    exponent, and `BIN BCD ADP`, are refused.
+- **Conditions:** `IF [c] THEN` becomes `?`, the assignment ending in `!`.
+  - A comparison puts the left side in a variable (the DX32 compares a variable with a number or a
+    variable); `5. LT #1` is turned round to `#1 GT 5.`.
+  - `AND OR XOR` of conditions go through 0/1 flag variables (3.5).
+  - Every condition leaves exactly one `?` open.
+- **Words:**
+  - Constants are written in the unit's format: 4 decimals in inch, 3 in mm. A value that needs more is
+    refused, e.g. IS-C values.
+  - `dpi=0` numbers are scaled to least increments.
+  - A variable or an expression goes through the word letter's carrier (`X21=D20+2.` then `G0X21`).
+  - `ROUND` in an address rounds to the least increment.
+  - Macro A with `avar=0` multiplies by the increment.
+- **Vacant variables:** the evaluator marks each statement that used a vacant variable in a way the DX32 can't
+  copy: read as 0 in arithmetic, tested with `EQ`/`NE`, or a word left out. Those statements are refused.
+  - **Statements the run never reached:** translated with a `NOTE`, unless they read a variable the run never
+    set.
+- **Notes in the report:**
+  - the PPPL option, when anything is assigned;
+  - the LSR range, when `FIX`/`FUP`/`ROUND` are used;
+  - G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once;
+  - BOSS 4-7 compatibility mode off.
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
@@ -360,6 +416,10 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **Phase 2, built:** `fb.lst` entries with `-w` compare the written DX32 program too (`fbstr`, `fbfix`, `fbatan`
+  with nat=1, and refusals for `fbthen` and `fbbolt`). `dxtest` runs the written programs in dxsim and checks
+  `FIX`/`FUP`/`ROUND` on 15 values (halves, negatives, 0.4999999) and `ATAN`/`ASIN`/`ACOS` in every quadrant
+  against values worked out in C.
 - **Phase 1, built:** `tests/fb.lst` and `tests/fb*.nc` (16 runs: detection, each `-fparam` stop, Macro A,
   vacant variables, `M98`, specification II, a read error), and 4 hand checks in `dxtest` (bolt circle
   positions, the Macro A loop, specification II numbering, `M98 P30100`).
@@ -375,7 +435,8 @@ output.
 - **1** ☑ dialect table `src/fbdial.c` and `-series list` ☑ detection, `-series`, `-fparam` ☑ Macro A reader
   ☑ reader (blocks, `( )` comments, `/` block delete, `%`, `O` numbers) ☑ expression parser ☑ statements
   ☑ evaluator with vacant tracking
-- **2** ☐ variable pool and map ☐ PPPL writer ☐ `FIX`/`FUP`/`ROUND`/`ATAN` expansions
+- **2** ☑ variable pool and map ☑ PPPL writer ☑ `FIX`/`FUP`/`ROUND`/`ATAN`/`ASIN`/`MOD` expansions ☑ word carriers
+  ☑ vacancy checks from the evaluation
 - **3** ☐ flow graph ☐ structure check ☐ `?`/`!` and label writer
 - **4** ☐ `M98`/`M99` ☐ `G65` ☐ depth and recursion checks
 - **5** ☐ motion words ☐ G81/G83
@@ -396,6 +457,7 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-27 | (this commit) | Phase 1 built: `fb2dx` reads, detects the series, evaluates (`-eval`, `-parse`, `-series list`); tests `fb.lst` and 4 hand checks (122 passed) |
+| 2026-10-28 | (this commit) | Phase 2 built for straight-line programs: `-w`, `src/fbout.c`, variable pool and carriers, PPPL expressions, `FIX`/`FUP`/`ROUND`/`ATAN`/`ASIN`/`MOD` expansions checked in dxsim, vacancy refusals (134 passed) |
+| 2026-10-27 | da366b4 | Phase 1 built: `fb2dx` reads, detects the series, evaluates (`-eval`, `-parse`, `-series list`); tests `fb.lst` and 4 hand checks (122 passed) |
 | 2026-10-27 | 9689d77 | All FANUC series (owner's request): section 3.7, dialect table, series detection, `-series`, `-fparam`, Macro A; M98 shares the caller's locals; Q5 answered, Q6 added |
 | 2026-10-27 | ebcc885 | Document created. Phase 0: `*` invalid in PPPL (0x262a6 → 0x24fba); the 32-bit functions round (fmove.l, default FPCR), dxsim changed from truncation, `bench/BFIX.TXT`, test `bfix`; exact `FIX`/`FUP`/`ROUND` built on `LSR` with a correction; word values need same-letter variables, G90 arc centres are absolute |

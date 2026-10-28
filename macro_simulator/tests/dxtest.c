@@ -572,6 +572,11 @@ static void fb(const char *args)
 static void runfb(const char *name, const char *prog, const char *opts)
 {
     char args[160], exp[96], why[120], what[300];
+    {
+        const char *w = strstr(opts, "-w ");
+        char file[40];
+        if (w && sscanf(w + 3, "%30s", file) == 1) remove(file);       /* no stale program */
+    }
     sprintf(args, "%.20s.nc %.100s", prog, opts);
     fb(args);
     sprintf(exp, "%s%.20s.out", EXPDIR, name);
@@ -582,6 +587,70 @@ static void runfb(const char *name, const char *prog, const char *opts)
         strcat(what, why);
         check(0, what);
     } else check(1, what);
+
+    /* -w FILE: the DX32 program it wrote must match expected/FILE.out too */
+    {
+        const char *w = strstr(opts, "-w ");
+        char file[40], *dot;
+        if (!w) return;
+        sscanf(w + 3, "%30s", file);
+        strcpy(exp, EXPDIR);
+        strcat(exp, file);
+        dot = strrchr(exp, '.');
+        if (dot) strcpy(dot, ".out");
+        {
+            FILE *fp = fopen(file, "r"), *ep;
+            if (!fp) {              /* refused: nothing may be written, and nothing expected */
+                if (update) remove(exp);
+                ep = fopen(exp, "r");
+                if (ep) fclose(ep);
+                sprintf(what, "fb2dx %s.nc: refused, so %s is not written", prog, file);
+                check(!ep, what);
+                return;
+            }
+            fclose(fp);
+        }
+        if (update) copyfile(file, exp);
+        sprintf(what, "fb2dx %s.nc: the DX32 program %s matches %s", prog, file, exp);
+        if (!compare(file, exp, why)) {
+            strcat(what, ": ");
+            strcat(what, why);
+            check(0, what);
+        } else check(1, what);
+    }
+}
+
+/* run the DX32 program fb2dx wrote in dxsim and read FANUC variable #n from the
+   variable dump, through the "; #n=D20" map at the top of the program */
+static int fbget(const char *file, int n, double *v)
+{
+    char line[256], want[16], name[16];
+    FILE *fp = fopen(file, "r");
+    name[0] = 0;
+    if (!fp) return 0;
+    sprintf(want, "#%d=", n);
+    while (fgets(line, sizeof line, fp) && line[0] == ';') {
+        char *p = strstr(line, want);
+        if (p && (p == line || p[-1] == ' ')) {
+            sscanf(p + strlen(want), "%10s", name);
+            break;
+        }
+    }
+    fclose(fp);
+    if (!name[0]) return 0;
+    fp = fopen(TMPOUT, "r");
+    if (!fp) return 0;
+    while (fgets(line, sizeof line, fp)) {
+        char nm[16];
+        double x;
+        if (sscanf(line, "%10s = %lf", nm, &x) == 2 && !strcmp(nm, name)) {
+            *v = x;
+            fclose(fp);
+            return 1;
+        }
+    }
+    fclose(fp);
+    return 0;
 }
 
 /* the X, Y (and Z) of the NC lines in the fb2dx trace */
@@ -634,6 +703,38 @@ static void fbhand(void)
     fb("fbspec2.nc -eval");
     n = fbxy(x, y, z, 16);
     check(n == 1 && x[0] == 2 && y[0] == 5 && z[0] == 8, "fb2dx G65 specification II: #4=2 #7=5 #10=8");
+
+    /* FIX FUP ROUND built on LSR, run in dxsim, against C over a table of values */
+    {
+        static const double tv[] = { 2.5, 3.5, 2.7, 2.2, -2.5, -3.5, -2.7, -2.2, 0, 3, -3, .5, -.5,
+            12345.5, .4999999 };
+        int bad = 0;
+        fb("fbfix.nc -w fbwfix.txt");
+        dx("fbwfix.txt -d");
+        for (i = 0; i < 15; i++) {
+            double a = fabs(tv[i]), f = floor(a), c = ceil(a), r = floor(a + .5), got[3];
+            double sg = tv[i] < 0 ? -1 : 1;
+            if (!fbget("fbwfix.txt", 101 + i, &got[0]) || !fbget("fbwfix.txt", 121 + i, &got[1]) ||
+                !fbget("fbwfix.txt", 141 + i, &got[2]) || got[0] != sg * f || got[1] != sg * c ||
+                got[2] != sg * r) {
+                printf("  %g: FIX %g FUP %g ROUND %g\n", tv[i], got[0], got[1], got[2]);
+                bad++;
+            }
+        }
+        check(!bad, "fb2dx FIX/FUP/ROUND from LSR, run in dxsim: 15 values incl. halves and negatives");
+    }
+
+    /* ATAN[a]/[b] in all quadrants and on the axes, ASIN and ACOS, NAT=0 */
+    {
+        static const double want[] = { 45, 135, 225, 315, 90, 270, 180, 0, 30, 330, 120 };
+        int bad = 0;
+        double v;
+        fb("fbatan.nc -fparam nat=0 -w fbwatan.txt");
+        dx("fbwatan.txt -d");
+        for (i = 0; i < 11; i++)
+            if (!fbget("fbwatan.txt", 1 + i, &v) || !near(v, want[i], 1e-4)) bad++;
+        check(!bad, "fb2dx ATAN[a]/[b] 0..360 on all quadrants and axes, ASIN 270..90, ACOS, run in dxsim");
+    }
 
     /* M98 P30100: three passes, the subprogram adds 1 to the caller's #1 */
     fb("fbm98.nc -eval -series 0");

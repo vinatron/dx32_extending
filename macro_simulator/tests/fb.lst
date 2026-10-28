@@ -16,3 +16,8 @@ fbm98    fbm98    -eval
 fbm98s0  fbm98    -eval -series 0
 fbspec2  fbspec2  -eval
 fberr    fberr    -eval
+fbstrw   fbstr    -fparam nat=0 -w fbwstr.txt
+fbthenw  fbthen   -w fbwthen.txt
+fbfixw   fbfix    -w fbwfix.txt
+fbatanw  fbatan   -series 30i -fparam nat=1 -w fbwatan1.txt
+fbboltw  fbbolt   -w fbwbolt.txt

@@ -15,5 +15,5 @@ L13           NC       G0 Z5.
 L14           ASSIGN   #10 = #10+1
 L15           END      END1
 L16           NC       M99
-NOTE     the DX32 output comes with phases 2-5 (features/FB2DX.md)
+NOTE     -w FILE writes the DX32 program (features/FB2DX.md)
 RESULT   ok

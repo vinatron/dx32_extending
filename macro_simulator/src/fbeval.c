@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdarg.h>
 #include "fb2dx.h"
 
 #define PI      3.14159265358979323846
@@ -38,6 +39,17 @@ static int vacl[NVAC];
 static long vacv[NVAC];
 static int nvac;
 static int curline;
+static fbs *cur;                /* the statement being evaluated */
+
+/* a trace line; nothing when the evaluation runs only for the translator */
+static void tr(const char *fmt, ...)
+{
+    va_list ap;
+    if (!O) return;
+    va_start(ap, fmt);
+    vfprintf(O, fmt, ap);
+    va_end(ap);
+}
 
 static void fail(const char *kind, const char *fmt, const char *a, double v)
 {
@@ -52,6 +64,7 @@ static void fail(const char *kind, const char *fmt, const char *a, double v)
 static void vacread(long n)
 {
     int i;
+    if (cur) cur->vacbad = 1;
     for (i = 0; i < nvac; i++)
         if (vacl[i] == curline && vacv[i] == n) return;
     if (nvac < NVAC) {
@@ -233,6 +246,7 @@ static int cmp(const fbn *e)
     val a = ev(e->a, 0), b = ev(e->b, 0);
     if (e->op == CM_EQ || e->op == CM_NE) {
         int eq = a.vac || b.vac ? a.vac == b.vac : a.v == b.v;
+        if ((a.vac || b.vac) && cur) cur->vacbad = 1;      /* vacant tested: no DX32 equivalent */
         return e->op == CM_EQ ? eq : !eq;
     }
     if (a.vac) { a.v = 0; if (e->a->k == EN_VAR) vacread(varno(e->a)); }
@@ -317,10 +331,11 @@ static void assign(const fbn *lhs, const fbn *e)
     p = vref(n);
     if (err || !p) return;
     *p = v;
+    if (n < 1000) X->vset[n] = 1;
     b[0] = 0;
     if (v.vac) strcpy(b, "vacant");
     else fbfmt(b, v.v);
-    fprintf(O, "L%-5d SET    #%ld = %s\n", curline, n, b);
+    tr("L%-5d SET    #%ld = %s\n", curline, n, b);
 }
 
 /* ------------------------------------------------------------------ */
@@ -334,7 +349,10 @@ static int wval(const fbs *s, int i, double *out)
     if (v->k == EN_VAR || v->k == EN_SYS) {
         val r = getvar(v);
         if (err) return 0;
-        if (r.vac) return 0;                /* X#1 with #1 vacant: the word is ignored */
+        if (r.vac) {                        /* X#1 with #1 vacant: the word is ignored */
+            if (cur) cur->vacbad = 1;
+            return 0;
+        }
         *out = e->k == EN_NEG ? -r.v : r.v;
         if (X->macroa && fbisdim(l) && X->par.avar == 0) *out *= incr(l);
         return 1;
@@ -447,7 +465,7 @@ static void ncout(const fbs *s, const char *skip)
         wfmt(t, l, v);
         strcat(b, t);
     }
-    if (n) fprintf(O, "L%-5d NC     %s\n", curline, b);
+    if (n) tr("L%-5d NC     %s\n", curline, b);
 }
 
 /* ------------------------------------------------------------------ */
@@ -478,7 +496,7 @@ int fbeval(fbx *x, FILE *out, long limit)
             if (ncs) {
                 fbrep(x, "REFUSED", x->st[pend - 1]->line, "the subprogram ends without M99");
                 x->stop = 1;
-            } else fprintf(out, "END    the program ends without M30\n");
+            } else tr("END    the program ends without M30\n");
             break;
         }
         if (++steps > limit) {
@@ -488,6 +506,8 @@ int fbeval(fbx *x, FILE *out, long limit)
         }
         s = x->st[pc];
         curline = s->line;
+        cur = s;
+        s->nexec++;
         if (s->bdel && x->bdelsw == 1) { pc++; continue; }
         switch (s->k) {
         case ST_ASSIGN:
@@ -514,7 +534,7 @@ int fbeval(fbx *x, FILE *out, long limit)
                     fail("REFUSED", "%sGOTO %.0f: no such sequence number in this program", "", (double)n);
                     break;
                 }
-                fprintf(out, "L%-5d JUMP   GOTO %ld -> line %d\n", curline, n, x->st[to]->line);
+                tr("L%-5d JUMP   GOTO %ld -> line %d\n", curline, n, x->st[to]->line);
                 pc = to;
             }
             break;
@@ -586,6 +606,8 @@ int fbeval(fbx *x, FILE *out, long limit)
                     if (!args(s, f->args)) break;
                     lvl++;
                     memcpy(loc[lvl], f->args, sizeof f->args);
+                    for (j = 1; j <= 33; j++)
+                        if (!f->args[j].vac) x->vset[j] = 1;
                 }
                 ncs++;
                 {
@@ -600,7 +622,7 @@ int fbeval(fbx *x, FILE *out, long limit)
                                 fbfmt(t, f->args[j].v);
                                 strcat(b, t);
                             }
-                    fprintf(out, "L%-5d CALL   %s\n", curline, b);
+                    tr("L%-5d CALL   %s\n", curline, b);
                 }
                 pstart = at;
                 pend = progend(at);
@@ -616,18 +638,18 @@ int fbeval(fbx *x, FILE *out, long limit)
                 }
                 if (!ncs) {
                     fbrep(x, "NOTE", curline, "M99 in the main program repeats it on the control; evaluated once");
-                    fprintf(out, "END    M99 in the main program\n");
+                    tr("END    M99 in the main program\n");
                     return !x->stop;
                 }
                 f = &cs[ncs - 1];
                 if (f->left > 0) {
                     f->left--;
                     if (f->g65) memcpy(loc[lvl], f->args, sizeof f->args);
-                    fprintf(out, "L%-5d AGAIN  the call repeats\n", curline);
+                    tr("L%-5d AGAIN  the call repeats\n", curline);
                     pc = f->start;
                     break;
                 }
-                fprintf(out, "L%-5d RET\n", curline);
+                tr("L%-5d RET\n", curline);
                 if (f->g65) lvl--;
                 pstart = f->pstart;
                 pend = f->pend;
@@ -637,7 +659,7 @@ int fbeval(fbx *x, FILE *out, long limit)
             }
             ncout(s, "");
             if (m == 30 || m == 2) {
-                fprintf(out, "END    M%.0f\n", m);
+                tr("END    M%.0f\n", m);
                 return !x->stop;
             }
             pc++;

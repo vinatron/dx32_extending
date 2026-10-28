@@ -13,7 +13,7 @@
 
 SRCW = dxmain.c dxinterp.c dxexpr.c dxmotion.c dxprog.c dxout.c dxcorpus.c dxscreen.c dxparam.c dxcomp.c dxmap.c
 SRC = $(SRCW) dxwin.c
-FBSRC = fbmain.c fbread.c fbdial.c fbeval.c
+FBSRC = fbmain.c fbread.c fbdial.c fbeval.c fbout.c
 OPT = -za -wx -ox -q
 
 all: dos win32 .SYMBOLIC

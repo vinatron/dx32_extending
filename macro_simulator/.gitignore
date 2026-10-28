@@ -10,3 +10,4 @@ RESULTS.TXT
 dxsim-scstub
 tests/dxscreen.log
 fb2dx
+tests/fbw*.txt
