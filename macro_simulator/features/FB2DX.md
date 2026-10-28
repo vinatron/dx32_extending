@@ -605,6 +605,29 @@ What typical FANUC jobs contain, beyond the phases above:
   programmed one, and the end points still have to match. dxtest also runs the job with a 10 mm tool and
   checks the offset corners and that the first side is not cut at X0.
 
+### 3.16 More drilling: G91, K/L repeats, G85 G86 G89
+
+- **G91 cycles** follow FANUC:
+  - X Y are steps from the last hole;
+  - R is measured from the initial level, and Z from R.
+
+  fb2dx writes each hole in G90, with absolute values worked out from the kept position (X20, Y20) and
+  the initial level, then switches the DX32 back to G91. A G91 hole needs the X/Y position known. A cycle
+  where G90/G91 changes while it is on is refused, because the stored R and Z would mean something else.
+- **Repeats:** the block is written out K times, at most 50. In G91 that steps X Y each time; in G90 it
+  drills the same spot again. K0 only stores the values.
+  - **The letter depends on the series** (TENTATIVE): K on 16, 0i and 30i, L on 0, 6, 10 and 15. When
+    the candidate series don't agree, `-series` is needed.
+  - A K in a drilling block is a count, so the decimal-point rule (DPI) does not apply to it.
+  - Repeats with G83/G73 are refused for now.
+- **Boring cycles** (motion only):
+  - G85: feed in, feed out to R;
+  - G89: the same, with the P dwell at the bottom;
+  - G86: feed in, M5, rapid out, then M3 (TENTATIVE: FANUC restarts the spindle in the direction it had).
+
+  Then G98/G99 as for the other cycles.
+- **Still refused:** G84/G74 tapping (the spindle has to reverse in step with the feed), G76/G87/G88.
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
@@ -633,6 +656,8 @@ output.
 - Hand-written FANUC programs, one per row of the tables in section 3 and `../ROADMAP.md` section 5, each with
   the expected DX32 output and an expected report.
 - One program per `REFUSED` reason.
+- **More drilling:** `fbrow` (a G91 G81 row with K5, then G85, G89 and G86) translates with `-series 16` and
+  `-check`. dxtest checks its 8 holes and the two feeds back out to R. Without `-series`, K is refused.
 - **Cutter compensation:**
   - `fbcomp` (a square profile with G41 D3) translates with `-fparam default` and `-check`, and in dxsim with a
     10 mm tool its sides are offset by 5 mm with no gouge.
@@ -699,7 +724,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | Cutter compensation (3.15): G41/G42 on a block of their own so FANUC's start-up move is the DX32 approach (type A), D checked against the tool, `-fparam sup`, `-comp dx32` for type B; the gouge of a plain copy found in dxsim and tested against (176 passed) |
+| 2026-10-28 | (this commit) | More drilling (3.16): G91 cycles, K/L repeats by series, G85 G86 G89 written out; test `fbrow` (181 passed) |
+| 2026-10-28 | 49b47ab | Cutter compensation (3.15): G41/G42 on a block of their own so FANUC's start-up move is the DX32 approach (type A), D checked against the tool, `-fparam sup`, `-comp dx32` for type B; the gouge of a plain copy found in dxsim and tested against (176 passed) |
 | 2026-10-28 | 36ae51d | Shop programs (3.14): safety-line cancel codes, G40, argument checks folded from the evaluation, #3000/#3006 alarms, `-g28 m25|drop`; test `fbjob` (169 passed) |
 | 2026-10-28 | 788551b | Phase 6: `-check` and `-against` (`src/fbcheck.c`), the FANUC tool path recorded by the evaluator, broken outputs caught in tests (163 passed). All six phases built |
 | 2026-10-28 | 9a5323e | Phase 5 done: G81/G82/G83/G73 written out as moves with a peck loop, -fparam d83/d73, T/M6 from the evaluator, G43/G49 left out, axis words with no motion code refused (161 passed) |

@@ -460,6 +460,7 @@ static int args(const fbs *s, val *a)
 /* the modal state of the axes, as the FANUC control keeps it (for the writer, FB2DX.md 3.12) */
 static int gabs, gmot, gpl, known[3], gcyc, gret, tool;
 static double pos[3], cz, cr, cq, cinit;   /* the position and the drilling values, program units */
+static int cycabs;              /* G90 or G91 when the cycle started */
 
 /* a move of the FANUC tool path, in inches like the dxsim trace (-check) */
 static void addmv(int k, double x, double y, double z, int hasc, double cx, double cy)
@@ -496,36 +497,47 @@ static void addmv(int k, double x, double y, double z, int hasc, double cx, doub
     m->cy = cy * f;
 }
 
-/* the moves of one drilling hole, as fbout.c writes them */
-static void holemoves(const fbs *s, int start)
+/* the moves of one drilling block, as fbout.c writes them: K (or L) holes; in G91 X Y are steps,
+   R is from the initial level and Z from R */
+static void holemoves(const fbs *s, int start, long k)
 {
-    int i, n = 0;
-    double v, nx = pos[0], ny = pos[1], dp, dn, ret;
+    int i, n;
+    long r;
+    double v, dx = 0, dy = 0, nx, ny, dp, dn, ret, ar, az;
+    int hx = 0, hy = 0;
     for (i = 0; i < s->nw; i++) {
         int l = s->w[i].l;
         if (!wval(s, i, &v)) continue;
-        if (l == 'X') nx = gabs == 91 ? pos[0] + v : v;
-        else if (l == 'Y') ny = gabs == 91 ? pos[1] + v : v;
+        if (l == 'X') dx = v, hx = 1;
+        else if (l == 'Y') dy = v, hy = 1;
         else if (l == 'Z') cz = v;
         else if (l == 'R') cr = v;
         else if (l == 'Q') cq = v;
     }
     if (start) cinit = pos[2];
-    if (nx != pos[0] || ny != pos[1]) addmv('R', nx, ny, pos[2], 0, 0, 0);
-    addmv('R', nx, ny, cr, 0, 0, 0);
-    if (gcyc == 81 || gcyc == 82) addmv('F', nx, ny, cz, 0, 0, 0);
-    else if (cq > 0)
-        for (dp = cr; dp > cz && n < 10000; dp = dn, n++) {
-            dn = dp - cq < cz ? cz : dp - cq;
-            if (gcyc == 83 && dp < cr) addmv('R', nx, ny, dp + X->par.d83, 0, 0, 0);
-            addmv('F', nx, ny, dn, 0, 0, 0);
-            addmv('R', nx, ny, gcyc == 83 ? cr : dn + X->par.d73, 0, 0, 0);
-        }
-    ret = gret == 99 ? cr : cinit;
-    addmv('R', nx, ny, ret, 0, 0, 0);
-    pos[0] = nx;
-    pos[1] = ny;
-    pos[2] = ret;
+    ar = gabs == 91 ? cinit + cr : cr;
+    az = gabs == 91 ? ar + cz : cz;
+    for (r = 0; r < k; r++) {
+        nx = gabs == 91 ? pos[0] + dx : hx ? dx : pos[0];
+        ny = gabs == 91 ? pos[1] + dy : hy ? dy : pos[1];
+        if (nx != pos[0] || ny != pos[1]) addmv('R', nx, ny, pos[2], 0, 0, 0);
+        addmv('R', nx, ny, ar, 0, 0, 0);
+        ret = gret == 99 ? ar : cinit;
+        if (gcyc == 83 || gcyc == 73) {
+            if (cq > 0)
+                for (dp = ar, n = 0; dp > az && n < 10000; dp = dn, n++) {
+                    dn = dp - cq < az ? az : dp - cq;
+                    if (gcyc == 83 && dp < ar) addmv('R', nx, ny, dp + X->par.d83, 0, 0, 0);
+                    addmv('F', nx, ny, dn, 0, 0, 0);
+                    addmv('R', nx, ny, gcyc == 83 ? ar : dn + X->par.d73, 0, 0, 0);
+                }
+        } else addmv('F', nx, ny, az, 0, 0, 0);
+        if (gcyc == 85 || gcyc == 89) addmv('F', nx, ny, ar, 0, 0, 0);     /* feed out to R */
+        addmv('R', nx, ny, ret, 0, 0, 0);
+        pos[0] = nx;
+        pos[1] = ny;
+        pos[2] = ret;
+    }
 }
 
 static void modal(fbs *s)
@@ -549,7 +561,7 @@ static void modal(fbs *s)
         else if (v == 17 || v == 18 || v == 19) gpl = (int)v;
         else if (v == 4) g4 = 1;
         else if (v == 80) gcyc = 0, gmot = 80;
-        else if (v == 81 || v == 82 || v == 83 || v == 73) newcyc = (int)v;
+        else if (v == 81 || v == 82 || v == 83 || v == 73 || v == 85 || v == 86 || v == 89) newcyc = (int)v;
         else if (v == 98 || v == 99) gret = (int)v;
         else if (v == 43) g43 = 1;
         else if (v == 41 || v == 42) g41 = 1;
@@ -566,7 +578,7 @@ static void modal(fbs *s)
     if (g41 && d >= 0 && d != tool) s->modes |= MO_DBAD;
     if (g4) return;
     if (newcyc) {
-        if (!gcyc) start = 1;
+        if (!gcyc) start = 1, cycabs = gabs;
         gcyc = newcyc;
     }
     for (i = 0; i < s->nw; i++) {
@@ -581,7 +593,19 @@ static void modal(fbs *s)
         for (i = 0; i < s->nw; i++)
             if (strchr("XYZR", s->w[i].l)) hole = 1;
     if (hole) {
-        s->modes |= MO_HOLE | (gcyc == 81 ? MO_C81 : gcyc == 82 ? MO_C82 : gcyc == 83 ? MO_C83 : MO_C73);
+        long k = 1;
+        s->modes |= MO_HOLE | (gcyc == 81 ? MO_C81 : gcyc == 82 ? MO_C82 : gcyc == 83 ? MO_C83 :
+                               gcyc == 73 ? MO_C73 : gcyc == 85 ? MO_C85 : gcyc == 86 ? MO_C86 : MO_C89);
+        if (gabs != cycabs) s->modes |= MO_MIXC;
+        if (gabs == 91 && (!known[0] || !known[1])) s->modes |= MO_UNK;
+        for (i = 0; i < s->nw; i++)
+            if (s->w[i].l == 'K' || s->w[i].l == 'L') {     /* a count: never scaled */
+                v = num(s->w[i].e, 0);
+                s->modes |= s->w[i].l == 'K' ? MO_KK : MO_KL;
+                k = (long)v;
+            }
+        if (s->krep == -1) s->krep = k;
+        else if (s->krep != k) s->krep = -2;
         s->modes |= gret == 99 ? MO_R99 : MO_R98;
         if (start) s->modes |= MO_CST;
         if (start && !known[2]) s->modes |= MO_UNKZ;
@@ -592,7 +616,7 @@ static void modal(fbs *s)
             if (!p || s->w[i].l == 'Z' || !wval(s, i, &v)) continue;
             if (gabs == 90) known[p - ax] = 1;
         }
-        holemoves(s, start);
+        holemoves(s, start, s->krep >= 0 ? s->krep : 1);
         return;
     }
     s->modes |= gpl == 18 ? MO_P18 : gpl == 19 ? MO_P19 : MO_P17;

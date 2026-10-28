@@ -841,6 +841,23 @@ static void fbhand(void)
               "fb2dx drilling: G83 in 3 pecks, G99 back to R, G98 back to the initial level");
     }
 
+    /* G91 G81 with K5, then G85 G89 G86: 8 holes; G85 and G89 feed back out to R (Z2) */
+    {
+        static const double ex[] = { 10, 20, 30, 40, 50, 10, 20, 30 }, ez[] = { -5, -5, -5, -5, -5, -6, -6, -6 };
+        double hx[16], hy[16], hz[16];
+        int n, bad = 0, out = 0;
+        fb("fbrow.nc -series 16 -w fbwrow.txt");
+        movesx("fbwrow", "");
+        n = holes(hx, hy, hz, 16);
+        for (i = 0; i < n && i < 8; i++)
+            if (!near(hx[i], ex[i] / 25.4, 1e-4) || !near(hz[i], ez[i] / 25.4, 1e-4) ||
+                !near(hy[i], (i < 5 ? 0 : 20) / 25.4, 1e-4)) bad++;
+        for (i = 1; i < nmv; i++)
+            if (mvs[i].k == 'F' && mvs[i].z > mvs[i - 1].z + 1e-4 && near(mvs[i].z, 2 / 25.4, 1e-4)) out++;
+        sprintf(what, "fb2dx G91 K5 row and G85/G89/G86 in dxsim: %d holes, %d feeds back out to R", n, out);
+        check(n == 8 && !bad && out == 2, what);
+    }
+
     /* G41 with a 10 mm tool in dxsim: the approach ends at (-5,-5), the first side is cut at X-5
        (not at X0: the gouge a plain copy of the G41 block gives), the far side at X55 */
     {

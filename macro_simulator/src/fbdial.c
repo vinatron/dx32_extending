@@ -162,6 +162,16 @@ static double wconst(const fbs *s, int l)
     return s->w[i].e->v;
 }
 
+/* a block with a drilling cycle code (G73, G81-G89) */
+static int iscyc(const fbs *s)
+{
+    int i;
+    for (i = 0; i < s->nw; i++)
+        if (s->w[i].l == 'G' && s->w[i].e->k == EN_NUM &&
+            (s->w[i].e->v == 73 || (s->w[i].e->v >= 81 && s->w[i].e->v <= 89))) return 1;
+    return 0;
+}
+
 static int isg65h(const fbs *s)
 {
     return s->k == ST_NC && wconst(s, 'G') == 65 && hasword(s, 'H') >= 0;
@@ -259,6 +269,7 @@ int fbdetect(fbx *x)
         }
         for (j = 0; j < s->nw; j++) {
             fbn *e = s->w[j].e;
+            if (s->w[j].l == 'K' && iscyc(s)) continue;    /* K: the repeat count of a drilling block */
             if (hasfn(e, FN_ATAN)) fbmean(x, FM_ATAN, s->line);
             if (hasfn(e, FN_ROUND)) fbmean(x, FM_RNDADR, s->line);
             if (fbisdim(s->w[j].l) && nopoint(e)) fbmean(x, FM_DPI, s->line);

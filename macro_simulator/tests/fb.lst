@@ -38,3 +38,5 @@ fbvarg   fbvarg   -w fbwvarg.txt
 fbcompw  fbcomp   -fparam default -w fbwcomp.txt -check
 fbcompx  fbcomp   -w fbwcompx.txt
 fbcompb  fbcomp   -fparam sup=1 -fparam dpi=0 -w fbwcompb.txt
+fbroww   fbrow    -series 16 -w fbwrow.txt -check
+fbrowx   fbrow    -w fbwrowx.txt

@@ -529,6 +529,7 @@ static int needpos, anyarc;     /* a G90 arc somewhere: keep the position in X20
 static int anyhole;
 static char cyz[4], cyr[4], cyi[4], cyq[4], cyp[4];    /* drilling: Z, R, initial level, Q, dwell */
 static int curlab;              /* the label region of the statement being written (peck loops) */
+static int nm3;                 /* G86: spindle restarted with M3 */
 
 /* the DX32 text of dimension word i: a number in the unit's format, or the word letter's
    carrier, assigned in pre[] (FB2DX.md 3.6).  0 when it can't be written. */
@@ -632,31 +633,49 @@ static void dwell(const fbs *s)
     out("G4");
 }
 
-/* a drilling cycle hole, written out as moves (FB2DX.md 3.12): G81 G82 G83 G73, G90 only */
+/* a drilling block, written out as moves (FB2DX.md 3.12, 3.16): G81 G82 G83 G73 G85 G86 G89, in G90 or
+   G91, K (or L) times.  The hole's X Y go through X20 Y20; in G91 they are steps, R is measured from
+   the initial level and Z from R, as on FANUC */
 static void hole(const fbs *s)
 {
-    static const char axes[] = "XYZ";
-    char txt[48], blk[420], fw[48];
-    int i, npre = 0, hasxy = 0, k;
-    long m = s->modes;
-    const char *ret;
+    static const long cyc[] = { MO_C81, MO_C82, MO_C83, MO_C73, MO_C85, MO_C86, MO_C89 };
+    char txt[48], fw[48], xv[48], yv[48], d[48];
+    int i, npre = 0, hx = 0, hy = 0, k, inc, nc = 0;
+    long m = s->modes, r, kr = s->krep;
+    const char *rt, *zt, *ret;
     fw[0] = 0;
-    blk[0] = 0;
-    if (m & MO_INC) { fail("a drilling cycle in G91 does not translate yet"); return; }
+    inc = (m & MO_INC) != 0;
+    for (i = 0; i < 7; i++)
+        if (m & cyc[i]) nc++;
+    if (nc > 1) { fail("this block drills with more than one cycle in different passes"); return; }
     if ((m & MO_R98) && (m & MO_R99)) { fail("this hole runs with G98 and with G99"); return; }
-    if (((m & MO_C81) != 0) + ((m & MO_C82) != 0) + ((m & MO_C83) != 0) + ((m & MO_C73) != 0) > 1) {
-        fail("this block drills with more than one cycle in different passes");
-        return;
-    }
+    if ((m & MO_ABS) && (m & MO_INC)) { fail("this hole runs in G90 and in G91 in different passes"); return; }
+    if (m & MO_MIXC) { fail("G90/G91 changed while the cycle was on: the stored R and Z would mean something else"); return; }
     if ((m & MO_CST) && (m & MO_UNKZ)) { fail("the cycle starts where Z is not known: no initial level"); return; }
+    if (inc && (m & MO_UNK)) { fail("a G91 hole where the X/Y position is not known yet"); return; }
     if ((m & MO_C83) && !X->par.hd83) { fail("G83: give the peck clearance with -fparam d83= (parameter 5115)"); return; }
     if ((m & MO_C73) && !X->par.hd73) { fail("G73: give the peck retract with -fparam d73= (parameter 5114)"); return; }
+    if (kr == -2) { fail("the repeat count (K/L) differs between passes"); return; }
+    if (kr < 0) kr = 1;
+    if (m & (MO_KK | MO_KL)) {          /* which letter repeats depends on the series (TENTATIVE) */
+        int ok16 = (1 << FS_16) | (1 << FS_0I) | (1 << FS_30I), ok0 = (1 << FS_0) | (1 << FS_6) | (1 << FS_10) | (1 << FS_15);
+        if ((m & MO_KK) && (X->cand & ~ok16)) {
+            fail("K as the repeat count: known for series 16, 0i and 30i; give -series");
+            return;
+        }
+        if ((m & MO_KL) && (X->cand & ~ok0)) {
+            fail("L as the repeat count: known for series 0, 6, 10 and 15; give -series");
+            return;
+        }
+    }
+    if (kr > 50) { fail("a drilling block repeated more than 50 times does not translate yet"); return; }
+    if (kr > 1 && (m & (MO_C83 | MO_C73))) { fail("K/L repeats with G83/G73 do not translate yet"); return; }
     for (i = 0; i < s->nw; i++) {
         int l = s->w[i].l;
         double v;
         if (l == 'G') {
-            if (whole(s->w[i].e, &v) && (v == 90 || v == 98 || v == 99 || v == 17 || v == 81 || v == 82 ||
-                v == 83 || v == 73 || v == 21 || v == 20)) {
+            if (whole(s->w[i].e, &v) && (v == 90 || v == 91 || v == 98 || v == 99 || v == 17 || v == 81 ||
+                v == 82 || v == 83 || v == 73 || v == 85 || v == 86 || v == 89 || v == 21 || v == 20)) {
                 if (v == 20 || v == 21) units = (int)v;
                 continue;
             }
@@ -665,10 +684,9 @@ static void hole(const fbs *s)
             return;
         }
         if (l == 'X' || l == 'Y') {
-            if (!dimval(s, i, txt, &npre)) return;
-            word(blk, l, txt);
-            if (needpos) sprintf(pre[npre++], "%c20=%s", l, txt);
-            hasxy = 1;
+            if (!dimval(s, i, l == 'X' ? xv : yv, &npre)) return;
+            if (l == 'X') hx = 1;
+            else hy = 1;
         } else if (l == 'Z' || l == 'R' || l == 'Q') {
             if (!dimval(s, i, txt, &npre)) return;
             sprintf(pre[npre++], "%s=%s", l == 'Z' ? cyz : l == 'R' ? cyr : cyq, txt);
@@ -679,67 +697,86 @@ static void hole(const fbs *s)
         } else if (l == 'F') {
             if (!dimval(s, i, txt, &npre)) return;
             word(fw, 'F', txt);
-        } else {
-            fail("%c in a drilling block does not translate (K/L repeats among them)", l);
+        } else if (l != 'K' && l != 'L') {
+            fail("%c in a drilling block does not translate", l);
             return;
         }
     }
-    /* the cycle variables first (a carrier may be among them), then the moves */
-    if ((m & MO_CST) && needpos) out("%s=Z20", cyi);     /* the initial level, for G98 */
-    {
-        int j = 0, n = npre;
-        for (j = 0; j < n; j++)
-            if (strncmp(pre[j], "X20=", 4) && strncmp(pre[j], "Y20=", 4)) out("%s", pre[j]);
+    /* the cycle values first (a carrier may be among them), then the moves, all in G90 */
+    for (i = 0; i < npre; i++) out("%s", pre[i]);
+    if ((m & MO_CST) && needpos) out("%s=Z20", cyi);     /* the initial level */
+    if (inc) {
+        out("G90");
+        rt = tmp();
+        zt = tmp();
+        out("%s=%s+%s", rt, cyi, cyr);
+        out("%s=%s+%s", zt, rt, cyz);
+    } else {
+        rt = cyr;
+        zt = cyz;
     }
-    if (hasxy) out("G0%s", blk);
-    out("Z21=%s", cyr);
-    out("G0Z21");
-    if (m & (MO_C81 | MO_C82)) {
-        out("Z21=%s", cyz);
-        out("G1Z21%s", fw);
-        if (m & MO_C82) {
+    ret = (m & MO_R99) ? rt : cyi;
+    for (r = 0; r < kr; r++) {
+        if (inc) {
+            if (hx) out("X20=X20%s%s", xv[0] == '-' ? "" : "+", xv);
+            if (hy) out("Y20=Y20%s%s", yv[0] == '-' ? "" : "+", yv);
+        } else if (!r) {
+            if (hx) out("X20=%s", xv);
+            if (hy) out("Y20=%s", yv);
+        }
+        if (hx || hy) out("G0%s%s", hx ? "X20" : "", hy ? "Y20" : "");
+        out("Z21=%s", rt);
+        out("G0Z21");
+        if (m & (MO_C83 | MO_C73)) {    /* the pecks: a loop down from R */
+            const char *dp = tmp(), *dn = tmp();
+            dxnum(d, (m & MO_C83) ? X->par.d83 : X->par.d73);
+            out("%s=%s", dp, rt);
+            for (k = 0; k < nlb; k++)
+                if (lb[k].loop == 2 && lb[k].t == curlab) break;
+            lb[k].line = nln;
+            special(LN_LAB, k);
+            out("?%s<GT>%s", dp, zt);
+            out("%s=%s-%s", dn, dp, cyq);
+            out("?%s<LT>%s", dn, zt);
+            out("%s=%s!", dn, zt);
+            if (m & MO_C83) {           /* back down to the last depth, less the clearance */
+                out("?%s<LT>%s", dp, rt);
+                out("Z21=%s+%s", dp, d);
+                out("G0Z21!");
+            }
+            out("Z21=%s", dn);
+            out("G1Z21%s", fw);
+            if (m & MO_C83) out("Z21=%s", rt);
+            else out("Z21=%s+%s", dn, d);
+            out("G0Z21");
+            out("%s=%s", dp, dn);
+            lb[k].lastjmp = nln;
+            special(LN_JMP, k);
+            out("!");
+        } else {
+            out("Z21=%s", zt);
+            out("G1Z21%s", fw);
+        }
+        fw[0] = 0;
+        if (m & (MO_C82 | MO_C89)) {    /* the dwell at the bottom */
             out("Q19=%s", cyp);
             out("G4Q19");
             out("G4");
         }
-    } else {                            /* the pecks: a loop down from R */
-        const char *dp = tmp(), *dn = tmp();
-        char d[48];
-        dxnum(d, (m & MO_C83) ? X->par.d83 : X->par.d73);
-        out("%s=%s", dp, cyr);
-        for (k = 0; k < nlb; k++)
-            if (lb[k].loop == 2 && lb[k].t == curlab) break;
-        lb[k].line = nln;
-        special(LN_LAB, k);
-        out("?%s<GT>%s", dp, cyz);
-        out("%s=%s-%s", dn, dp, cyq);
-        out("?%s<LT>%s", dn, cyz);
-        out("%s=%s!", dn, cyz);
-        if (m & MO_C83) {               /* back down to the last depth, less the clearance */
-            out("?%s<LT>%s", dp, cyr);
-            out("Z21=%s+%s", dp, d);
-            out("G0Z21!");
+        if (m & (MO_C85 | MO_C89)) {    /* feed back out to R */
+            out("Z21=%s", rt);
+            out("G1Z21");
         }
-        out("Z21=%s", dn);
-        out("G1Z21%s", fw);
-        fw[0] = 0;
-        if (m & MO_C83) out("Z21=%s", cyr);
-        else out("Z21=%s+%s", dn, d);
+        if (m & MO_C86) out("M5");      /* spindle stop at the bottom, rapid out, spindle on again */
+        out("Z21=%s", ret);
         out("G0Z21");
-        out("%s=%s", dp, dn);
-        lb[k].lastjmp = nln;
-        special(LN_JMP, k);
-        out("!");
+        if (m & MO_C86) {
+            out("M3");
+            nm3++;
+        }
+        if (needpos) out("Z20=Z21");
     }
-    ret = (m & MO_R99) ? cyr : cyi;
-    out("Z21=%s", ret);
-    out("G0Z21");
-    if (needpos) {
-        for (i = 0; i < npre; i++)
-            if (!strncmp(pre[i], "X20=", 4) || !strncmp(pre[i], "Y20=", 4)) out("%s", pre[i]);
-        out("Z20=Z21");
-    }
-    (void)axes;
+    if (inc) out("G91");
 }
 
 static void nc(const fbs *s)
@@ -1709,14 +1746,14 @@ int fbwrite(fbx *x, const char *path)
     else if (g20) fbrep(x, "NOTE", 0, "the program switches between G20 and G21");
 
     /* arcs: G75 (multi-quadrant) at the top; G90 arcs need the position kept in X20 Y20 Z20 */
-    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = nalarm = ncomp = 0;
+    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = nalarm = ncomp = nm3 = 0;
     cursta = 0;
     for (k = 0; k < nins; k++)
         for (i = ins[k].s0; i < ins[k].end; i++) {
             if (x->st[i]->modes & MO_ARC) anyarc = 1;
             if ((x->st[i]->modes & MO_ARC) && (x->st[i]->modes & MO_ABS) && findw(x->st[i], 'R') < 0) needpos = 1;
             if (x->st[i]->modes & MO_HOLE) anyhole = 1;
-            if ((x->st[i]->modes & MO_HOLE) && (x->st[i]->modes & MO_R98)) needpos = 1;
+            if ((x->st[i]->modes & MO_HOLE) && (x->st[i]->modes & (MO_R98 | MO_INC))) needpos = 1;
         }
 
     if (anyhole) {
@@ -1806,6 +1843,8 @@ int fbwrite(fbx *x, const char *path)
                      "approach (type A%s). The diameter comes from the DX32 tool table; outside corners get the "
                      "DX32's blend arcs (G49). dxsim -t n=dia shows the path", x->par.sup == 1 ? "; this program was "
                      "for type B, accepted with -comp dx32" : "");
+    if (nm3) fbrep(x, "NOTE", 0, "G86 restarts the spindle with M3 after each hole (TENTATIVE: FANUC restarts it in the "
+                   "direction it had)");
     if (ncancel) fbrep(x, "NOTE", 0, "G15/G50/G50.1/G64/G69/G13.1 left out: what they cancel never translates");
     if (ng28) fbrep(x, "NOTE", 0, "G28 Z0 %s (-g28)", x->par.g28 == 1 ? "written as M25, the DX32 quill home "
                     "(TENTATIVE: check that it goes where FANUC's reference point is)" :

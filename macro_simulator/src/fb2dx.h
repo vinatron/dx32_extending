@@ -118,6 +118,7 @@ typedef struct fbs {
     int vacbad;         /* the evaluator saw it use a vacant variable in a way the DX32 can't copy */
     long modes;         /* MO_ bits: the modal state the evaluator saw it run in */
     long tool;          /* M6: the T it changed to; -1 none, -2 more than one */
+    long krep;          /* a hole block: its repeat count (K/L); -1 not run, -2 more than one */
     char *cmt;          /* the first comment in the block, or 0 (alarm messages) */
     int vtest;          /* its condition tests a vacant variable (#0, argument checks) */
     long ctrue, cfalse; /* how often its condition held / did not (IF, WHILE) */
@@ -145,7 +146,13 @@ typedef struct fbs {
 #define MO_HBAD 262144L     /* G43 H other than the tool in the spindle */
 #define MO_UNKZ 524288L     /* a cycle started while Z was not known */
 #define MO_DBAD 1048576L    /* G41/G42 D other than the tool in the spindle */
-#define MO_CYC  (MO_C81 | MO_C82 | MO_C83 | MO_C73)
+#define MO_C85  2097152L    /* boring: G85 feed out, G86 spindle stop and rapid out, G89 dwell and feed out */
+#define MO_C86  4194304L
+#define MO_C89  8388608L
+#define MO_MIXC 16777216L   /* a hole in G90 in a cycle started in G91, or the other way round */
+#define MO_KK   33554432L   /* the hole block repeats with K / with L */
+#define MO_KL   67108864L
+#define MO_CYC  (MO_C81 | MO_C82 | MO_C83 | MO_C73 | MO_C85 | MO_C86 | MO_C89)
 
 /* a move of the FANUC tool path (evaluator), in inches, for -check (FB2DX.md 3.13) */
 typedef struct fbmv {
