@@ -132,13 +132,13 @@ TENTATIVE marks an interpretation that the code does not settle on its own.
 
 | State | Code | Does |
 |---|---|---|
-| 2 | 0x1d0b0 | end of the G41/G42 block: its move is made **uncompensated**; then state 4 |
+| 2 | 0x1d0b0 | the G41/G42 block, or the first block with an axis word after it: its move is made **uncompensated**; then state 4. The state machine runs only for blocks with an axis word (0x4088 bit 6, 0x1cf64), so a G41 alone waits for the next move block (`OPENQ.md` A13) |
 | 4 | 0x1d0d8 | approach block: record only (no motion yet), first-record flag set; then state 6 |
 | 6 | 0x1d0ee | first compensated element: record only; then state 8 |
 | 8 | 0x1d10a | second element: record. The engine runs for the first time. The **approach move** is made to the first element's offset start. Its carried Z goes first (state 7). Then state 9 |
 | 9 / 10 | 0x1d1d0 / 0x1d1d8 | each new block: record, engine, then the element B is made: its carried Z first, then B to its trimmed end (line, or arc with its offset centre and radius). Then state 11 if a blend arc is due, else 10 |
 | 11 | 0x1d3ee | the blend arc: CW for G41, CCW for G42, centre on the programmed corner, end at C's offset start. If its start and end directions from the corner agree within 1e-4, it is made as a straight line (0x1d326). Then state 10 |
-| 12 | 0x1d4a6 | G40 block read: its target is saved. C's carried Z goes first (state 15). Then **C is made to its offset end**, the normal at its end point. Then state 13 |
+| 12 | 0x1d4a6 | G40 block (or, for a G40 alone, the next block with an axis word) read: its target is saved. C's carried Z goes first (state 15). Then **C is made to its offset end**, the normal at its end point. Then state 13 |
 | 13 | 0x1d61c | a pending Z-only move, if any; then the **G40 move to its programmed point, uncompensated**; state 0 |
 
 ### 2.3 From the firmware: the geometry engine (0x2412e-0x24e86)
@@ -280,7 +280,8 @@ The state lives in `dxsim`:
 ### 3.4 Pipeline
 
 1. **G41/G42 block:** it moves without compensation (`dxemit` directly) and arms the turn-on. The radius
-   is fixed here.
+   is fixed here. Without an axis word it moves nothing and the turn-on waits for the next move block,
+   which is then the uncompensated one (0x1cf64).
 2. **Approach block:** it is held. The next block is read. The approach end is computed from the
    first element, and the approach move is emitted.
 3. **Running:** each new element is pushed into the ring. When the ring holds the next element, the
@@ -321,13 +322,14 @@ machine is undefined. dxsim keeps going with the most likely behaviour and says 
 |---|---|
 | G41/G42 with tool diameter 0: compensation is not active | p.59, factor 10 |
 | G41/G42 outside G17, or with G2/G3 modal | p.58, p.59 |
-| G41↔G42 while compensation is on (ignored: dxsim keeps the first; the firmware would start a new turn-on, 0x20d0e) | factor 1 |
+| G41/G42 while compensation is on: like the firmware (0x20d0e sets state 2 whatever the state), the held elements are dropped, the next move block goes uncompensated from where the tool is, and a new turn-on follows (`OPENQ.md` A13; test `ccagain`) | factor 1 |
+| G40/G41/G42 in a block without X, Y or Z: the control acts on it at the next block with an axis word, which is then the uncompensated move (`OPENQ.md` A13; test `ccsolo`) | p.59 |
 | two co-linear moves in a row (the firmware treats them as tangent and adds G99; the manual forbids them) | factor 5 |
 | fewer than 5 blocks between G41/G42 and G40 (4 in BOSS 4-7 mode). dxsim makes what it holds: only an approach → as programmed; approach + one element → approach, then the element to its offset end | factor 6 |
 | two Z-only moves without an X/Y move between them | factor 7 |
 | an M code while compensation is on | factor 8 |
 | G92, G73, or a helix (G12/G13) while compensation is on | p.21, p.33, p.15 |
-| a canned cycle while compensation is on: dxsim leaves the cycle's moves **uncompensated** (what the control does is not traced) | ch.6 |
+| a canned cycle while compensation is on: the cycle's blocks go through the same block loop and engine (0x1cf64, no check of 0x3c40), so dxsim compensates them too; a drilling cycle's two Z moves then trip the one-slot Z carry | ch.6 |
 | an approach that is an arc (the firmware makes it a straight line anyway) | p.59 |
 | the tool-centre path reverses on an element, or a blend loops more than half a turn: **gouge**, the tool is bigger than the feature (figs. 7-13, 7-14). The firmware does not check this (2.3) | p.65 |
 | the program ends with compensation on: the held elements are made as if G40 came, without the move back | (dxsim) |
@@ -436,11 +438,13 @@ Still open (all are also in `OPENQ.md`, C1-C7, with how to answer them):
 2. ~~Non-uniform G73 scale with arcs~~: answered, the radius is taken from the scaled end point (`OPENQ.md` A11). dxsim does the same and still warns.
 3. **Behaviour in cases the manual forbids** (M codes, Z-only pairs): only the machine can show it.
    dxsim warns and does what the code would do.
-6. **Blocks without a move** (an F, S or T word alone, an assignment or a condition) while compensating:
-   the firmware's dispatcher may build a zero-length record for them. That is not traced. dxsim ignores
-   them and warns only for M codes (factor 8).
-7. **G41/G42 again while compensating, and canned cycles while compensating:** not traced. dxsim warns,
-   keeps the first G41/G42, and leaves cycle moves uncompensated.
+6. ~~Blocks without a move~~: answered (`OPENQ.md` A12). Only blocks with an axis move reach the
+   engine; S, M, T, dwell and G54-G59 blocks are queued directly, and F-only blocks and assignments are
+   consumed. No zero-length record is made. dxsim ignores them, and warns for M codes (factor 8) because
+   they are queued ahead of the held move (C2).
+7. ~~G41/G42 again while compensating, and canned cycles while compensating~~: answered (`OPENQ.md`
+   A13). A second G41/G42 restarts compensation and drops the held elements; cycle moves are
+   compensated like any others. dxsim does both and warns.
 4. **An input that raises `Dummy Radius Won't Fit`:** none found yet. dxsim makes the same check, so a
    case would show up in testing.
 5. **Gouging:** the manual's figs. 7-13 and 7-14 are the bench test (phase 6). dxsim reproduces the
@@ -454,3 +458,5 @@ Still open (all are also in `OPENQ.md`, C1-C7, with how to answer them):
 | 2026-10-27 | 1c9e4e1 | Phase 1: geometry engine and state machine traced. G41 sets the side bit (left); negative radius flips the side; line/arc offset formulas; corner classification; the intersection/blend table including G48 (arc → arc always blended); intersection choice; the three error conditions; G45 ×(R±r)/R and ×1.5 on blends; automatic G99 on tangent corners; the Z-only carry made as its own move; the full state sequence for turn-on, approach, running and exit. `Cannot Comp "C" Axis` is not about cutter compensation |
 | 2026-10-27 | 5664f35 | Phase 2: `src/dxcomp.c` geometry (`dxcoffl`, `dxcoffa`, `dxccorn`, `dxcxll`, `dxcxla`, `dxcxaa`, `dxcpick`, `dxcg45`), written from the firmware formulas; `dxsim -selftest` with 31 hand-checked results, run by `dxtest`. Also found: G0 inside compensation is cut at feed (2.2) |
 | 2026-10-27 | (this commit) | Phases 3-5: the look-ahead pipeline after the firmware states (turn-on, approach, two-block look-ahead, blends, intersections, G48, Z-only carry, exit), errors at the element's line, the manual's rules as warnings plus gouge detection, G45 feeds, `CDC` trace tags, the programmed path in green. 12 test programs (`cc*.txt`) and 4 hand checks in `dxtest`; 83 passed. Phase 6 bench sheet added |
+| 2026-10-28 | 0803c38 | The arc record radius is taken from the end point, like 0x1d7f4 (`OPENQ.md` A11, was C1) |
+| 2026-10-28 | (this commit) | Blocks without a move never reach the engine (A12, was C5). The state machine runs only for blocks with an axis word: a G41/G42 or G40 alone waits for the next move block; a second G41/G42 restarts compensation and drops the held elements; cycle moves are compensated (A13, was C6). Tests `ccsolo`, `ccagain` |

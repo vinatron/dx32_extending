@@ -860,7 +860,7 @@ static void nc(const fbs *s)
 {
     static const char axes[] = "XYZ", ctr[] = "IJK";
     char blk[420], t[48], txt[3][48], ctxt[3][48];
-    int i, npre = 0, nm = 0, hasg0 = 0, hasz = 0, hasxy = 0, m98 = hasm(s, 98), g4 = 0, arc, plane, a;
+    int i, npre = 0, nm = 0, hasg0 = 0, gmot = -1, hasz = 0, hasxy = 0, m98 = hasm(s, 98), g4 = 0, arc, plane, a;
     int hasax[3] = { 0, 0, 0 }, hasc[3] = { 0, 0, 0 }, hasr = 0, compg = 0;
     double v;
     blk[0] = 0;
@@ -960,6 +960,7 @@ static void nc(const fbs *s)
             continue;
         }
         if (g == 0) hasg0 = 1;
+        if (g <= 1) gmot = g;
         sprintf(t, "G%d", g == 20 ? 70 : g == 21 ? 71 : g);
         cat(blk, t);
     }
@@ -1074,8 +1075,20 @@ static void nc(const fbs *s)
     if (hasg0 && hasz && hasxy) ng0z++;
     for (i = 0; i < npre; i++) out("%s", pre[i]);
     /* the DX32 moves the G41/G42 block itself uncompensated and makes the next move the approach, which
-       ends on the normal to the element after it: G41 alone, then FANUC's start-up move, is type A */
-    if (compg) out("G%d", compg);
+       ends on the normal to the element after it. It acts on G41/G42 only in a block with an axis word
+       (0x4088 bit 6, 0x1cf64; a bare G41 would make FANUC's start-up move the uncompensated one), so the
+       turn-on block is a zero move in G91; FANUC's start-up move is then the approach, as in type A */
+    if (compg) {
+        char gm[4];
+        sprintf(gm, gmot >= 0 ? "G%d" : "", gmot);
+        if ((s->modes & MO_ABS) && !(s->modes & MO_INC)) {
+            out("G91%sG%dX0.", gm, compg);
+            out("G90");
+        } else if ((s->modes & MO_INC) && !(s->modes & MO_ABS))
+            out("%sG%dX0.", gm, compg);
+        else
+            fail("G%d: not reached in one of G90/G91 when evaluated; the turn-on block needs it", compg);
+    }
     if (blk[0]) out("%s", blk);
     /* the position, for the absolute arc centres */
     if (needpos && (hasax[0] || hasax[1] || hasax[2])) {
@@ -1938,7 +1951,7 @@ int fbwrite(fbx *x, const char *path)
     if (ntlen) fbrep(x, "NOTE", 0, "G43/G49 left out: the DX32 applies the tool length of the tool in the spindle "
                      "from its table (TENTATIVE)");
     if (ntsel) fbrep(x, "NOTE", 0, "T without M6 left out: the DX32 takes T in the M6 block");
-    if (ncomp) fbrep(x, "NOTE", 0, "G41/G42: written on a block of their own, so FANUC's start-up move is the DX32 "
+    if (ncomp) fbrep(x, "NOTE", 0, "G41/G42: written on a zero move of their own, so FANUC's start-up move is the DX32 "
                      "approach (type A%s). The diameter comes from the DX32 tool table; outside corners get the "
                      "DX32's blend arcs (G49). dxsim -t n=dia shows the path", x->par.sup == 1 ? "; this program was "
                      "for type B, accepted with -comp dx32" : "");

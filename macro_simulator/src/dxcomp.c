@@ -475,18 +475,16 @@ void dxcmove(dxsim *s, const dxseg *g)
         return;
     }
     if (s->cstate < 4) {
-        dxemit(s, g);
-        memcpy(s->ctp, g->p1, sizeof s->ctp);
-        return;
-    }
-    if (!dxuser(s)) {                       /* built-in cycle text: not compensated */
-        dxwarn(s, 8, "canned cycle with cutter compensation on: the cycle's moves are not compensated");
         h = *g;
-        memcpy(h.p0, s->ctp, sizeof h.p0);
+        if (s->cstate == 2) memcpy(h.p0, s->ctp, sizeof h.p0);   /* from the tool (a restart: A13) */
         dxemit(s, &h);
         memcpy(s->ctp, g->p1, sizeof s->ctp);
         return;
     }
+    /* built-in cycle text goes through the same block loop and engine (0x1cf64, OPENQ A13) */
+    if (!dxuser(s))
+        dxwarn(s, 8, "canned cycle while compensating: the control compensates the cycle's moves too "
+               "(manual p.67)");
     dxprog(s, g);                           /* the programmed path, drawn thin */
     s->cused = 1;
     if (fabs(g->p0[0] - g->p1[0]) + fabs(g->p0[1] - g->p1[1]) < 1e-9) {
@@ -563,11 +561,15 @@ void dxcgcode(dxsim *s, int g)
         if (s->cstate) s->cstate = 12;
         break;
     case 41: case 42:
-        if (s->cstate >= 4 && s->cstate <= 10) {
-            dxwarn(s, 12, "G41/G42 while compensation is on is ignored: G40 first (manual p.67, 1)");
-            break;
-        }
         r = s->tool >= 1 && s->tool < DX_NTOOL ? s->tools[s->tool].dia / 2.0 : 0.0;
+        if (s->cstate >= 4 && r != 0.0) {
+            /* 0x20d0e sets state 2 whatever the state: the held elements are dropped and the next
+               move block goes uncompensated from where the tool is (OPENQ A13) */
+            dxwarn(s, 12, "G41/G42 while compensating: the control restarts compensation, drops the held "
+                   "element(s), and the next move is uncompensated");
+            s->cn = 0;
+            s->czp = 0;
+        }
         if (r == 0.0) {
             dxwarn(s, 13, "G41/G42 with tool diameter 0: cutter compensation is not active "
                    "(manual p.59)");
@@ -596,18 +598,15 @@ void dxcgcode(dxsim *s, int g)
 /* end of a block */
 void dxcblk(dxsim *s)
 {
-    double p[3];
-    if (s->cstate == 2) {                   /* the turn-on block has moved uncompensated */
+    /* the state machine runs only for a block with an axis word (0x4088 bit 6, 0x1cf64): a G41/G42
+       or G40 block without one leaves its state for the next block that has one (OPENQ A13) */
+    if (s->cstate == 2 && (s->axset || s->aset)) {  /* the turn-on block has moved uncompensated */
         s->cstate = 4;
         s->cn = 0;
         s->czp = 0;
         s->cblks = 0;
-    } else if (s->cstate == 12) {           /* G40 without a move: back to the programmed point */
-        doexit(s);
-        s->cstate = 0;
-        dxtopos(s, s->cur, p);
-        out(s, -1, s->mot == DXM_RAPID ? DXM_RAPID : DXM_LINE, 0, 0, p, s->feed, 0, 0.0);
-    }
+    } else if (s->cstate == 2 || (s->cstate == 12 && !s->axset && !s->aset))
+        dxwarn(s, 15, "G40/G41/G42 without X, Y or Z: the control acts on it at the next block that moves");
     s->cused = 0;
 }
 
@@ -615,7 +614,7 @@ void dxcblk(dxsim *s)
 void dxcfin(dxsim *s)
 {
     if (s->cstate < 4) return;
-    dxwarn(s, 14, "the program ends with cutter compensation on (no G40)");
+    if (s->cstate != 12) dxwarn(s, 14, "the program ends with cutter compensation on (no G40)");
     if (s->cstate != 12 || s->cn) doexit(s);
     s->cstate = 0;
 }

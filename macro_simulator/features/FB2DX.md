@@ -589,8 +589,12 @@ What typical FANUC jobs contain, beyond the phases above:
 - **The plain copy gouges.** Copying the G41 block as it is makes the profile's first side the DX32
   approach, cut uncompensated. With a 10 mm tool on a 50 mm square, that side was cut at X0 instead of
   X-5: a gouge of the tool radius, seen in dxsim.
-- **So fb2dx writes `G41`/`G42` on a block of its own**, just before the FANUC G41 block's move. That move
-  is then the DX32 approach and ends where FANUC type A ends.
+- **So fb2dx writes `G41`/`G42` on a zero move of its own**, just before the FANUC G41 block's move:
+  `G91G41X0.` then `G90` (in G91: `G41X0.`; a G0/G1 of the FANUC block is copied into it). That move is
+  then the DX32 approach and ends where FANUC type A ends. The zero move is needed: the DX32 acts on
+  G41/G42 only in a block with an axis word (0x1cf64, `OPENQ.md` A13). A bare `G41` line, as fb2dx wrote
+  first, leaves the turn-on pending, so FANUC's start-up move is made uncompensated and the profile's
+  first side becomes the approach: the same gouge as the plain copy.
 - **Cancel:** G40 ends the same way on both controls: the last element ends on its normal, then the G40
   block moves uncompensated.
 - **Start-up type B** (SUP = 1) starts differently. It is refused unless `-comp dx32` accepts the type-A
@@ -753,7 +757,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | 16-bit DOS review (Watcom could not be run here): the FANUC tool path is kept in 512-move chunks (no object over 64 KB; the static 16000-move copy in fbcheck.c is gone); caps of 16000 statements and 16000 output lines; a 16 KB stack for FB2DX.EXE (`-k16384`); user text in messages limited to 200 characters; `pre[]` holds two lines a word (186 passed) |
+| 2026-10-28 | (this commit) | G41/G42 written on a zero move, `G91G41X0.` then `G90`: the DX32 acts on G41 only in a block with an axis word (`OPENQ.md` A13), so the bare `G41` line left FANUC's start-up move uncompensated (a gouge of the tool radius, now shown by dxsim) |
+| 2026-10-28 | d6c1d47 | 16-bit DOS review (Watcom could not be run here): the FANUC tool path is kept in 512-move chunks (no object over 64 KB; the static 16000-move copy in fbcheck.c is gone); caps of 16000 statements and 16000 output lines; a 16 KB stack for FB2DX.EXE (`-k16384`); user text in messages limited to 200 characters; `pre[]` holds two lines a word (186 passed) |
 | 2026-10-28 | a0e7978 | Rotation and shift (3.17): G68/G69/G52 as G73 A, G72 and G97, applied to the FANUC tool path too; tests `fbrot`, `fbxrot`, `fbrotx` (186 passed) |
 | 2026-10-28 | d7f5113 | More drilling (3.16): G91 cycles, K/L repeats by series, G85 G86 G89 written out; test `fbrow` (181 passed) |
 | 2026-10-28 | 49b47ab | Cutter compensation (3.15): G41/G42 on a block of their own so FANUC's start-up move is the DX32 approach (type A), D checked against the tool, `-fparam sup`, `-comp dx32` for type B; the gouge of a plain copy found in dxsim and tested against (176 passed) |
