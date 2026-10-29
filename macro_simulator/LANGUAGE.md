@@ -324,7 +324,7 @@ G45 G49 G70/71 G72 G75 G90 G94 G96. Unknown: `Parser: Illegal G-Code`. Last colu
 | 44 / 45, 48 / 49 | constant surface feed off / on (reset G45); corner rounding off / on (reset G49; G48 in BOSS 4-7 mode) | yes, with cutter compensation |
 | 54-59 | work shifts (operator's manual appendix C) | yes (offsets 0) |
 | 70 / 71 | inch / metric input | yes |
-| 72 / 73 | transformation off / on: `G73A_` rotate about X0Y0, `G73X_Y_Z_` scale | yes |
+| 72 / 73 | transformation off / on: `G73A_` rotate about X0Y0, `G73X_Y_Z_` scale. Give X and Y in every G73 block (M p.32): the finalizer transforms only blocks with an X or Y word (0x224b4, OPENQ L10) | yes |
 | 74 / 75 | single-quadrant / multi-quadrant arcs | yes |
 | 77 / 78 / 79 | zig-zag face, pocket, bore mill (A27-A29) | yes, firmware text |
 | 80 | cancel Z cycle (also selects G0) | yes |

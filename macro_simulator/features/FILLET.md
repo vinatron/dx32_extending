@@ -104,8 +104,9 @@ would hold.
   firmware. They are not traced as assignments.
 - **Moves:** they go through `line()`/`arcseg()`, so transformations, the plots, the travel check and
   **cutter compensation** all apply. The arcs take G45's feed factor under compensation.
-- **Z:** a Z word in a fillet block moves Z with the block's lines. The firmware's handling of Z here is
-  not traced (TENTATIVE), and dxsim warns.
+- **Z:** a Z word in the G23 block moves Z with the line into the corner (the next block's Z if it has
+  one), and Z stays there for the arc and the last line, as the finalizer does (`OPENQ.md` A14). In G73
+  the firmware drops the G23 block's Z (L10).
 
 ## 4. Errors and warnings
 
@@ -118,7 +119,6 @@ The firmware has no fillet messages. The run continues as on the control, with t
 | fillet radius too big for its lines | a tangent point is outside its line; the tool goes backwards |
 | fillet arc of more than 180° | G22/G23 doesn't match the turn (the centre is outside), or the radius is too big |
 | fillet between parallel lines | the firmware divides by zero. dxsim goes straight to the corner instead |
-| Z in a fillet block | not traced |
 
 ## 5. Tests
 

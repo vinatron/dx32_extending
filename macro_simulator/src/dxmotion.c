@@ -666,8 +666,6 @@ static void fillet(dxsim *s)
     if (s->rset) fv(s, 'R', 3, s->rword / u);
     if ((s->axset & 3) != 3 || (!s->fmore && s->mot != DXM_LINE))
         dxwarn(s, 23, "the block after the last G22/G23 must be a G1 move with X and Y (manual p.18)");
-    if (s->axset & 4)
-        dxwarn(s, 24, "Z in a fillet block: dxsim moves Z with the block's lines (not traced in the firmware)");
     foff(s, 2, 2, 3);
     c1 = fg(s, 'B', 1);
     c2 = fg(s, 'B', 2);
@@ -766,6 +764,12 @@ void dxmend(dxsim *s)
         dxmpole(s);                     /* pole definition: R__I__J__ */
         return;
     }
+    /* the finalizer transforms a block in G73 only if it has an X or Y word (0x224b4: 0x32e5 bits 3/4);
+       otherwise it copies the programmed X/Y untransformed (0x224d4). The manual says to give X and Y in
+       every G73 block (p.32); whether the machine really moves there is OPENQ L10 */
+    if (s->xform && dxuser(s) && !(s->axset & 3))
+        dxwarn(s, 24, "G73 block without X or Y: the manual says to give both (p.32); the firmware takes this "
+               "block's X/Y untransformed (OPENQ L10)");
     if (s->mot == DXM_CW || s->mot == DXM_CCW) {
         needfeed(s);
         arc(s);

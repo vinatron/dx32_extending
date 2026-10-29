@@ -635,6 +635,8 @@ static void modal(fbs *s)
         if (p && wval(s, i, &v)) moved = 1;
     }
     s->modes |= gabs == 91 ? MO_INC : MO_ABS;
+    if (ra != 0.0) s->modes |= MO_ROT;
+    if (!known[0] || !known[1]) s->modes |= MO_XYUNK;
     if (gcyc)                           /* a hole in a block with X Y Z or R (TENTATIVE: FB2DX.md 3.12) */
         for (i = 0; i < s->nw; i++)
             if (strchr("XYZR", s->w[i].l)) hole = 1;

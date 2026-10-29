@@ -152,6 +152,8 @@ typedef struct fbs {
 #define MO_MIXC 16777216L   /* a hole in G90 in a cycle started in G91, or the other way round */
 #define MO_KK   33554432L   /* the hole block repeats with K / with L */
 #define MO_KL   67108864L
+#define MO_ROT  134217728L  /* ran with a G68 rotation in force (the DX32 G73) */
+#define MO_XYUNK 268435456L /* ran before X and Y were known */
 #define MO_CYC  (MO_C81 | MO_C82 | MO_C83 | MO_C73 | MO_C85 | MO_C86 | MO_C89)
 
 #define FB_MVN  512     /* moves per chunk */

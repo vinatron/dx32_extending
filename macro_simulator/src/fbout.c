@@ -720,6 +720,7 @@ static void hole(const fbs *s)
     int i, npre = 0, hx = 0, hy = 0, k, inc, nc = 0;
     long m = s->modes, r, kr = s->krep;
     const char *rt, *zt, *ret;
+    const char *rot = (m & MO_ROT) ? "X20Y20" : "";     /* the Z moves in G73 (see nc) */
     fw[0] = 0;
     inc = (m & MO_INC) != 0;
     for (i = 0; i < 7; i++)
@@ -779,6 +780,10 @@ static void hole(const fbs *s)
             return;
         }
     }
+    if ((m & MO_ROT) && (m & MO_XYUNK) && !(hx && hy)) {
+        fail("a hole with G68 in force before X and Y are known: the DX32 needs them in its Z moves");
+        return;
+    }
     /* the cycle values first (a carrier may be among them), then the moves, all in G90 */
     for (i = 0; i < npre; i++) out("%s", pre[i]);
     if ((m & MO_CST) && needpos) out("%s=Z20", cyi);     /* the initial level */
@@ -803,7 +808,7 @@ static void hole(const fbs *s)
         }
         if (hx || hy) out("G0%s%s", hx ? "X20" : "", hy ? "Y20" : "");
         out("Z21=%s", rt);
-        out("G0Z21");
+        out("G0%sZ21", rot);
         if (m & (MO_C83 | MO_C73)) {    /* the pecks: a loop down from R */
             const char *dp = tmp(), *dn = tmp();
             dxnum(d, (m & MO_C83) ? X->par.d83 : X->par.d73);
@@ -819,20 +824,20 @@ static void hole(const fbs *s)
             if (m & MO_C83) {           /* back down to the last depth, less the clearance */
                 out("?%s<LT>%s", dp, rt);
                 out("Z21=%s+%s", dp, d);
-                out("G0Z21!");
+                out("G0%sZ21!", rot);
             }
             out("Z21=%s", dn);
-            out("G1Z21%s", fw);
+            out("G1%sZ21%s", rot, fw);
             if (m & MO_C83) out("Z21=%s", rt);
             else out("Z21=%s+%s", dn, d);
-            out("G0Z21");
+            out("G0%sZ21", rot);
             out("%s=%s", dp, dn);
             lb[k].lastjmp = nln;
             special(LN_JMP, k);
             out("!");
         } else {
             out("Z21=%s", zt);
-            out("G1Z21%s", fw);
+            out("G1%sZ21%s", rot, fw);
         }
         fw[0] = 0;
         if (m & (MO_C82 | MO_C89)) {    /* the dwell at the bottom */
@@ -842,11 +847,11 @@ static void hole(const fbs *s)
         }
         if (m & (MO_C85 | MO_C89)) {    /* feed back out to R */
             out("Z21=%s", rt);
-            out("G1Z21");
+            out("G1%sZ21", rot);
         }
         if (m & MO_C86) out("M5");      /* spindle stop at the bottom, rapid out, spindle on again */
         out("Z21=%s", ret);
-        out("G0Z21");
+        out("G0%sZ21", rot);
         if (m & MO_C86) {
             out("M3");
             nm3++;
@@ -1065,6 +1070,20 @@ static void nc(const fbs *s)
     t[0] = 0;
     for (a = 0; a < 3; a++)
         if (hasax[a]) word(t, axes[a], txt[a]);
+    /* in G73 the DX32 transforms a block only if it has an X or Y word; without one it takes the
+       programmed X/Y untransformed (0x224b4; the manual, p.32: give X and Y in every G73 block). So a
+       Z move gets the position kept in X20 Y20, or a zero step in G91 */
+    if ((s->modes & MO_ROT) && hasax[2] && !hasax[0] && !hasax[1]) {
+        if ((s->modes & MO_ABS) && !(s->modes & MO_INC) && (s->modes & MO_XYUNK))
+            fail("a Z move with G68 in force before X and Y are known: the DX32 needs them in this block");
+        else if (s->modes & (MO_ABS | MO_INC)) {
+            char b3[420];
+            sprintf(b3, "%s%s", (s->modes & MO_INC) && !(s->modes & MO_ABS) ? "X0.Y0." : "X20Y20", t);
+            if ((s->modes & MO_ABS) && (s->modes & MO_INC)) fail("a Z move with G68 in force, run in G90 and in G91");
+            strcpy(t, b3);
+        } else
+            fail("a Z move with G68 in force, not reached in one of G90/G91: the X and Y it needs are not known");
+    }
     {
         char b2[420];
         size_t gl = 0;
@@ -1859,7 +1878,10 @@ int fbwrite(fbx *x, const char *path)
         }
 
     for (i = 0; i < x->nst; i++)
-        if (x->st[i]->k == ST_NC && (findg(x->st[i], 68) || findg(x->st[i], 69) || findg(x->st[i], 52))) anyxf = 1;
+        if (x->st[i]->k == ST_NC && (findg(x->st[i], 68) || findg(x->st[i], 69) || findg(x->st[i], 52))) {
+            anyxf = 1;
+            if (findg(x->st[i], 68)) needpos = 1;   /* X20 Y20 for the Z moves in G73 (nc, hole) */
+        }
     if (anyxf) {
         alloc(xra);
         alloc(xrx);

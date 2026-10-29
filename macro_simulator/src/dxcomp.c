@@ -606,7 +606,7 @@ void dxcblk(dxsim *s)
         s->czp = 0;
         s->cblks = 0;
     } else if (s->cstate == 2 || (s->cstate == 12 && !s->axset && !s->aset))
-        dxwarn(s, 15, "G40/G41/G42 without X, Y or Z: the control acts on it at the next block that moves");
+        dxwarn(s, 3, "G40/G41/G42 without X, Y or Z: the control acts on it at the next block that moves");
     s->cused = 0;
 }
 

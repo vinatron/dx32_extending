@@ -30,6 +30,7 @@ code if it changes behaviour.
 | A11 | Non-uniform G73 scale with arcs while compensating (C1) | The record radius 0x4720 is \|end − centre\| with both after the G73 rotation and per-axis scale (0x1d7f4; the transform at 0x22574-0x226d2 scales the centre 0x4058/0x4064 like the target). So the control offsets a circle about the scaled centre through the scaled end; with unequal scales that circle misses the scaled start | F: 0x1d7f4-0x1d81c, 0x22684-0x226d2 | **changed**: dxcomp took the radius from the start point; now from the end, like the firmware. No test output changed |
 | A12 | Blocks without a move while compensating (C5) | They never reach the compensation engine. After parsing (0x1cf64) only a block with an axis move (0x4088 bit 6) goes to the finalizer 0x224b4 and the state machine 0x1d03e, which builds a record. A block with a function, S (0x4088 bit 4, 0x1fd66), M or T (bit 5), a dwell (0x32e3 bit 3), G54-G59 (0x4089 bit 3) or 0x32e6 bit 3, is queued directly (0x1cfd8 → 0x1cfe6) without a record. A block with nothing to execute (F alone, an assignment, a condition) is consumed and the next block is parsed at once (0x1cfd0 → 0x1c494). No zero-length records are made. Because the engine holds the last element until the next move arrives, an M code between two compensated moves is queued before the held move is emitted: that is what C2 checks on the machine | F: 0x1cf64-0x1cfe4, 0x1fd66, 0x1ff24 | no change (dxsim already skips them; the M-code warning stays until C2 is benched) |
 | A13 | G41/G42 again while compensating, and canned cycles while compensating (C6) | The state machine 0x1d03e runs only for a block with an axis word (A12). G41/G42 (0x20d0e) and G40 (0x20d00) only set the state, so: (1) a **G41/G42 or G40 without X, Y or Z** takes effect at the next block that moves, which becomes the uncompensated turn-on or exit move; (2) a **second G41/G42** sets state 2 whatever the state: the held records are dropped (states 4-10 have not cut them yet), the next move block goes uncompensated from where the tool is (0x1d0b0 queues it as it is), and a new turn-on follows; (3) **canned-cycle blocks** run through the same block loop (no 0x3c40 check in 0x1cf64, 0x224b4 or 0x1d03e), so their moves are compensated | F: 0x1cf64, 0x20d00-0x20d44, 0x1d0b0, 0x20c86 | **changed**: all three, with warnings; tests `ccsolo`, `ccagain`. **fb2dx changed too:** its bare `G41` line made FANUC's start-up move the uncompensated one (a gouge of the tool radius); it now writes a zero move, `G91G41X0.` then `G90` (FB2DX.md 3.15) |
+| A14 | When does a Z word in a fillet block move (F1)? | The G23 block moves nothing (its block end returns before the finalizer, 0x1cf48) but its Z handler sets the Z target 0x3f54. The next block's finalizer (0x1cf3e → 0x224b4) copies 0x3f54 into the move target 0x4028, so Z goes to the G23 block's Z **with the line into the corner**, or to the next block's Z if that block has one, and stays there for the arc and the last line. Exception: in G73 the finalizer copies Z only for a block with its own Z word (0x22628), so the G23 block's Z is dropped (L10) | F: 0x1cf24-0x1cf48, 0x21ca0-0x21cee, 0x224b4-0x2262e | no change: dxsim already does this; its "not traced" warning is gone. `bench/BZMOVE.TXT` stays as a confirmation |
 
 ## Open
 
@@ -43,6 +44,7 @@ code if it changes behaviour.
 | L7 | In `?Q1<LT>5`, is the 5 a number or variable Q5? (The variable rule with the left-hand letter) | Conditions written without a decimal point | **B:** `bench/BVARRULE.TXT`: Q9 = 0 at M0 means variable (dxsim), 1 means number |
 | L8 | Do the 32-bit functions (`LSR NOT AND`...) round their arguments or truncate them? The firmware converts with `fmove.l` and never sets FPCR outside library routines, so round to nearest, ties to even | `FIX` for the FANUC translator (`FB2DX.md`); bit tests on non-integer values | **B:** `bench/BFIX.TXT`. At M0: A1=2 A2=4 A3=3 A4=2 A5=1 means rounding (dxsim), A2=3 A3=2 A5=0 means truncation |
 | L9 | Does a bit written with `WRI(11,v)` (0x31f4, GPAUF1 outputs 32-63, param 280) reach the board, or does the next servo tick's I/O mapping overwrite it? | Machine I/O from macros: this belongs to the G/M-code track (`../../IO_CTL.md`), and dxsim only traces the write | **B:** with the spindle and coolant off, `A1=RDI(11)` then `WRI(11,SET(n,A1))` for a spare output bit n, M0, and watch MAINTPG. **F:** whether the per-tick mapping (`../../PROTOCOL_NOTES.md` "AUF Output Bits") rebuilds 0x31f4 or only sets and clears its own bits |
+| L10 | In G73, does a block without X and Y move X/Y to the **untransformed** position? The finalizer (0x224b4) takes the transform path only when the block has an X or Y word (0x32e5 bits 3/4, cleared every block at 0x23a46); otherwise it copies the programmed X/Y (0x3f0c, 0x3f30) as they are. The manual says to give X and Y in every G73 block (p.32), but its own star example (fig. 4-8) has `N25Z-.05`, and it says canned cycles can be rotated although their text has Z-only blocks (`G1W5F1`) | Rotated or scaled programs and canned cycles under G73. dxsim transforms every block and warns; fb2dx adds X20Y20 to its Z moves under G68 | **B:** `bench/BG73Z.TXT` (dry run): watch X/Y when the Z-only block runs. **F:** if X/Y stay, find what else transforms 0x4010 for those blocks |
 
 ### Machine parameters (`../LANGUAGE.md` 14a)
 
@@ -63,7 +65,6 @@ code if it changes behaviour.
 
 | ID | Question | How to answer |
 |---|---|---|
-| F1 | When does a Z word in a fillet block move? | **F:** what Z target (0x3f54) holds when 0x1dc50/0x1dd3e make the moves. **B:** `bench/BZMOVE.TXT` (dry run, Z clear): watch when Z goes to .5. dxsim moves it with the line into the corner |
 | F2 | The 0x32fa state machine next to the fillet one ("AutoBlend", G9) | **Mostly answered:** it is G9 precision cornering's corner blending (`../../MOTION_PLANNER.md` "What P controls"). With a valid `G9 P`, corners up to 96° get inserted sub-segments, deviating about 0.004-0.01 in; a program starts with no valid tolerance, so nothing is blended until `G9 P`. The fillet helpers (0x1dc80, 0x1dd3e) make the moves. dxsim does not draw these blends: **roadmap candidate, low priority**. Still to trace (**F**): how 0x1e706's classes become the 0x32fa states (0x1ddca sets state 1) |
 | F3 | Does the control really leave the fillet values in X3/Y3/I1...? | **B:** the bench sheet in `FILLET.md` section 6, item 2 |
 
@@ -84,7 +85,8 @@ The cutter-compensation and fillet sheets (`CUTCOMP.md` and `FILLET.md`, section
 | `BLIMITS.TXT` | L2 | the values at M0 as listed in the file, then an error at `Q20=1.` | |
 | `BNEST.TXT` | L2 | error when `=#9` calls the 9th level | |
 | `BBLANKS.TXT` | L6 | X1 = 5 (blanks removed on load) | |
-| `BZMOVE.TXT` | F1 | Z goes to .5 with the line into the corner | |
+| `BZMOVE.TXT` | A14 (confirms) | Z goes to .5 with the line into the corner | |
+| `BG73Z.TXT` | L10 | X/Y stay at X0 Y2 (dxsim; with the warning that the firmware path predicts X2 Y0) | |
 | `BLOOP.TXT` | A6 (confirms) | an error at the 6th `=N` line, #14 | |
 | `BFIX.TXT` | L8 | A1=2 A2=4 A3=3 A4=2 A5=1 | |
 
@@ -97,6 +99,7 @@ The cutter-compensation and fillet sheets (`CUTCOMP.md` and `FILLET.md`, section
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-27 | (this commit) | L8 added: the 32-bit functions round (fmove.l, default FPCR); dxsim changed from truncation; `bench/BFIX.TXT` |
+| 2026-10-29 | (this commit) | Firmware round: A6-A14 answered (L3, L4, L5, P1, P2, C1, C5, C6, F1); L9 and L10 added with `bench/BG73Z.TXT` |
+| 2026-10-27 | ebcc885 | L8 added: the 32-bit functions round (fmove.l, default FPCR); dxsim changed from truncation; `bench/BFIX.TXT` |
 | 2026-10-27 | 4dfddc0 | F2 identified as G9 corner blending; C5 narrowed to the parse step |
 | 2026-10-27 | 226fc92 | Register created. A1-A5 answered from the firmware; A2 and A3 change dxsim (Z check per params 98/62, no travel check in a G54-G59 block). Bench programs `bench/*.TXT` for L1, L2, L6, L7, F1 |

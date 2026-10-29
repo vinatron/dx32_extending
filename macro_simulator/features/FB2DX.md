@@ -648,6 +648,10 @@ What typical FANUC jobs contain, beyond the phases above:
 - **In the evaluator:** the same transformation is applied to the FANUC tool path, and the program
   coordinates of the tool are recomputed when it changes, because the tool doesn't move. `-check`
   therefore compares dxsim's transformed path with FANUC's.
+- **Z moves under G68 get X and Y:** the DX32 transforms a G73 block only if it has an X or Y word
+  (`OPENQ.md` L10; the manual says to give both in every G73 block). So a Z move while G68 is in force is
+  written with `X20Y20` (the position fb2dx keeps), or `X0.Y0.` in G91, and so are the Z moves of holes.
+  A Z move under G68 before X and Y are known is refused.
 - **After G68, G69 or G52, X/Y count as not known** until an absolute move. G90 arcs and G91 holes, which
   need the position, are refused until then.
 - **Refused:**
@@ -757,7 +761,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-28 | (this commit) | G41/G42 written on a zero move, `G91G41X0.` then `G90`: the DX32 acts on G41 only in a block with an axis word (`OPENQ.md` A13), so the bare `G41` line left FANUC's start-up move uncompensated (a gouge of the tool radius, now shown by dxsim) |
+| 2026-10-29 | (this commit) | Z moves under G68 (and holes' Z moves) get `X20Y20`: the DX32 transforms a G73 block only with an X or Y word (`OPENQ.md` L10); test `fbrotdw` |
+| 2026-10-28 | 49c141d | G41/G42 written on a zero move, `G91G41X0.` then `G90`: the DX32 acts on G41 only in a block with an axis word (`OPENQ.md` A13), so the bare `G41` line left FANUC's start-up move uncompensated (a gouge of the tool radius, now shown by dxsim) |
 | 2026-10-28 | d6c1d47 | 16-bit DOS review (Watcom could not be run here): the FANUC tool path is kept in 512-move chunks (no object over 64 KB; the static 16000-move copy in fbcheck.c is gone); caps of 16000 statements and 16000 output lines; a 16 KB stack for FB2DX.EXE (`-k16384`); user text in messages limited to 200 characters; `pre[]` holds two lines a word (186 passed) |
 | 2026-10-28 | a0e7978 | Rotation and shift (3.17): G68/G69/G52 as G73 A, G72 and G97, applied to the FANUC tool path too; tests `fbrot`, `fbxrot`, `fbrotx` (186 passed) |
 | 2026-10-28 | d7f5113 | More drilling (3.16): G91 cycles, K/L repeats by series, G85 G86 G89 written out; test `fbrow` (181 passed) |

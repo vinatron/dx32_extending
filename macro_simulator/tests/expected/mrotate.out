@@ -13,6 +13,7 @@ L9      FEED  X1.5000 Y-1.5000 Z-0.0500  F12.0
 L10     FEED  X0.5000 Y0.0000 Z-0.0500  F12.0
 L12     RAPID X0.0000 Y0.5000 Z0.0500
 L6      RAPID X0.4830 Y0.1294 Z0.0500
+L7      WARN  G73 block without X or Y: the manual says to give both (p.32); the firmware takes this block's X/Y untransformed (OPENQ L10)
 L7      RAPID X0.4830 Y0.1294 Z-0.0500
 L9      FEED  X1.0607 Y1.8371 Z-0.0500  F12.0
 L10     FEED  X-0.1294 Y0.4830 Z-0.0500  F12.0
@@ -29,3 +30,4 @@ L17     END   M2
 moves   24 (rapid 18.6215, feed 28.8444 in)
 extent  X-4.5000 Y-1.8371 Z-0.0500 .. X1.8371 Y3.7500 Z0.0500
 final   X-4.5000 Y3.7500 Z0.0500  (G90, G0, T1)
+warnings 1
