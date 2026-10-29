@@ -1,0 +1,10 @@
+L2      SPIN  M3 S100
+L5      WARN  R below 0: the DX32 ignores the sign and cuts the arc of 180 degrees or less
+L5      ARC2  X2.0000 Y0.0000 Z0.0000  CX1.0000 Y-1.1180 R1.5000  -83.621 deg  F10.0
+L6      ARC2  X4.0000 Y0.0000 Z0.0000  CX3.0000 Y-1.1180 R1.5000  -83.621 deg  F10.0
+L7      END   M2
+------- summary
+moves   2 (rapid 0.0000, feed 4.3784 in)
+extent  X0.0000 Y0.0000 Z0.0000 .. X4.0000 Y0.3820 Z0.0000
+final   X4.0000 Y0.0000 Z0.0000  (G90, G2, T0)
+warnings 1

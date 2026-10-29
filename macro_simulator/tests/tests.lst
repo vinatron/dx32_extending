@@ -72,3 +72,4 @@ fuio -d
 pslow -P P689.SYS -P PZTEST.INI -model SLOW
 ccsolo -t 1=.5
 ccagain -t 1=.5
+arneg

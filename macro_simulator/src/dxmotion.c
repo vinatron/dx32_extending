@@ -462,7 +462,10 @@ static void arc(dxsim *s)
         dx = ex - sx;
         dy = ey - sy;
         d = sqrt(dx * dx + dy * dy);
-        if (d < EPS || s->rword < 0) dxerror(s, "Parser: Bad Arc Radius Or Endpoint");
+        if (d < EPS) dxerror(s, "Parser: Bad Arc Radius Or Endpoint");
+        /* R is squared (0x1f9f4): its sign does nothing */
+        if (s->rword < 0)
+            dxwarn(s, 27, "R below 0: the DX32 ignores the sign and cuts the arc of 180 degrees or less");
         h = s->rword * s->rword - d * d / 4.0;
         if (h < -1e-8) dxerror(s, "Parser: Bad Arc Radius Or Endpoint");
         h = h > 0 ? sqrt(h) : 0.0;

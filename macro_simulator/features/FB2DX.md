@@ -751,9 +751,9 @@ output.
 | ID | Question | How to answer |
 |---|---|---|
 | Q1 | Fact 2 on the machine | **B:** `../bench/BFIX.TXT` (`OPENQ.md` L8) |
-| Q2 | What LSR returns for a negative argument: unsigned 0..2³²−1 (dxsim) or signed | **F:** what 0x25d66 does with d1 after the shift (the conversion back to a float). Only matters for refused values today |
-| Q3 | Does G70/G71 convert the values already in variables, or only the numbers read after it? | **F:** the G table entries 70 and 71. Matters only for a program that changes units in the middle, which fb2dx refuses until then |
-| Q4 | What happens to a full circle with `R`, or an `R` arc over 179.998° | **F:** 0x1f992. fb2dx writes those with the centre anyway |
+| Q2 | ~~What LSR returns for a negative argument~~ | **Answered (F):** unsigned. A result with bit 31 set gets 2³¹ added back after `fmove.l` (0x25dc6-0x25dd8), and a count of 32-63 shifts everything out (`lsr.l` takes the count mod 64). dxsim already does this |
+| Q3 | ~~Does G70/G71 convert the values already in variables?~~ | **Answered (F):** no. G70 and G71 (0x211dc, 0x211e4) only clear or set 0x4089 bit 2, which the word handlers use when they convert a number (e.g. 0x24048). Variables keep their values; fb2dx keeps refusing a change of units in the middle |
+| Q4 | ~~What happens to a full circle with `R`, or an `R` arc over 180°~~ | **Answered (F, 0x1f992):** R is squared, so the DX32 always cuts the arc of 180° or less; a negative R does not give the long arc. Start = end (a full circle) or \|R\| below half the chord raises `Parser: Bad Arc Radius Or Endpoint`. fb2dx writes such arcs with their centre, which is right. dxsim changed: it refused R < 0, now it cuts the short arc and warns (test `arneg`) |
 | Q5 | ~~Which FANUC models to target first~~ | **Answered by the owner:** all of them, with the series detected or given (section 3.7) |
 | Q6 | Every `?` cell and every TENTATIVE cell of the two tables in 3.7, including the parameter numbers, and the TENTATIVE rules in 3.8 | The FANUC operator manuals ("Custom Macro" chapter) for each series. Copies exist online (3.7) on hosts the session's network policy blocks: allowing them, or PDFs in `../manual/`, settles this |
 
@@ -761,7 +761,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-29 | (this commit) | Z moves under G68 (and holes' Z moves) get `X20Y20`: the DX32 transforms a G73 block only with an X or Y word (`OPENQ.md` L10); test `fbrotdw` |
+| 2026-10-29 | (this commit) | Q2, Q3, Q4 answered from the firmware (LSR unsigned; G70/G71 a flag only; R arcs always ≤ 180°, R's sign ignored) |
+| 2026-10-29 | cf75c34 | Z moves under G68 (and holes' Z moves) get `X20Y20`: the DX32 transforms a G73 block only with an X or Y word (`OPENQ.md` L10); test `fbrotdw` |
 | 2026-10-28 | 49c141d | G41/G42 written on a zero move, `G91G41X0.` then `G90`: the DX32 acts on G41 only in a block with an axis word (`OPENQ.md` A13), so the bare `G41` line left FANUC's start-up move uncompensated (a gouge of the tool radius, now shown by dxsim) |
 | 2026-10-28 | d6c1d47 | 16-bit DOS review (Watcom could not be run here): the FANUC tool path is kept in 512-move chunks (no object over 64 KB; the static 16000-move copy in fbcheck.c is gone); caps of 16000 statements and 16000 output lines; a 16 KB stack for FB2DX.EXE (`-k16384`); user text in messages limited to 200 characters; `pre[]` holds two lines a word (186 passed) |
 | 2026-10-28 | a0e7978 | Rotation and shift (3.17): G68/G69/G52 as G73 A, G72 and G97, applied to the FANUC tool path too; tests `fbrot`, `fbxrot`, `fbrotx` (186 passed) |

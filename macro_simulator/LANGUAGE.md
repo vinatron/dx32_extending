@@ -313,7 +313,7 @@ G45 G49 G70/71 G72 G75 G90 G94 G96. Unknown: `Parser: Illegal G-Code`. Last colu
 |---|---|---|
 | 0 | rapid; Z up first then XY, or XY then Z down | yes |
 | 1 | linear feed (needs F: `No Feedrate Specified`) | yes |
-| 2 / 3 | arc CW / CCW: I J K centre or R radius (≤ 180°, F 0x1f992) | yes |
+| 2 / 3 | arc CW / CCW: I J K centre or R radius (≤ 180°, F 0x1f992). R is squared, so its sign does nothing (no long arc with R < 0); start = end or \|R\| below half the chord: `Parser: Bad Arc Radius Or Endpoint` | yes |
 | 4 | dwell: `G4Q__` or `G4/__` defines, a lone `G4` dwells; also at the bottom of G82/G84/G89 | yes (traced) |
 | 8 / 9 / 99 | deceleration override off / on (modal) / this block only | recorded |
 | 12 / 13 | helix CW / CCW in polar coordinates: `A` = degrees of travel, `Z` = end depth, `R` = new radius (spiral) | yes |
@@ -323,7 +323,7 @@ G45 G49 G70/71 G72 G75 G90 G94 G96. Unknown: `Parser: Illegal G-Code`. Last colu
 | 40 / 41 / 42 | cutter compensation off / left / right | yes, as the 6.89 firmware does it (`features/CUTCOMP.md`) |
 | 44 / 45, 48 / 49 | constant surface feed off / on (reset G45); corner rounding off / on (reset G49; G48 in BOSS 4-7 mode) | yes, with cutter compensation |
 | 54-59 | work shifts (operator's manual appendix C) | yes (offsets 0) |
-| 70 / 71 | inch / metric input | yes |
+| 70 / 71 | inch / metric input: only a flag (0x4089 bit 2, handlers 0x211dc/0x211e4) used when a number is read into a word; values already in variables are not converted | yes |
 | 72 / 73 | transformation off / on: `G73A_` rotate about X0Y0, `G73X_Y_Z_` scale. Give X and Y in every G73 block (M p.32): the finalizer transforms only blocks with an X or Y word (0x224b4, OPENQ L10) | yes |
 | 74 / 75 | single-quadrant / multi-quadrant arcs | yes |
 | 77 / 78 / 79 | zig-zag face, pocket, bore mill (A27-A29) | yes, firmware text |
