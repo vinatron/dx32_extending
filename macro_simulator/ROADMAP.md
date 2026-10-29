@@ -18,7 +18,8 @@ Left:
 1. **Bench checks on the machine:** the programs and sheets listed in `features/OPENQ.md` ("Status" and
    "Bench session"). `bench/BG41.TXT` and `bench/BG73Z.TXT` come first, because fb2dx's G41/G42 and G68
    output is written for the firmware readings they confirm.
-2. **The Open Watcom builds**, by the owner: `WATCOM.md`. Nothing since fb2dx has been through Watcom.
+2. **The Open Watcom builds**, by the owner (`WATCOM.md`): the Win32 targets build and pass; still to run are
+   `RUNTESTS` and `PREVIEW.BAT` on the latest commit, and the 16-bit DOS targets.
 3. **fb2dx's per-series table:** TENTATIVE until checked against FANUC's manuals (`features/FB2DX.md` Q6).
    The hosts that have them are blocked here; PDFs in `manual/` would do.
 4. **Low priority:** G9 corner blending (F2), `Dummy Radius Won't Fit` (C3), and the translator gaps
