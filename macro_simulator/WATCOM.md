@@ -1,6 +1,6 @@
 # Testing the Open Watcom builds
 
-dxsim and fb2dx are tested here with gcc and clang on Linux (`make test`: 194 passed). Earlier versions
+dxsim and fb2dx are tested here with gcc and clang on Linux (`make test`: 195 passed). Earlier versions
 were also compiled here with Open Watcom 1.9, and built by the owner on Windows 98 SE. Everything since
 then has not been through Watcom: fb2dx (including its 16-bit DOS changes) and the firmware fixes of
 2026-10-28/29. The Watcom tools could not be run in this session. This is the procedure for building and
@@ -53,7 +53,7 @@ RUNTESTS ..\src\DXSIM4G.EXE    DOS/4GW (DOS4GW.EXE from Watcom's BINW folder on 
 `RUNTESTS` shows the results and also writes them to `RESULTS.TXT`. Each line is `ok`, `FAIL` or
 `skip`. The last line counts them.
 
-- **Expected: `194 passed, 0 failed`.**
+- **Expected: `195 passed, 0 failed`.**
 - `skip  the fb2dx tests: ..\src\FB2DX.EXE not found` with `108 passed` means `FB2DX.EXE` was not built.
   Build it (`fb` or `fb32`) and run again.
 - A number that differs only in its last printed digit is accepted automatically, because C libraries round
