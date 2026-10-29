@@ -270,6 +270,24 @@ void dxwtext(char *text)
     pump();
 }
 
+/* the colour index of a pixel (-bmp): the nearest of the 16 VGA colours (smoothed text has others) */
+short dxwgetpx(short x, short y)
+{
+    COLORREF c;
+    long d, best = 0x7fffffffL;
+    short i, k = 0;
+    if (!mem) return 0;
+    c = GetPixel(mem, x, y);
+    if (c == CLR_INVALID) return 0;
+    for (i = 0; i < 16; i++) {
+        long r = (long)GetRValue(c) - GetRValue(vga[i]), g = (long)GetGValue(c) - GetGValue(vga[i]),
+             b = (long)GetBValue(c) - GetBValue(vga[i]);
+        d = r * r + g * g + b * b;
+        if (d < best) { best = d; k = i; }
+    }
+    return k;
+}
+
 int dxwkbhit(void)
 {
     pump();

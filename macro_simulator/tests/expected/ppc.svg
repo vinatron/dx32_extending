@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="577" viewBox="0 -282.240 440.000 282.240">
+<style>path{fill:none;stroke-linejoin:round;stroke-width:0.629}.f{stroke:#1f4fbf}.p{stroke:#2a9d3a;stroke-width:0.314}.r{stroke:#d04020;stroke-dasharray:3.667,3.667}.o{stroke:#999;stroke-width:0.489}</style>
+<style>text{font:9.680px sans-serif;fill:#555}</style>
+<path class="o" d="M11.200,-62.240 h17.600 M20.000,-71.040 v17.600"/>
+<text x="0.000" y="-271.592">G17 XY</text>
+<text x="0.000" y="-33.880" style="fill:#1f4fbf">main program</text>
+<text x="0.000" y="-20.328" style="fill:#e07b00">canned cycle G81 in #1 "Drill row"</text>
+<text x="0.000" y="-6.776" style="fill:#8e44ad">M100 "Spot"</text>
+<path class="f" d="M16.480,-58.720 L23.520,-65.760"/>
+<path class="f" d="M16.480,-65.760 L23.520,-58.720"/>
+<path class="f" d="M20.000,-62.240 L420.000,-62.240 L420.000,-262.240 L20.000,-262.240 L20.000,-62.240"/>
+<path class="r" d="M20.000,-62.240 L120.000,-162.240"/>
+<path class="f" style="stroke:#e07b00" d="M116.480,-158.720 L123.520,-165.760"/>
+<path class="f" style="stroke:#e07b00" d="M116.480,-165.760 L123.520,-158.720"/>
+<path class="r" d="M120.000,-162.240 L220.000,-162.240"/>
+<path class="f" style="stroke:#e07b00" d="M216.480,-158.720 L223.520,-165.760"/>
+<path class="f" style="stroke:#e07b00" d="M216.480,-165.760 L223.520,-158.720"/>
+<path class="r" d="M220.000,-162.240 L320.000,-162.240"/>
+<path class="f" style="stroke:#e07b00" d="M316.480,-158.720 L323.520,-165.760"/>
+<path class="f" style="stroke:#e07b00" d="M316.480,-165.760 L323.520,-158.720"/>
+<path class="r" d="M320.000,-162.240 L120.000,-212.240"/>
+<path class="f" style="stroke:#8e44ad" d="M116.480,-208.720 L123.520,-215.760"/>
+<path class="f" style="stroke:#8e44ad" d="M116.480,-215.760 L123.520,-208.720"/>
+<path class="r" d="M120.000,-212.240 L320.000,-212.240"/>
+<path class="f" style="stroke:#8e44ad" d="M316.480,-208.720 L323.520,-215.760"/>
+<path class="f" style="stroke:#8e44ad" d="M316.480,-215.760 L323.520,-208.720"/>
+<path class="r" d="M320.000,-212.240 L20.000,-62.240"/>
+</svg>

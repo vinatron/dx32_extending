@@ -8,7 +8,8 @@ rem
 rem Usage:  RUNTESTS [path\DXSIM.EXE] [-u]
 rem   default simulator: ..\src\DXSIM.EXE, else ..\src\DXSIM32.EXE
 rem   -u rewrites EXPECTED\*.OUT (only after reviewing a change)
-rem Results go to the screen and to RESULTS.TXT.
+rem Results go to the screen and to RESULTS.TXT. The plot files (PLOTS.LST) are
+rem checked too; PREVIEW.BAT checks the live preview.
 
 if not "%1"=="" goto given
 if exist ..\src\DXSIM.EXE goto dos

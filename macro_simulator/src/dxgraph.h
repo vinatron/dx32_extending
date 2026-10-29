@@ -22,6 +22,7 @@
 #define _settextcolor   dxwtcol
 #define _settextposition dxwtpos
 #define _outtext        dxwtext
+#define _getpixel       dxwgetpx
 #define kbhit           dxwkbhit
 #define getch           dxwgetch
 #define delay           dxwdelay
@@ -36,6 +37,7 @@ void  dxwclear(short area);
 short dxwtcol(short c);
 void  dxwtpos(short row, short col);
 void  dxwtext(char *text);
+short dxwgetpx(short x, short y);
 int   dxwkbhit(void);
 int   dxwgetch(void);
 void  dxwdelay(unsigned ms);

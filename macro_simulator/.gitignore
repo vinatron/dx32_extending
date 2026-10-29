@@ -11,3 +11,11 @@ dxsim-scstub
 tests/dxscreen.log
 fb2dx
 tests/fbw*.txt
+tests/dxt.svg
+tests/dxt.plt
+tests/dxt.ps
+tests/SCR17/
+tests/SCRALL/
+tests/screens.htm
+tests/screen.got
+PREVIEW.TXT

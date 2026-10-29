@@ -422,7 +422,7 @@ void  dxspan(dxsim *s, FILE *fp);
 
 #ifdef DX_SCREEN
 /* ---- dxscreen.c (DOS VGA preview, Open Watcom graph.lib) ---- */
-void  dxscinit(int paced);
+void  dxscinit(int paced, int unattended, const char *bmp);
 void  dxscbeg(dxsim *s, dxplot *pl);
 void  dxscline(dxsim *s, dxplot *pl, int pen, double x0, double y0, double x1, double y1, double len);
 void  dxscrate(double feedipm);

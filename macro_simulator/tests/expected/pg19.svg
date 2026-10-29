@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="826" height="900" viewBox="0 -121.000 111.000 121.000">
+<style>path{fill:none;stroke-linejoin:round;stroke-width:0.173}.f{stroke:#1f4fbf}.p{stroke:#2a9d3a;stroke-width:0.086}.r{stroke:#d04020;stroke-dasharray:1.008,1.008}.o{stroke:#999;stroke-width:0.134}</style>
+<style>text{font:2.662px sans-serif;fill:#555}</style>
+<path class="o" d="M3.080,-110.500 h4.840 M5.500,-112.920 v4.840"/>
+<text x="0.000" y="-118.072">G19 YZ</text>
+<path class="r" d="M5.500,-110.500 L5.500,-115.500 L55.500,-115.500"/>
+<path class="f" d="M55.500,-115.500 L55.500,-5.500"/>
+<path class="r" d="M55.500,-5.500 L55.500,-115.500 L105.500,-115.500"/>
+<path class="f" d="M105.500,-115.500 L105.500,-5.500"/>
+<path class="r" d="M105.500,-5.500 L105.500,-115.500 L105.500,-65.500"/>
+<path class="f" d="M105.500,-65.500 L105.500,-5.500"/>
+<path class="r" d="M105.500,-5.500 L105.500,-65.500 L55.500,-65.500"/>
+<path class="f" d="M55.500,-65.500 L55.500,-5.500"/>
+<path class="r" d="M55.500,-5.500 L55.500,-65.500 L5.500,-65.500"/>
+</svg>

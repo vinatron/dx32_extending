@@ -317,6 +317,8 @@ Closing the window is the same as ESC; the picture is redrawn when the window is
 ```
 DXSIM -S  PROGRAM.TXT        draw as the program runs, a fixed pause after each move
 DXSIM -Sf PROGRAM.TXT        draw at the programmed feed rate (rapids at 472 ipm): about machine time
+DXSIM -Sa PROGRAM.TXT        unattended (tests): no waits, no keys, ends by itself; a SCREEN line in -o
+DXSIM -S PROGRAM.TXT -bmp F.BMP   also save the finished screen as a 16-colour BMP
 ```
 
 | Key | Action |
@@ -334,8 +336,10 @@ the screen (a quick first pass measures it). The trace goes to a file only with 
 write over the graphics. The DOS timer ticks 18.2 times a second, so feed-rate pacing is approximate.
 
 `make test-screen` (Linux) runs `dxscreen.c` with `graph.lib`, the keyboard and `delay()` replaced by a logger
-(`-DDX_SCSTUB`). It checks that every test program stays inside the 640×448 drawing area, in the G17 view and in `-v all`, and reports the
-paced time.
+(`-DDX_SCSTUB`) through `DXTEST -sc`: every test program, in the G17 view and in `-v all`, must stay inside the
+640×448 drawing area and draw what `tests/expected/screen.out` records. On DOS and Windows, `tests\PREVIEW.BAT`
+does the same with the real preview and saves every picture as a BMP, listed in `SCREENS.HTM` (`WATCOM.md`
+section 5).
 
 ## Testing
 
@@ -349,6 +353,8 @@ wmake -f makefile.wat dos fb tests          DXSIM.EXE + FB2DX.EXE + ..\tests\DXT
 wmake -f makefile.wat win32 fb32 tests32    the same for the Windows console
 cd ..\tests
 RUNTESTS                                    results on screen and in RESULTS.TXT
+PREVIEW                                     the preview builds (DXSIMW.EXE or the DOS DXSIM.EXE), unattended,
+                                            with a BMP of every picture in SCREENS.HTM
 ```
 
 `WATCOM.md` is the step-by-step procedure for building and testing with Open Watcom on DOS or Windows,
@@ -385,6 +391,11 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
    specification II and read errors. The bolt circle, the Macro A loop, specification II and `M98 P30100`
    are also checked against values worked out by hand. `DXTEST -fb path` names the `fb2dx` to use. Without
    one, these tests are skipped with a message.
+9. `plots.lst` lists 16 plot files (SVG, HPGL and PostScript; every view, `-pc`, `-r`, cutter compensation
+   and fillets) that must match `expected/<name>.<ext>`, with each number within one unit of its last
+   printed digit.
+10. `DXTEST -sc PREVIEW [-bmp]` runs only the preview tests: every `tests.lst` program through a preview
+   build with `-Sa`, compared with `expected/screen.out`; `-bmp` saves the pictures (`PREVIEW.BAT`).
 
 ## FANUC macro translator (`fb2dx`)
 

@@ -3,6 +3,7 @@
  * (DOS, Windows 98, Linux, z/OS).
  *
  *   dxtest [-u] [path-to-dxsim]        run from the tests directory
+ *   dxtest [-u] -sc PREVIEW [-bmp]     only the preview tests (5), with a preview build
  *
  * 1. "dxsim -check" must parse every block of the built-in cycle text, and
  *    "dxsim -selftest" must pass its cutter-compensation geometry checks.
@@ -12,6 +13,11 @@
  *    differently).  -u rewrites the expected files after a reviewed change.
  * 3. Results worked out by hand from the programmer's manual's figures.
  * 4. The tests together must execute at least 600 built-in cycle blocks.
+ * 5. PLOTS.LST: plot files (SVG, HPGL, PostScript) must match EXPECTED\<name>.<ext>, numbers
+ *    within one unit of their last printed digit.  With -sc, every TESTS.LST program runs
+ *    through the preview (dxsim -Sa, views g17 and all) and its SCREEN line must match
+ *    EXPECTED\SCREEN.OUT (line points and time within 1%); -bmp also saves each picture
+ *    in SCR17\ and SCRALL\ and lists them in SCREENS.HTM.
  *
  * dxsim is started with system() and always writes to a file (-o), so neither
  * shell redirection nor exit codes are needed (COMMAND.COM returns none).
@@ -26,10 +32,12 @@
 #define DEFEXE  "..\\src\\DXSIM.EXE"
 #define DEFFB   "..\\src\\FB2DX.EXE"
 #define EXPDIR  "expected\\"
+#define DIRSEP  "\\"
 #else
 #define DEFEXE  "../dxsim"
 #define DEFFB   "../fb2dx"
 #define EXPDIR  "expected/"
+#define DIRSEP  "/"
 #endif
 
 #define TMPOUT  "dxt.out"
@@ -64,15 +72,20 @@ static int near(double a, double b, double tol)
     return fabs(a - b) <= tol;
 }
 
-/* run dxsim with the given arguments; output in TMPOUT */
-static void dx(const char *args)
+/* run dxsim (or the preview build exe) with the given arguments; output in TMPOUT */
+static void dxe(const char *exe, const char *args)
 {
-    char cmd[256];
+    char cmd[300];
     remove(TMPOUT);
-    sprintf(cmd, "%.80s %.80s -silent -o %s", dxsim, args, TMPOUT);
+    sprintf(cmd, "%.80s %.150s -silent -o %s", exe, args, TMPOUT);
     if (system(cmd)) {
         /* COMMAND.COM gives no exit codes, so the output file is what counts */
     }
+}
+
+static void dx(const char *args)
+{
+    dxe(dxsim, args);
 }
 
 static void chop(char *s)
@@ -883,16 +896,234 @@ static void fbhand(void)
     check(n == 1 && x[0] == 3, what);
 }
 
+/* ------------------------------------------------------------------ */
+/* plot files (PLOTS.LST) and the preview (-sc)                        */
+
+typedef struct ptok {
+    int    num;                 /* a number: v, and dec digits after the point */
+    double v;
+    int    dec;
+    int    c;                   /* otherwise the character */
+} ptok;
+
+/* the next token of a plot file; 0 at the end. CR is skipped, so CR LF and LF compare equal */
+static int ptoken(FILE *fp, ptok *t, long *line)
+{
+    char buf[40];
+    int c, d, n = 0, dot = 0, isnum;
+    do c = getc(fp); while (c == '\r');
+    if (c == EOF) return 0;
+    if (c == '\n') (*line)++;
+    if (c == '-' || c == '.') {
+        d = getc(fp);
+        if (d != EOF) ungetc(d, fp);
+        isnum = isdigit(d) || (c == '-' && d == '.');
+    } else isnum = isdigit(c);
+    t->num = isnum;
+    t->c = c;
+    t->dec = 0;
+    if (!isnum) return 1;
+    buf[n++] = (char)c;
+    if (c == '.') dot = 1;
+    for (;;) {
+        c = getc(fp);
+        if (isdigit(c) || (c == '.' && !dot)) {
+            if (c == '.') dot = 1;
+            else if (dot) t->dec++;
+            if (n < 38) buf[n++] = (char)c;
+        } else {
+            if (c != EOF) ungetc(c, fp);
+            break;
+        }
+    }
+    buf[n] = 0;
+    t->v = atof(buf);
+    return 1;
+}
+
+/* the same text, numbers printed the same way and within one unit of their last digit */
+static int plotcmp(const char *got, const char *exp, char *why)
+{
+    FILE *a = fopen(got, "rb"), *b = fopen(exp, "rb");
+    long la = 1, lb = 1;
+    ptok ta, tb;
+    int ra, rb, ok = 1;
+    why[0] = 0;
+    if (!a || !b) {
+        sprintf(why, "cannot open %s", a ? exp : got);
+        if (a) fclose(a);
+        if (b) fclose(b);
+        return 0;
+    }
+    for (;;) {
+        ra = ptoken(a, &ta, &la);
+        rb = ptoken(b, &tb, &lb);
+        if (!ra && !rb) break;
+        if (!ra || !rb) {
+            sprintf(why, "line %ld: one file is shorter", la);
+            ok = 0;
+            break;
+        }
+        if (ta.num != tb.num || (!ta.num && ta.c != tb.c) ||
+            (ta.num && (ta.dec != tb.dec || fabs(ta.v - tb.v) > pow(10.0, -tb.dec) * 1.001))) {
+            if (ta.num) sprintf(why, "line %ld: got %.*f, expected %.*f", la, ta.dec, ta.v, tb.dec, tb.v);
+            else sprintf(why, "line %ld: the text differs", la);
+            ok = 0;
+            break;
+        }
+    }
+    fclose(a);
+    fclose(b);
+    return ok;
+}
+
+static void plots(void)
+{
+    char line[200], plot[16], args[200], exp[64], why[120], what[300];
+    char *prog, *ext, *opts;
+    FILE *lst = fopen("plots.lst", "r");
+    if (!lst) return;
+    while (fgets(line, sizeof line, lst)) {
+        chop(line);
+        if (!line[0] || line[0] == ';') continue;
+        prog = strchr(line, ' ');
+        if (!prog) continue;
+        *prog++ = 0;
+        while (*prog == ' ') prog++;
+        ext = strchr(prog, ' ');
+        if (!ext) continue;
+        *ext++ = 0;
+        while (*ext == ' ') ext++;
+        opts = strchr(ext, ' ');
+        if (opts) {
+            *opts++ = 0;
+            while (*opts == ' ') opts++;
+        } else opts = "";
+        sprintf(plot, "dxt.%.3s", ext);
+        remove(plot);
+        sprintf(args, "%.20s.txt %.100s -p %s", prog, opts, plot);
+        dx(args);
+        sprintf(exp, "%s%.8s.%.3s", EXPDIR, line, ext);
+        if (update) copyfile(plot, exp);
+        sprintf(what, "plot %s.txt %s -p .%s matches %s", prog, opts, ext, exp);
+        if (!plotcmp(plot, exp, why)) {
+            strcat(what, ": ");
+            strcat(what, why);
+            check(0, what);
+        } else check(1, what);
+        remove(plot);
+    }
+    fclose(lst);
+}
+
+/* a SCREEN line against the expected one: moves and points off the area exactly, line points and
+   time within 1% (they depend on where truncations fall, which can differ between FPUs) */
+static int samescreen(const char *got, const char *exp)
+{
+    char ng[16], ne[16], vg[8], ve[8];
+    long mg, pg, og, tg, me, pe, oe, te;
+    if (sscanf(got, "%15s %7s moves %ld points %ld offscreen %ld time %ld", ng, vg, &mg, &pg, &og, &tg) != 6 ||
+        sscanf(exp, "%15s %7s moves %ld points %ld offscreen %ld time %ld", ne, ve, &me, &pe, &oe, &te) != 6)
+        return 0;
+    return !strcmp(ng, ne) && !strcmp(vg, ve) && mg == me && og == oe && labs(pg - pe) <= 2 + pe / 100 &&
+           labs(tg - te) <= 2 + te / 100;
+}
+
+/* -sc: every TESTS.LST program through the preview build, unattended (dxsim -Sa) */
+static void screens(const char *exe, int bmp)
+{
+    static const char *const view[2] = { "g17", "all" };
+    static const char *const dir[2] = { "SCR17", "SCRALL" };
+    char name[80], args[200], line[256], got[200], exp[200], bmpf[32], what[400];
+    char *opts;
+    FILE *lst = fopen("tests.lst", "r"), *ef, *gf, *html = 0, *fp;
+    int v, found;
+    if (!lst) {
+        printf("dxtest: run me in the tests directory (tests.lst not found)\n");
+        return;
+    }
+    ef = fopen(EXPDIR "screen.out", "r");
+    gf = fopen("screen.got", "w");
+    if (bmp) {
+        html = fopen("screens.htm", "w");
+        if (html) fprintf(html, "<html><head><title>dxsim previews</title></head><body>\n"
+                          "<h1>dxsim -Sa previews: G17 and all views</h1>\n<table border=1>\n");
+    }
+    while (fgets(name, sizeof name, lst)) {
+        chop(name);
+        if (!name[0] || name[0] == ';') continue;
+        opts = strchr(name, ' ');
+        if (opts) *opts++ = 0;
+        else opts = "";
+        if (strstr(opts, "-lint")) continue;
+        if (html) fprintf(html, "<tr><td>%s %s</td>", name, opts);
+        for (v = 0; v < 2; v++) {
+            bmpf[0] = 0;
+            if (bmp) {
+                sprintf(bmpf, "%s%s%.8s.bmp", dir[v], DIRSEP, name);
+                remove(bmpf);
+            }
+            sprintf(args, "%.20s.txt %.80s -Sa -v %s%s%s", name, opts, view[v], bmp ? " -bmp " : "", bmpf);
+            dxe(exe, args);
+            sprintf(got, "%-8.8s %-4s (no SCREEN line)", name, view[v]);
+            fp = fopen(TMPOUT, "r");
+            if (fp) {
+                while (fgets(line, sizeof line, fp))
+                    if (!strncmp(line, "SCREEN", 6)) {
+                        chop(line);
+                        sprintf(got, "%-8.8s %-4s %.120s", name, view[v], line + 8);
+                    }
+                fclose(fp);
+            }
+            if (gf) fprintf(gf, "%s\n", got);
+            exp[0] = 0;
+            if (ef && fgets(exp, sizeof exp, ef)) chop(exp);
+            found = 1;
+            if (bmp) {
+                fp = fopen(bmpf, "rb");
+                found = fp != 0;
+                if (fp) fclose(fp);
+                if (html) fprintf(html, "<td><img src=\"%s/%.8s.bmp\" width=320 height=240></td>", dir[v], name);
+            }
+            sprintf(what, "preview %s%s", got, found ? "" : " (no BMP written: does the folder exist?)");
+            if (!update && strcmp(got, exp))
+                sprintf(what + strlen(what), "; expected: %.150s", exp[0] ? exp : "(nothing)");
+            check((update || samescreen(got, exp)) && strstr(got, " offscreen 0 ") && found, what);
+        }
+        if (html) fprintf(html, "</tr>\n");
+    }
+    fclose(lst);
+    if (ef) fclose(ef);
+    if (gf) fclose(gf);
+    if (html) {
+        fprintf(html, "</table></body></html>\n");
+        fclose(html);
+    }
+    if (update) copyfile("screen.got", EXPDIR "screen.out");
+    remove("screen.got");
+    remove(TMPOUT);
+}
+
 int main(int argc, char **argv)
 {
     char line[256], name[80], what[100];
     FILE *lst;
     int i;
 
+    const char *sc = 0;
+    int bmp = 0;
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-u")) update = 1;
         else if (!strcmp(argv[i], "-fb") && i + 1 < argc) fb2dx = argv[++i];
+        else if (!strcmp(argv[i], "-sc") && i + 1 < argc) sc = argv[++i];
+        else if (!strcmp(argv[i], "-bmp")) bmp = 1;
         else dxsim = argv[i];
+    }
+    if (sc) {                               /* only the preview tests */
+        printf("dxtest: the preview of %s\n", sc);
+        screens(sc, bmp);
+        printf("%d passed, %d failed%s\n", nok, nfail, update ? " (expected files rewritten)" : "");
+        return nfail ? 1 : 0;
     }
     printf("dxtest: using %s\n", dxsim);
 
@@ -938,6 +1169,7 @@ int main(int argc, char **argv)
 
     manual();
     exprs();
+    plots();
 
     lst = fopen("fb.lst", "r");
     if (lst) {

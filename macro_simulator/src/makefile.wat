@@ -40,7 +40,7 @@ fb32: .SYMBOLIC
 	wcl386 -bt=nt -l=nt $(OPT) -fe=FB2DX.EXE $(FBSRC)
 
 tests: .SYMBOLIC
-	wcl -bt=dos -ml $(OPT) -fe=..\tests\DXTEST.EXE ..\tests\dxtest.c
+	wcl -bt=dos -ml $(OPT) -k8192 -fe=..\tests\DXTEST.EXE ..\tests\dxtest.c
 
 tests32: .SYMBOLIC
 	wcl386 -bt=nt -l=nt $(OPT) -fe=..\tests\DXTEST.EXE ..\tests\dxtest.c

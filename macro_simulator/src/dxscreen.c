@@ -9,6 +9,11 @@
  *   + -    faster / slower           F  pacing: per move <-> feed rate
  *   ESC    stop
  *
+ * -Sa runs it unattended, for tests: feed-rate pacing is worked out but not
+ * waited for, no key is read, and the run ends by itself with a summary line
+ * "SCREEN moves .. points .. offscreen .. time .. ms" in the trace (-o).
+ * -bmp FILE saves the finished picture as a 16-colour BMP (all builds).
+ *
  * Pacing "per move" waits a fixed time after each move (speed 0 = none).
  * Pacing "feed rate" draws each move at the programmed feed (rapids at
  * 472 ipm, manual chapter 8) times a speed factor; the DOS clock ticks 18.2
@@ -39,8 +44,8 @@
 #define _DEFAULTMODE (-1)
 #define _GCLEARSCREEN 0
 static FILE *scl;
-static long stubms, stubpix, stubbad;
-static int stubx, stuby;
+static int stubx, stuby, stubcol;
+static unsigned char stubfb[480][640];  /* the picture, lines only, for -bmp */
 static const char *stubkeys, *stubcomma;
 static void stubopen(void)
 {
@@ -51,20 +56,32 @@ static void stubopen(void)
     if (!stubcomma) stubcomma = stubkeys + strlen(stubkeys);
 }
 static short _setvideomode(short m) { stubopen(); fprintf(scl, "mode %d\n", m); return 1; }
-static short _setcolor(short c) { (void)c; return 0; }
+static short _setcolor(short c) { stubcol = c & 15; return 0; }
 static unsigned short _setlinestyle(unsigned short st) { (void)st; return 0; }
 static void stubpt(int x, int y)
 {
-    stubpix++;
-    if (x < 0 || x > 639 || y < 0 || y > 447) {
-        stubbad++;
-        fprintf(scl, "offscreen %d %d\n", x, y);
-    }
+    if (x < 0 || x > 639 || y < 0 || y > 447) fprintf(scl, "offscreen %d %d\n", x, y);
 }
 static void _moveto(short x, short y) { stubx = x; stuby = y; stubpt(x, y); }
-static short _lineto(short x, short y) { stubpt(x, y); stubx = x; stuby = y; return 1; }
+static short _lineto(short x, short y)
+{
+    int dx = x > stubx ? x - stubx : stubx - x, dy = y > stuby ? y - stuby : stuby - y;
+    int sx = x > stubx ? 1 : -1, sy = y > stuby ? 1 : -1, e = dx - dy, px = stubx, py = stuby, e2;
+    stubpt(x, y);
+    for (;;) {                          /* Bresenham, solid; the clip is the drawing area */
+        if (px >= 0 && px < 640 && py >= 0 && py < 448) stubfb[py][px] = (unsigned char)stubcol;
+        if (px == x && py == y) break;
+        e2 = 2 * e;
+        if (e2 > -dy) { e -= dy; px += sx; }
+        if (e2 < dx) { e += dx; py += sy; }
+    }
+    stubx = x;
+    stuby = y;
+    return 1;
+}
+static short _getpixel(short x, short y) { return stubfb[y][x]; }
 static void _setcliprgn(short a, short b, short c, short d) { (void)a; (void)b; (void)c; (void)d; }
-static void _clearscreen(short a) { (void)a; }
+static void _clearscreen(short a) { (void)a; memset(stubfb, 0, sizeof stubfb); }
 static short _settextcolor(short c) { (void)c; return 0; }
 static void _settextposition(short r, short c) { (void)r; (void)c; }
 static void _outtext(char *t) { fprintf(scl, "text %s\n", t); }
@@ -80,7 +97,7 @@ static int getch(void)
     fprintf(scl, "key %d\n", c);
     return c;
 }
-static void delay(unsigned ms) { stubms += ms; }
+static void delay(unsigned ms) { (void)ms; }
 #endif
 
 #define SCW     640
@@ -100,13 +117,19 @@ static struct {
     int    over;                /* block by block: stop only at macro depth <= over; -1 = every block */
     double rate;                /* in/min of the move being drawn */
     long   moves;
+    int    unat;                /* -Sa: no waits, no keys */
+    const char *bmp;            /* -bmp FILE */
+    long   pts, bad, ms;        /* line end points drawn, those off the drawing area, time waited */
 } sc;
 
 static void status(dxsim *s, const char *msg);
 
-void dxscinit(int paced)
+void dxscinit(int paced, int unattended, const char *bmp)
 {
     sc.on = 1;
+    sc.unat = unattended;
+    sc.bmp = bmp;
+    if (unattended) paced = 1;
     sc.paced = paced;
     sc.speed = paced ? 0 : 4;
     sc.factor = 1.0;
@@ -136,9 +159,35 @@ static void key(dxsim *s, int c)
     }
 }
 
+/* the drawing calls, counted the same way in every build (the -Sa summary) */
+static void pt(int x, int y)
+{
+    sc.pts++;
+    if (x < 0 || x > SCW - 1 || y < 0 || y > SCH - 1) sc.bad++;
+}
+
+static void mv(int x, int y)
+{
+    pt(x, y);
+    _moveto((short)x, (short)y);
+}
+
+static void ln(int x, int y)
+{
+    pt(x, y);
+    _lineto((short)x, (short)y);
+}
+
+static void scwait(unsigned ms)
+{
+    sc.ms += ms;
+    if (!sc.unat) delay(ms);
+}
+
 /* read waiting keys; while paused, wait for the next one */
 static void poll(dxsim *s)
 {
+    if (sc.unat) return;
     while (kbhit()) key(s, getch());
     while (sc.pause && !sc.quit) {
         status(s, "PAUSED - SPACE continues");
@@ -195,7 +244,7 @@ static void status(dxsim *s, const char *msg)
 /* before each block (dxsim.blkhook): block-by-block stops before program blocks */
 static void blkhook(dxsim *s)
 {
-    if (sc.quit) return;
+    if (sc.quit || sc.unat) return;
     poll(s);
     if (sc.block && s->start.blk < s->corp0 && (sc.over < 0 || s->gdepth <= sc.over)) {
         int c;
@@ -232,10 +281,10 @@ void dxscmark(dxplot *pl, double x, double y)
     if (x < 6 || x >= SCW - 6 || y < 6 || y >= SCH - 6) return;
     _setcolor(8);
     _setlinestyle(0xffff);
-    _moveto((short)(x - 6), (short)(SCH - 1 - y));
-    _lineto((short)(x + 6), (short)(SCH - 1 - y));
-    _moveto((short)x, (short)(SCH - 1 - y - 6));
-    _lineto((short)x, (short)(SCH - 1 - y + 6));
+    mv((int)(x - 6), (int)(SCH - 1 - y));
+    ln((int)(x + 6), (int)(SCH - 1 - y));
+    mv((int)x, (int)(SCH - 1 - y - 6));
+    ln((int)x, (int)(SCH - 1 - y + 6));
 }
 
 /* a view name with its bottom left corner near device point x, y (8x16 text cells) */
@@ -270,8 +319,8 @@ static void draw(int pen, double x0, double y0, double x1, double y1)
        light cyan for the main program */
     _setcolor((short)(pen == 2 ? 2 : pen >= 10 ? vgacol[(pen - 10) % DX_NSRC] : pen ? 11 : 12));
     _setlinestyle((unsigned short)(pen ? 0xffff : 0xf0f0));
-    _moveto((short)floor(x0 + 0.5), (short)(SCH - 1 - floor(y0 + 0.5)));
-    _lineto((short)floor(x1 + 0.5), (short)(SCH - 1 - floor(y1 + 0.5)));
+    mv((int)floor(x0 + 0.5), (int)(SCH - 1 - floor(y0 + 0.5)));
+    ln((int)floor(x1 + 0.5), (int)(SCH - 1 - floor(y1 + 0.5)));
 }
 
 /* one straight piece in device units; len = its 3-D length in inches */
@@ -291,7 +340,7 @@ void dxscline(dxsim *s, dxplot *pl, int pen, double x0, double y0, double x1, do
     for (i = 0; i < n && !sc.quit; i++) {
         double a = (double)i / n, b = (double)(i + 1) / n;
         draw(pen, x0 + (x1 - x0) * a, y0 + (y1 - y0) * a, x0 + (x1 - x0) * b, y0 + (y1 - y0) * b);
-        delay((unsigned)(ms / n));
+        scwait((unsigned)(ms / n));
         poll(s);
     }
     (void)pl;
@@ -309,7 +358,7 @@ void dxscmove(dxsim *s)
     if (sc.quit) return;
     sc.moves++;
     if (!sc.paced && movems[sc.speed]) {
-        delay(movems[sc.speed]);
+        scwait(movems[sc.speed]);
         status(s, sc.block ? "BLOCK" : "RUN");
     } else if ((sc.moves & 15) == 0 || sc.paced) {
         status(s, sc.block ? "BLOCK" : "RUN");
@@ -317,18 +366,70 @@ void dxscmove(dxsim *s)
     poll(s);
 }
 
+/* -bmp: the whole 640x480 screen, status lines included, as a 4-bit BMP (rows bottom up) */
+static int savebmp(const char *name)
+{
+    static const unsigned char pal[16][3] = {   /* the VGA colours, as R G B */
+        { 0, 0, 0 }, { 0, 0, 170 }, { 0, 170, 0 }, { 0, 170, 170 }, { 170, 0, 0 }, { 170, 0, 170 },
+        { 170, 85, 0 }, { 170, 170, 170 }, { 85, 85, 85 }, { 85, 85, 255 }, { 85, 255, 85 },
+        { 85, 255, 255 }, { 255, 85, 85 }, { 255, 85, 255 }, { 255, 255, 85 }, { 255, 255, 255 }
+    };
+    unsigned char h[118], row[320];
+    unsigned long size = 118UL + 320UL * 480UL;
+    int i, x, y;
+    FILE *fp = fopen(name, "wb");
+    if (!fp) return 0;
+    memset(h, 0, sizeof h);
+    h[0] = 'B';
+    h[1] = 'M';
+    for (i = 0; i < 4; i++) {
+        h[2 + i] = (unsigned char)(size >> (8 * i));    /* file size, little-endian */
+        h[22 + i] = (unsigned char)(480UL >> (8 * i));  /* height */
+        h[34 + i] = (unsigned char)((size - 118UL) >> (8 * i));
+    }
+    h[10] = 118;                        /* offset of the pixels */
+    h[14] = 40;                         /* BITMAPINFOHEADER */
+    h[18] = (unsigned char)(640 & 255);
+    h[19] = (unsigned char)(640 >> 8);
+    h[26] = 1;                          /* planes */
+    h[28] = 4;                          /* bits per pixel */
+    h[46] = 16;                         /* colours used */
+    for (i = 0; i < 16; i++) {          /* the palette: B G R 0 */
+        h[54 + 4 * i] = pal[i][2];
+        h[55 + 4 * i] = pal[i][1];
+        h[56 + 4 * i] = pal[i][0];
+    }
+    fwrite(h, 1, sizeof h, fp);
+    _setcliprgn(0, 0, SCW - 1, 479);    /* reading outside the clip gives nothing */
+    for (y = 479; y >= 0; y--) {
+        for (x = 0; x < 640; x += 2)
+            row[x / 2] = (unsigned char)(((_getpixel((short)x, (short)y) & 15) << 4) |
+                                         (_getpixel((short)(x + 1), (short)y) & 15));
+        fwrite(row, 1, sizeof row, fp);
+    }
+    _setcliprgn(0, 0, SCW - 1, SCH - 1);
+    return fclose(fp) == 0;
+}
+
 void dxscend(dxsim *s)
 {
     char msg[100];
+    int bmpok = 1;
     if (s->stop == 2) sprintf(msg, "ERROR %.20s: %.40s", s->eloc, s->emsg);
-    else strcpy(msg, sc.quit ? "STOPPED - any key" : "END - any key");
+    else strcpy(msg, sc.unat ? "END" : sc.quit ? "STOPPED - any key" : "END - any key");
     status(s, msg);
-    while (kbhit()) getch();
-    getch();
+    if (sc.bmp) bmpok = savebmp(sc.bmp);
+    if (!sc.unat) {
+        while (kbhit()) getch();
+        getch();
+    }
     _setvideomode(_DEFAULTMODE);
+    if (!bmpok) fprintf(stderr, "dxsim: cannot write %s\n", sc.bmp);
+    if (sc.unat && s->trace)
+        fprintf(s->trace, "SCREEN  moves %ld points %ld offscreen %ld time %ld ms\n", sc.moves, sc.pts,
+                sc.bad, sc.ms);
 #ifdef DX_SCSTUB
-    fprintf(scl, "moves %ld pixels %ld offscreen %ld delay %ld ms\n", sc.moves, stubpix, stubbad,
-            stubms);
+    fprintf(scl, "moves %ld pixels %ld offscreen %ld delay %ld ms\n", sc.moves, sc.pts, sc.bad, sc.ms);
     fclose(scl);
     scl = 0;
 #endif

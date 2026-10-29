@@ -36,14 +36,7 @@ clean:
 dxsim-scstub: $(SRC) src/dxsim.h
 	$(CC) $(CFLAGS) -DDX_SCREEN -DDX_SCSTUB -o $@ $(SRC) -lm
 
-test-screen: dxsim-scstub
-	cd tests && grep -v '^;' tests.lst | while read t o; do \
-	  case "$$o" in *-lint*) continue;; esac; \
-	  for v in g17 all; do \
-	    DXSC_KEYS= ../dxsim-scstub $$t.txt $$o -Sf -v $$v >/dev/null 2>&1; \
-	    printf '%-8s %-4s %s\n' $$t $$v "`tail -1 dxscreen.log`"; \
-	    tail -1 dxscreen.log | grep -q ' offscreen 0 ' || exit 1; \
-	  done; \
-	done; rm -f dxscreen.log
+test-screen: dxsim-scstub tests/dxtest
+	cd tests && ./dxtest -sc ../dxsim-scstub
 
 .PHONY: all test test-screen clean

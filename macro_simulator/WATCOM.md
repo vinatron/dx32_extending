@@ -1,6 +1,6 @@
 # Testing the Open Watcom builds
 
-dxsim and fb2dx are tested here with gcc and clang on Linux (`make test`: 195 passed). Earlier versions
+dxsim and fb2dx are tested here with gcc and clang on Linux (`make test`: 211 passed; `make test-screen`: 146). Earlier versions
 were also compiled here with Open Watcom 1.9, and built by the owner on Windows 98 SE. Everything since
 then has not been through Watcom: fb2dx (including its 16-bit DOS changes) and the firmware fixes of
 2026-10-28/29. The Watcom tools could not be run in this session. This is the procedure for building and
@@ -53,8 +53,9 @@ RUNTESTS ..\src\DXSIM4G.EXE    DOS/4GW (DOS4GW.EXE from Watcom's BINW folder on 
 `RUNTESTS` shows the results and also writes them to `RESULTS.TXT`. Each line is `ok`, `FAIL` or
 `skip`. The last line counts them.
 
-- **Expected: `195 passed, 0 failed`.**
-- `skip  the fb2dx tests: ..\src\FB2DX.EXE not found` with `108 passed` means `FB2DX.EXE` was not built.
+- **Expected: `211 passed, 0 failed`.** That includes 16 plot files (SVG, HPGL, PostScript, listed in
+  `PLOTS.LST`), compared with `EXPECTED\` number by number.
+- `skip  the fb2dx tests: ..\src\FB2DX.EXE not found` with `125 passed` means `FB2DX.EXE` was not built.
   Build it (`fb` or `fb32`) and run again.
 - A number that differs only in its last printed digit is accepted automatically, because C libraries round
   halfway cases differently. Any other difference is a `FAIL`.
@@ -87,30 +88,61 @@ output, run the same command by hand in `tests`:
   FC PROG.GOT EXPECTED\NAME.OUT
   ```
   When the options contain `-w FILE.TXT`, compare `FILE.TXT` with `EXPECTED\FILE.OUT` as well.
+- **A plot test** (`plot PROG.txt <options> -p .ext matches expected/NAME.ext`): the line says where
+  the first difference is (`line N: got 12.346, expected 12.344`). To keep the file, run it with the
+  options from its line in `PLOTS.LST` and a new name with the same extension (the extension picks
+  the plot type), and send that file:
+  ```
+  ..\src\DXSIM.EXE PROG.TXT <options> -p GOT.SVG
+  ```
+- **A preview test** (`preview NAME VIEW moves ... ; expected: ...`): send the line and the picture,
+  `SCR17\NAME.BMP` or `SCRALL\NAME.BMP`.
 - **A hand-checked result** (for example `manual G81 example`, `fig 7-15 square`, `fb2dx G41 in dxsim`):
   the line says what was expected. Send it as it is.
 
-## 5. Checks by hand: the live preview
+## 5. The live preview: PREVIEW.BAT, then a few keys by hand
 
-DXTEST cannot look at the screen. With the 16-bit build (or `DXSIM4G.EXE`) on a VGA screen, or with
-`DXSIMW.EXE` in Windows:
+**Automatic part.** With a preview build (`DXSIMW.EXE` from `win32w`, or the 16-bit `DXSIM.EXE` from
+`dos`) and its `DXTEST` (`tests32` for Windows, `tests` for DOS):
 
 ```
-..\src\DXSIM.EXE -S CCSQ.TXT -t 1=.5        the manual's square with cutter compensation
-..\src\DXSIM.EXE -Sf CG170.TXT              a G170 pocket at about machine speed
-..\src\DXSIM.EXE -S -v all CBOLT.TXT        four views
+cd ..\tests
+PREVIEW                        uses ..\src\DXSIMW.EXE, else ..\src\DXSIM.EXE
+PREVIEW ..\src\DXSIM4G.EXE     or name one
 ```
 
-Each should draw without leaving the screen. The keys should work: SPACE pauses, B steps block by block,
-+/- change the speed, ESC stops. Rapids are red and dashed, feeds cyan, holes small x's. ESC, or the end
-of the program, must give back a normal text screen (in Windows, the window closes).
+It runs every test program through the preview twice, in the G17 view and in `-v all`, with
+`dxsim -Sa`: the drawing happens as usual, but nothing waits for the clock or a key, and the window
+or screen closes by itself (on Windows you will see about 150 windows flash past). For each run,
+`DXTEST` compares what was drawn with `EXPECTED\SCREEN.OUT`: the number of moves, the line end
+points, any point off the drawing area, and the paced time the run would have taken with `-Sf`.
+
+- **Expected: `146 passed, 0 failed`.** Results are on the screen and in `PREVIEW.TXT`.
+- On a slow DOS machine reading back the screen for each BMP takes a few seconds, so the run takes a
+  while.
+- Every finished picture is saved as a BMP in `SCR17\` and `SCRALL\` (about 150 KB each, 22 MB in
+  all). **Open `SCREENS.HTM`** in a browser (Internet Explorer on Windows 98 shows BMPs): one row per
+  program, both views side by side. Scroll through it and note anything that looks wrong: a part not
+  centred, a missing path, wrong colours (rapids red dashed, feeds cyan, holes small x's, the
+  programmed path green under cutter compensation).
+- A single picture by hand: `..\src\DXSIMW -Sa -v all CBOLT.TXT -bmp CBOLT.BMP`.
+
+**By hand** (the keys can't be automated), once:
+
+```
+..\src\DXSIMW -S CCSQ.TXT -t 1=.5        (or ..\src\DXSIM on DOS)
+```
+
+SPACE pauses, B steps block by block, O steps over a macro call, + and - change the speed, F switches
+pacing, ESC stops. The window repaints after you cover it, and closing it works like ESC. On DOS, the
+end gives back a normal text screen.
 
 ## 6. What to send back
 
 Post a comment on PR #5 with:
 1. the Watcom version (`wcl` prints it), the platform (DOS version, Windows version, or DOSBox), and the
    targets built;
-2. `RESULTS.TXT`, or at least its `FAIL` lines and the last line;
+2. `RESULTS.TXT` and `PREVIEW.TXT`, or at least their `FAIL` lines and last lines;
 3. for each `FAIL`, the `.GOT` file from section 4, or its first 20 differing lines from `FC`;
 4. any build output: the screen text and the `.ERR` files;
 5. on DOS, what `MEM` reported;
