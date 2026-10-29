@@ -346,6 +346,9 @@ cd ..\tests
 RUNTESTS                                    results on screen and in RESULTS.TXT
 ```
 
+`WATCOM.md` is the step-by-step procedure for building and testing with Open Watcom on DOS or Windows,
+and what to report.
+
 `DXTEST [-u] [path-to-dxsim]` must run in `tests/`. It starts `dxsim` with `system()` and only reads the
 files it writes (`-o`), so it needs neither shell redirection nor exit codes, which COMMAND.COM does not
 return. Test programs use 8.3 names and are listed in `tests/tests.lst`.

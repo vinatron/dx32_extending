@@ -1,0 +1,120 @@
+# Testing the Open Watcom builds
+
+dxsim and fb2dx are tested here with gcc and clang on Linux (`make test`: 194 passed). Earlier versions
+were also compiled here with Open Watcom 1.9, and built by the owner on Windows 98 SE. Everything since
+then has not been through Watcom: fb2dx (including its 16-bit DOS changes) and the firmware fixes of
+2026-10-28/29. The Watcom tools could not be run in this session. This is the procedure for building and
+testing on a DOS or Windows machine, and what to report. It takes about 15 minutes per target.
+
+## 1. What you need
+
+- **Open Watcom 1.9 or 2.0**, installed with its `SETVARS.BAT` (or `OWSETENV.BAT`) run, so that `wmake`,
+  `wcl`, `wcl386` and the `WATCOM`, `PATH` and `INCLUDE` variables are set. Type `wcl` alone to check: it
+  prints its version.
+- **One of these to run on:**
+  - plain DOS, or a Windows 95/98 DOS box: for the 16-bit and DOS/4GW builds;
+  - a Windows 95/98/XP or later command prompt: for the Win32 builds;
+  - DOSBox also works for the 16-bit build. Mount the folder as `C:` and run the Watcom DOS-hosted tools
+    inside it.
+- **The `macro_simulator` folder** with its subfolders `src`, `tests` and `bench`, copied as they are.
+  Every file the build and the tests use has an 8.3 name. The `.md` files are not needed on the target.
+  LF or CRLF line ends both work.
+
+## 2. Build
+
+Run everything from `macro_simulator\src`. Pick **one** platform per run: the DOS and the Windows targets
+write files with the same names (`FB2DX.EXE`, `..\tests\DXTEST.EXE`).
+
+| Platform | Command | Writes |
+|---|---|---|
+| 16-bit DOS | `wmake -f makefile.wat dos fb tests` | `DXSIM.EXE`, `FB2DX.EXE`, `..\tests\DXTEST.EXE` |
+| Windows console | `wmake -f makefile.wat win32 fb32 tests32` | `DXSIM32.EXE`, `FB2DX.EXE`, `..\tests\DXTEST.EXE` |
+| DOS/4GW (optional) | `wmake -f makefile.wat dos32` | `DXSIM4G.EXE` (tested with the 16-bit `DXTEST` and `FB2DX`) |
+| Windows preview (optional) | `wmake -f makefile.wat win32w` | `DXSIMW.EXE` (checked by hand, section 5) |
+
+**What to expect:** no warnings and no errors. The flags include `-za` (strict ANSI) and `-wx` (all
+warnings), so anything the compiler prints is worth reporting.
+
+**If it stops:** each `wcl` writes `NAME.ERR` next to the source with the messages for that file. Keep
+the `.ERR` files and the screen text. In COMMAND.COM, `wmake ... > BUILD.TXT` captures the screen text.
+
+Before building a different platform, run `wmake -f makefile.wat clean` (it needs `rm`; otherwise delete
+`*.OBJ` and `*.EXE` in `src` by hand).
+
+## 3. Run the tests
+
+```
+cd ..\tests
+RUNTESTS                       16-bit DOS: uses ..\src\DXSIM.EXE
+RUNTESTS ..\src\DXSIM32.EXE    Windows console
+RUNTESTS ..\src\DXSIM4G.EXE    DOS/4GW (DOS4GW.EXE from Watcom's BINW folder on the PATH)
+```
+
+`RUNTESTS` shows the results and also writes them to `RESULTS.TXT`. Each line is `ok`, `FAIL` or
+`skip`. The last line counts them.
+
+- **Expected: `194 passed, 0 failed`.**
+- `skip  the fb2dx tests: ..\src\FB2DX.EXE not found` with `108 passed` means `FB2DX.EXE` was not built.
+  Build it (`fb` or `fb32`) and run again.
+- A number that differs only in its last printed digit is accepted automatically, because C libraries round
+  halfway cases differently. Any other difference is a `FAIL`.
+- **Do not run `RUNTESTS ... -u`.** It rewrites the expected files and would hide the differences.
+
+**What the run does:** `DXTEST` runs `DXSIM` and `FB2DX` with `system()` once per test, and reads only
+the files they write. So it needs no redirection and no exit codes. On 16-bit DOS, the `fb2dx ... -check`
+tests stack three programs: `DXTEST` runs `FB2DX`, which runs `DXSIM`, each through `COMMAND.COM`. That
+needs a lot of conventional memory.
+- Check with `MEM` first: aim for 600 KB free (load DOS high, and remove drivers you don't need for the
+  test).
+- If those tests fail with `-check: dxsim wrote no trace`, or `does not read cleanly ... (no output)`,
+  memory is the likely cause. Note the `MEM` figure in the report.
+
+## 4. If a test fails
+
+The `FAIL` line names the test and the first line that differs (`line N: got "..."`). To see the whole
+output, run the same command by hand in `tests`:
+
+- **A dxsim test** (`trace of NAME.txt ... matches expected/NAME.out`): the options are on NAME's line in
+  `TESTS.LST`.
+  ```
+  ..\src\DXSIM.EXE NAME.TXT <options> -silent -o NAME.GOT
+  FC NAME.GOT EXPECTED\NAME.OUT
+  ```
+- **An fb2dx test** (`fb2dx PROG.nc ... matches expected/NAME.out`): the line in `FB.LST` gives the expected file, the program and
+  the options.
+  ```
+  ..\src\FB2DX.EXE PROG.NC <options> -silent -o PROG.GOT
+  FC PROG.GOT EXPECTED\NAME.OUT
+  ```
+  When the options contain `-w FILE.TXT`, compare `FILE.TXT` with `EXPECTED\FILE.OUT` as well.
+- **A hand-checked result** (for example `manual G81 example`, `fig 7-15 square`, `fb2dx G41 in dxsim`):
+  the line says what was expected. Send it as it is.
+
+## 5. Checks by hand: the live preview
+
+DXTEST cannot look at the screen. With the 16-bit build (or `DXSIM4G.EXE`) on a VGA screen, or with
+`DXSIMW.EXE` in Windows:
+
+```
+..\src\DXSIM.EXE -S CCSQ.TXT -t 1=.5        the manual's square with cutter compensation
+..\src\DXSIM.EXE -Sf CG170.TXT              a G170 pocket at about machine speed
+..\src\DXSIM.EXE -S -v all CBOLT.TXT        four views
+```
+
+Each should draw without leaving the screen. The keys should work: SPACE pauses, B steps block by block,
++/- change the speed, ESC stops. Rapids are red and dashed, feeds cyan, holes small x's. ESC, or the end
+of the program, must give back a normal text screen (in Windows, the window closes).
+
+## 6. What to send back
+
+Post a comment on PR #5 with:
+1. the Watcom version (`wcl` prints it), the platform (DOS version, Windows version, or DOSBox), and the
+   targets built;
+2. `RESULTS.TXT`, or at least its `FAIL` lines and the last line;
+3. for each `FAIL`, the `.GOT` file from section 4, or its first 20 differing lines from `FC`;
+4. any build output: the screen text and the `.ERR` files;
+5. on DOS, what `MEM` reported;
+6. one line on the preview: right or wrong, and what looked wrong.
+
+Everything in sections 3-5 runs in the simulator only and moves nothing on the machine. The bench programs
+in `bench\` are a separate job, for the control itself (`features/OPENQ.md`).
