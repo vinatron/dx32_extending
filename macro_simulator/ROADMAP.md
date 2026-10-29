@@ -13,6 +13,18 @@ change the order.
 | 6 | z/OS port with GDDM plots | deferred ("way down the road") |
 | - | G9 P corner blending (the control inserts short sub-segments at corners) | candidate, low priority (`features/OPENQ.md` F2) |
 
+**What remains (2026-10-29).** Everything that can be settled from the firmware and on Linux is done.
+Left:
+1. **Bench checks on the machine:** the programs and sheets listed in `features/OPENQ.md` ("Status" and
+   "Bench session"). `bench/BG41.TXT` and `bench/BG73Z.TXT` come first, because fb2dx's G41/G42 and G68
+   output is written for the firmware readings they confirm.
+2. **The Open Watcom builds**, by the owner: `WATCOM.md`. Nothing since fb2dx has been through Watcom.
+3. **fb2dx's per-series table:** TENTATIVE until checked against FANUC's manuals (`features/FB2DX.md` Q6).
+   The hosts that have them are blocked here; PDFs in `manual/` would do.
+4. **Low priority:** G9 corner blending (F2), `Dummy Radius Won't Fit` (C3), and the translator gaps
+   listed in `features/FB2DX.md` (G51 scaling, G84 tapping, G10/G30/G53, system variables).
+5. **The G/M-code track's hand-over** (below), when it starts.
+
 A feature being built has its own document in `features/` (index and conventions in `features/README.md`),
 kept up to date with each commit. When it is finished, its description moves into `README.md` and
 `LANGUAGE.md`.
@@ -42,12 +54,13 @@ agent will record the details in `HANDOFF.md`. Those entries then take priority 
 
 Done in PR #5; see `README.md` "Machine parameters" and `LANGUAGE.md` section 14a. Differences from the
 plan:
-- **Rates:** the units were traced (169.333 units/tick = 1 ipm), so params 7 and 8 are used. The feed
-  clamp is still the manual's 295 ipm.
+- **Rates:** the units were traced (169.333 units/tick = 1 ipm), so params 7 and 8 are used. The feed is
+  capped by param 7 while the move runs, not by the manual's 295 ipm (`features/OPENQ.md` A10).
 - **Parameter 156** holds only run-time status, so it isn't used.
 - **Parameters 272 and 285** are not in `BMDCPRMS.SYS`.
-- **Z check:** the firmware applies it only for some machine configurations (0xaf58, 0x2988). That isn't
-  traced yet; dxsim always checks Z.
+- **Z check:** the firmware applies it only for some machine configurations (params 98 and 62); traced and
+  simulated (`features/OPENQ.md` A2).
+- **Spindle:** the range minimums are range maximum × param 72 / param 73 (A9); dxsim warns below range 1's.
 
 ## 2. Cutter diameter compensation (G41/G42) (simulated)
 

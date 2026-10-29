@@ -218,6 +218,10 @@ G41 and G42 offset the tool-centre path by the radius of the active tool (`T__D_
   - The next block, the approach, ends one radius out on the normal to the first compensated element.
   - The approach and every compensated move are feed moves at the modal F. A G0 inside compensation is cut
     at the feed rate, as on the control.
+  - The control acts on G41/G42/G40 only in a block with an axis word. A `G41` alone waits, and the next
+    move block becomes the uncompensated one. Write G41/G42 on the move to the turn-on point.
+  - A second G41/G42 while compensating starts again: the held elements are dropped (with a warning).
+  - Canned cycles run while compensating are compensated too (the manual forbids it; dxsim warns).
 - **Corners:** the control reads two blocks ahead.
   - **Inside corners** are cut back to where the two offset elements meet: line-line, line-arc or arc-arc.
   - **Outside corners** get a blend arc of the tool radius round the programmed corner with **G49**, the
@@ -231,7 +235,8 @@ G41 and G42 offset the tool-centre path by the radius of the active tool (`T__D_
   - A Z-only move is carried to the next element and made first, after the corner's blend.
   - There is room for one; a second Z-only move before an X/Y move is lost, with a warning.
 - **Exit:**
-  - G40 ends the last element one radius out on the normal at its end point.
+  - G40 ends the last element one radius out on the normal at its end point (a G40 alone waits for the
+    next move block, like G41).
   - The G40 block then moves to its point **without** compensation.
 - **Mirror:** with exactly one axis mirrored (G31 or G32), G41 and G42 swap, so a mirrored part is still
   cut from the same side.

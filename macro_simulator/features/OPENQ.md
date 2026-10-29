@@ -13,7 +13,19 @@ code if it changes behaviour.
   result: the TC22 is on 6.73 until the upgrade (`../../VERSIONS.md`).
 - **X (DOS-side trace):** in `BXX.EXE` (`../../decompiled/BXX.c`).
 
-## Answered in this round (2026-10-27)
+## Status (2026-10-29)
+
+Every item that the firmware alone can settle has been traced, except two low-priority ones (C3, and the
+last step of F2). What is left needs the machine:
+- **Bench programs** (section "Bench session" below): L1, L2, L6, L7, L8, L10, A6, A13 and A14, plus the
+  sheets for C2, C4, C7, F3 and P3. L9 (`WRI` to the GPAUF outputs) has its procedure in its row; it
+  belongs to the G/M-code track. Run `BG41.TXT` and `BG73Z.TXT` first: fb2dx's G41 and G68 output is
+  written for the firmware readings they confirm.
+- **The Watcom builds** (`../WATCOM.md`): built and run by the owner.
+- **FANUC manuals** for the translator's TENTATIVE cells (`FB2DX.md` Q6): blocked by the network policy
+  here; PDFs in `../manual/` would settle them.
+
+## Answered from the firmware (2026-10-27 to 2026-10-29)
 
 | ID | Question | Answer | Source | dxsim |
 |---|---|---|---|---|
@@ -57,7 +69,7 @@ code if it changes behaviour.
 | ID | Question | How to answer |
 |---|---|---|
 | C2 | M codes and Z-only pairs while compensating | **B:** `tests/CCWARN.TXT`: watch where the tool goes after the M8 and the two Z moves |
-| C3 | An input that raises `Dummy Radius Won't Fit` | **F:** search for a path where C's offset start changes between 0x246e6 and 0x24cec. Low priority |
+| C3 | An input that raises `Dummy Radius Won't Fit` | **F:** search for a path where C's offset start changes between 0x246e6 and 0x24cec. In dxsim's model the offset start is one radius from the corner by construction, so the check cannot fire there (3000 random compensated paths, none); only a firmware path that moves the offset start afterwards can raise it. Low priority |
 | C4 | Do the gouging paths match the control's graphics? | **B:** the bench sheet in `CUTCOMP.md` section 6 (`CCSTEP`, `CCNOTCH`) |
 | C7 | Which line the control shows for a compensation error | **B:** `tests/CCNEG.TXT` (`Cutter-Comp: Negative Radius`): dxsim reports the arc's line |
 
@@ -86,6 +98,7 @@ The cutter-compensation and fillet sheets (`CUTCOMP.md` and `FILLET.md`, section
 | `BNEST.TXT` | L2 | error when `=#9` calls the 9th level | |
 | `BBLANKS.TXT` | L6 | X1 = 5 (blanks removed on load) | |
 | `BZMOVE.TXT` | A14 (confirms) | Z goes to .5 with the line into the corner | |
+| `BG41.TXT` | A13 (confirms) | N4 ends at X0 Y0, N5 at X1.25 Y0 | |
 | `BG73Z.TXT` | L10 | X/Y stay at X0 Y2 (dxsim; with the warning that the firmware path predicts X2 Y0) | |
 | `BLOOP.TXT` | A6 (confirms) | an error at the 6th `=N` line, #14 | |
 | `BFIX.TXT` | L8 | A1=2 A2=4 A3=3 A4=2 A5=1 | |

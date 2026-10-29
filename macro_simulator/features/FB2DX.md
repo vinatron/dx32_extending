@@ -37,6 +37,9 @@ tables are in `../ROADMAP.md` section 5. This document holds the detail.
 | 14 | **Radius arcs** are always the short arc (≤ 179.998°) | F 0x1f992 | CONFIRMED | A FANUC arc with negative `R` (the long arc) is written with its centre instead |
 | 15 | G70/G71 select inch/metric input; the control works in inches inside (2 540 000 counts per inch) and variables hold program units | M table 3-1, F 0x23fe0 | CONFIRMED | FANUC G20/G21 → G70/G71 |
 | 16 | In **BOSS 4-7 compatibility mode** (0xaef9 bit 2) a number without a point is scaled (/10000 inch, /1000 metric) and variable references are off | F 0x23cf8, 0x23eb8 | CONFIRMED | fb2dx output needs that mode **off**; the report says so |
+| 17 | **G41/G42 (and G40) act only in a block with an axis word.** The block loop runs the compensation state machine only for blocks with an axis word (0x4088 bit 6, 0x1cf64); G41/G42 only set the state (0x20d0e) | F | CONFIRMED (bench `BG41.TXT` to confirm) | G41/G42 are written on a zero move, `G91G41X0.` then `G90` (3.15) |
+| 18 | **In G73 only blocks with an X or Y word are transformed.** The finalizer copies the programmed X/Y untransformed otherwise (0x224b4); the manual says to give X and Y in every G73 block | F, M p.32 | TENTATIVE (`OPENQ.md` L10, bench `BG73Z.TXT`) | Z moves under G68 are written with `X20Y20` (3.17) |
+| 19 | **An R arc's centre is computed when R is read**, from the X/Y read before it (0x1f962, 0x1f980); R's sign does nothing | F | CONFIRMED | R is written after X and Y; a negative R (FANUC's long arc) is written with its centre |
 
 ## 3. Design
 
@@ -185,7 +188,8 @@ FANUC jumps are turned into DX32 structures; anything that doesn't fit one of th
   R (the long arc) is written with the computed centre.
 - **G81, G83** are translated to the DX32 forms (`../LANGUAGE.md` section 13), with the `R` plane and
   `G98`/`G99` turned into explicit moves when they don't match. Other cycles, `G68`, `G43`/`G49`, `G28`/`G30`,
-  `G10`, `G52` and system variables are refused (`../ROADMAP.md` section 5).
+  `G10`, `G52` and system variables are refused (`../ROADMAP.md` section 5). (The plan; what was built is in
+  3.11-3.17.)
 
 ### 3.7 FANUC series and dialects
 
@@ -508,8 +512,8 @@ writer refuses a block that ran in two different states.
   - **The peck loop** is a label region of its own (`loop = 2`), numbered with the others.
   - **Peck parameters:** d83 and d73 are machine parameters, so `-fparam d83=`/`d73=` (program units)
     must be given. `-fparam default` does not cover them.
-  - **Refused:** G91 cycles; K/L repeats; G84-G89 and G76 (tapping, boring); a block that drills in one
-    pass and moves in another.
+  - **Refused** when this phase was built: G91 cycles; K/L repeats; G84-G89 and G76; a block that drills
+    in one pass and moves in another. G91 cycles, K/L repeats and G85/G86/G89 were added later (3.16).
 - **Tools:**
   - `T` is written with `M6` as `T<n>M6`, using the tool the evaluator saw in the spindle at that M6 (an M6
     that changes to different tools in different passes is refused). A `T` without `M6` is left out.
@@ -517,10 +521,11 @@ writer refuses a block that ran in two different states.
     table (TENTATIVE). G43 with an H other than that tool is refused.
 - **Axis words with no G0-G3 in force** (after G80, or before the first motion code) are refused, because
   FANUC's motion there depends on the control (power-on G0 or G1 is a parameter).
-- **Not translated yet**, refused with the reason:
-  - G68 rotation, G51 scaling;
-  - G28/G30, G10, G52, G53;
-  - G84-G89, G76.
+- **Not translated yet**, refused with the reason (as of 2026-10-29; G28 came in 3.14, G85/G86/G89 in
+  3.16, G68 and G52 in 3.17):
+  - G51 scaling;
+  - G30, G10, G53;
+  - G84/G74 tapping, G76, G87/G88.
 
 
 ### 3.13 Phase 6 as built: `-check` and `-against`
