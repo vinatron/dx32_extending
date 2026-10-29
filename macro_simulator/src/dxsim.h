@@ -264,6 +264,7 @@ typedef struct dxsim {
     int    ijkset;              /* bits 1,2,4 */
     double rword;               /* R word value (inch) */
     int    rset;
+    int    rax;                 /* axset when the R word was read (0x1f980) */
     double aword;               /* A word (degrees) */
     double araw;                /* A word as written (G12/G13: degrees of travel) */
     int    aset;                /* 1 = A (absolute), 2 = B (incremental) */

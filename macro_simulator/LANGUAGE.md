@@ -313,7 +313,7 @@ G45 G49 G70/71 G72 G75 G90 G94 G96. Unknown: `Parser: Illegal G-Code`. Last colu
 |---|---|---|
 | 0 | rapid; Z up first then XY, or XY then Z down | yes |
 | 1 | linear feed (needs F: `No Feedrate Specified`) | yes |
-| 2 / 3 | arc CW / CCW: I J K centre or R radius (≤ 180°, F 0x1f992). R is squared, so its sign does nothing (no long arc with R < 0); start = end or \|R\| below half the chord: `Parser: Bad Arc Radius Or Endpoint` | yes |
+| 2 / 3 | arc CW / CCW: I J K centre or R radius (≤ 180°, F 0x1f992). R is squared, so its sign does nothing (no long arc with R < 0); start = end or \|R\| below half the chord: `Parser: Bad Arc Radius Or Endpoint`. The centre is computed when R is read (0x1f962), from the X/Y read before it, and not at all if there was none (0x1f980): **write R after X and Y** (`dxsim` warns) | yes |
 | 4 | dwell: `G4Q__` or `G4/__` defines, a lone `G4` dwells; also at the bottom of G82/G84/G89 | yes (traced) |
 | 8 / 9 / 99 | deceleration override off / on (modal) / this block only | recorded |
 | 12 / 13 | helix CW / CCW in polar coordinates: `A` = degrees of travel, `Z` = end depth, `R` = new radius (spiral) | yes |

@@ -110,6 +110,7 @@ void dxmblock(dxsim *s)
     s->axset = 0;
     s->ijkset = 0;
     s->rset = 0;
+    s->rax = 0;
     s->aset = 0;
     s->gmot1 = 0;
     s->g99 = 0;
@@ -168,6 +169,7 @@ void dxmword(dxsim *s, int li, double v, int flags)
     case 'R':
         s->rword = v * u;
         s->rset = 1;
+        s->rax = s->axset;
         break;
     case 'A':
         s->araw = v;
@@ -463,6 +465,11 @@ static void arc(dxsim *s)
         dy = ey - sy;
         d = sqrt(dx * dx + dy * dy);
         if (d < EPS) dxerror(s, "Parser: Bad Arc Radius Or Endpoint");
+        /* the centre is computed when R is read (0x1f962), from the X and Y read before it, and
+           only if there was one (0x1f980) */
+        if ((s->axset & ~s->rax) & ((1 << a0) | (1 << a1)))
+            dxwarn(s, 28, "X/Y after R in an arc block: the control computes the centre when it reads R, "
+                   "from the X/Y before it; write R last");
         /* R is squared (0x1f9f4): its sign does nothing */
         if (s->rword < 0)
             dxwarn(s, 27, "R below 0: the DX32 ignores the sign and cuts the arc of 180 degrees or less");

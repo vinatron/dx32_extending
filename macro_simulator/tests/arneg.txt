@@ -4,4 +4,6 @@ G0X0Y0Z0
 G1F10.
 G2X2.Y0R-1.5
 G2X4.Y0R1.5
+; R before X: the control computes the centre when it reads R (0x1f962), so write R last
+G2R1.X6.Y0
 M2
