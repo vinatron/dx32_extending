@@ -17,7 +17,9 @@
  *    within one unit of their last printed digit.  With -sc, every TESTS.LST program runs
  *    through the preview (dxsim -Sa, views g17 and all) and its SCREEN line must match
  *    EXPECTED\SCREEN.OUT (line points and time within 1%); -bmp also saves each picture
- *    in SCR17\ and SCRALL\ and lists them in SCREENS.HTM.
+ *    in SCR17\ and SCRALL\ and lists them in SCREENS.HTM.  UI.LST then runs the preview with
+ *    scripted keys (dxsim -Sk) and the trace, keys and status lines included, must match
+ *    EXPECTED\<name>.OUT.
  *
  * dxsim is started with system() and always writes to a file (-o), so neither
  * shell redirection nor exit codes are needed (COMMAND.COM returns none).
@@ -1034,7 +1036,7 @@ static void screens(const char *exe, int bmp)
 {
     static const char *const view[2] = { "g17", "all" };
     static const char *const dir[2] = { "SCR17", "SCRALL" };
-    char name[80], args[200], line[256], got[200], exp[200], bmpf[32], what[400];
+    char name[200], args[200], line[256], got[200], exp[200], bmpf[32], what[400];
     char *opts;
     FILE *lst = fopen("tests.lst", "r"), *ef, *gf, *html = 0, *fp;
     int v, found;
@@ -1101,6 +1103,41 @@ static void screens(const char *exe, int bmp)
     }
     if (update) copyfile("screen.got", EXPDIR "screen.out");
     remove("screen.got");
+
+    /* UI.LST: the keys, through scripted key presses (dxsim -Sk); the trace has every key and status line */
+    lst = fopen("ui.lst", "r");
+    if (lst) {
+        char *prog, *keys;
+        while (fgets(name, sizeof name, lst)) {
+            char why[120];
+            chop(name);
+            if (!name[0] || name[0] == ';') continue;
+            prog = strchr(name, ' ');
+            if (!prog) continue;
+            *prog++ = 0;
+            while (*prog == ' ') prog++;
+            keys = strchr(prog, ' ');
+            if (!keys) continue;
+            *keys++ = 0;
+            while (*keys == ' ') keys++;
+            opts = strchr(keys, ' ');
+            if (opts) {
+                *opts++ = 0;
+                while (*opts == ' ') opts++;
+            } else opts = "";
+            sprintf(args, "%.20s.txt %.60s -Sk %.60s", prog, opts, keys);
+            dxe(exe, args);
+            sprintf(exp, "%s%.8s.out", EXPDIR, name);
+            if (update) copyfile(TMPOUT, exp);
+            sprintf(what, "UI %.8s: %.20s.txt%s%.60s -Sk %.60s matches %.40s", name, prog, *opts ? " " : "", opts, keys, exp);
+            if (!compare(TMPOUT, exp, why)) {
+                strcat(what, ": ");
+                strcat(what, why);
+                check(0, what);
+            } else check(1, what);
+        }
+        fclose(lst);
+    }
     remove(TMPOUT);
 }
 

@@ -100,10 +100,10 @@ output, run the same command by hand in `tests`:
 - **A hand-checked result** (for example `manual G81 example`, `fig 7-15 square`, `fb2dx G41 in dxsim`):
   the line says what was expected. Send it as it is.
 
-## 5. The live preview: PREVIEW.BAT, then a few keys by hand
+## 5. The live preview and its keys: PREVIEW.BAT
 
-**Automatic part.** With a preview build (`DXSIMW.EXE` from `win32w`, or the 16-bit `DXSIM.EXE` from
-`dos`) and its `DXTEST` (`tests32` for Windows, `tests` for DOS):
+With a preview build (`DXSIMW.EXE` from `win32w`, or the 16-bit `DXSIM.EXE` from `dos`) and its
+`DXTEST` (`tests32` for Windows, `tests` for DOS):
 
 ```
 cd ..\tests
@@ -111,31 +111,49 @@ PREVIEW                        uses ..\src\DXSIMW.EXE, else ..\src\DXSIM.EXE
 PREVIEW ..\src\DXSIM4G.EXE     or name one
 ```
 
-It runs every test program through the preview twice, in the G17 view and in `-v all`, with
-`dxsim -Sa`: the drawing happens as usual, but nothing waits for the clock or a key, and the window
-or screen closes by itself (on Windows you will see about 150 windows flash past). For each run,
-`DXTEST` compares what was drawn with `EXPECTED\SCREEN.OUT`: the number of moves, the line end
-points, any point off the drawing area, and the paced time the run would have taken with `-Sf`.
+**Expected: `157 passed, 0 failed`.** Results are on the screen and in `PREVIEW.TXT`. Nothing needs
+typing; on Windows about 160 windows flash past, so leave the mouse and keyboard alone until it ends.
 
-- **Expected: `146 passed, 0 failed`.** Results are on the screen and in `PREVIEW.TXT`.
-- On a slow DOS machine reading back the screen for each BMP takes a few seconds, so the run takes a
-  while.
+**1. The drawing** (146 checks). Every test program runs through the preview twice, in the G17 view and
+in `-v all`, with `dxsim -Sa`: it draws as usual, but nothing waits for the clock or a key, and the window
+or screen closes by itself. `DXTEST` compares what was drawn with `EXPECTED\SCREEN.OUT`: the moves, the
+line end points, any point off the drawing area, and the paced time the run would have taken with `-Sf`.
 - Every finished picture is saved as a BMP in `SCR17\` and `SCRALL\` (about 150 KB each, 22 MB in
   all). **Open `SCREENS.HTM`** in a browser (Internet Explorer on Windows 98 shows BMPs): one row per
   program, both views side by side. Scroll through it and note anything that looks wrong: a part not
   centred, a missing path, wrong colours (rapids red dashed, feeds cyan, holes small x's, the
-  programmed path green under cutter compensation).
-- A single picture by hand: `..\src\DXSIMW -Sa -v all CBOLT.TXT -bmp CBOLT.BMP`.
+  programmed path green under cutter compensation), text out of place.
+- On a slow DOS machine reading back the screen for each BMP takes a few seconds, so the run takes a
+  while.
 
-**By hand** (the keys can't be automated), once:
+**2. The keys and the window** (11 checks, `UI.LST`). The preview runs with scripted key presses
+(`dxsim -Sk KEYS`), and the trace records every key and every change of the two status lines. It must
+match `EXPECTED\UI*.OUT`:
 
-```
-..\src\DXSIMW -S CCSQ.TXT -t 1=.5        (or ..\src\DXSIM on DOS)
-```
+| Test | Keys | What it checks |
+|---|---|---|
+| `uiblock` | B, then a key at each stop | block by block: one stop per program block, the block shown |
+| `uiover` | B ... O at the macro call | step over: the macro runs without stopping in it |
+| `uiinto` | B ... I at the macro call | step into: stops inside the macro |
+| `uipause` | SPACE, SPACE | pause and continue, `PAUSED` on the status line |
+| `uispeed` | + + + - F + - - | the per-move speed and the feed-rate factor on the status line, F switching pacing |
+| `uiesc` | ESC | stops, `STOPPED` |
+| `uiclose` | B ... close the window | closing the window acts like ESC |
+| `uirepair` | (cover) | covers the window with another one, takes it away, and compares the repainted window with the picture: `0 pixels differ` |
+| `uiend`, `uierr` | a key at the end | the end and an error on the status line |
+| `uipc` | B ... | block by block with `-pc` colours |
 
-SPACE pauses, B steps block by block, O steps over a macro call, + and - change the speed, F switches
-pacing, ESC stops. The window repaints after you cover it, and closing it works like ESC. On DOS, the
-end gives back a normal text screen.
+In `DXSIMW` the scripted keys go through the window's own message queue (`WM_CHAR`, `WM_CLOSE`), so its
+key handling is tested, not bypassed. On DOS they come from the script instead of the keyboard, so the
+keyboard itself is the one thing to try by hand there, once: `..\src\DXSIM -S CCSQ.TXT -t 1=.5`, then
+SPACE, B, + and ESC.
+
+To try a script yourself: `..\src\DXSIMW CBOLT.TXT -Sk /Bnnnn -o OUT.TXT`, with keys after B pressed
+at each stop; `/K` is a key typed ahead while it runs, `s` SPACE, `e` ESC, `w` close the window, `r` the
+repaint check. One picture: `..\src\DXSIMW -Sa -v all CBOLT.TXT -bmp CBOLT.BMP`.
+
+**Checked here without Watcom:** MinGW builds of the same Windows programs pass `RUNTESTS.BAT` (211)
+and `PREVIEW.BAT` (157) under Wine, the preview on a virtual display (`make test-wine`).
 
 ## 6. What to send back
 
@@ -146,7 +164,7 @@ Post a comment on PR #5 with:
 3. for each `FAIL`, the `.GOT` file from section 4, or its first 20 differing lines from `FC`;
 4. any build output: the screen text and the `.ERR` files;
 5. on DOS, what `MEM` reported;
-6. one line on the preview: right or wrong, and what looked wrong.
+6. one line on `SCREENS.HTM`: right or wrong, and what looked wrong.
 
 Everything in sections 3-5 runs in the simulator only and moves nothing on the machine. The bench programs
 in `bench\` are a separate job, for the control itself (`features/OPENQ.md`).

@@ -13,6 +13,14 @@
  * waited for, no key is read, and the run ends by itself with a summary line
  * "SCREEN moves .. points .. offscreen .. time .. ms" in the trace (-o).
  * -bmp FILE saves the finished picture as a 16-colour BMP (all builds).
+ * -Sk KEYS runs it with scripted keys, for the UI tests: no waits, and every
+ * key and every change of the status lines goes into the trace ("UI" lines).
+ * A key is given when the preview waits for one (a block-by-block stop, a pause,
+ * the end); a key written /K is typed ahead instead, and the next look at the
+ * keyboard while the program runs takes it.  s = SPACE, e = ESC, w = close
+ * the window, r = cover the window and check that it repaints; the end of the
+ * script counts as ESC.  In DXSIMW the keys go through the window's message
+ * queue (WM_CHAR, WM_CLOSE), so its own key path is tested too.
  *
  * Pacing "per move" waits a fixed time after each move (speed 0 = none).
  * Pacing "feed rate" draws each move at the programmed feed (rapids at
@@ -120,15 +128,20 @@ static struct {
     int    unat;                /* -Sa: no waits, no keys */
     const char *bmp;            /* -bmp FILE */
     long   pts, bad, ms;        /* line end points drawn, those off the drawing area, time waited */
+    const char *keys;           /* -Sk: the rest of the key script */
+    FILE   *log;                /* -Sk: the trace */
+    char   last1[80], last2[80];    /* -Sk: the status lines last logged */
+    int    first;               /* the first status line is drawn at the first block */
 } sc;
 
 static void status(dxsim *s, const char *msg);
 
-void dxscinit(int paced, int unattended, const char *bmp)
+void dxscinit(int paced, int unattended, const char *bmp, const char *keys)
 {
     sc.on = 1;
     sc.unat = unattended;
     sc.bmp = bmp;
+    sc.keys = keys;
     if (unattended) paced = 1;
     sc.paced = paced;
     sc.speed = paced ? 0 : 4;
@@ -181,17 +194,75 @@ static void ln(int x, int y)
 static void scwait(unsigned ms)
 {
     sc.ms += ms;
-    if (!sc.unat) delay(ms);
+    if (!sc.unat && !sc.keys) delay(ms);
+}
+
+/* -Sk: a line of the UI log */
+static void uilog(const char *what, const char *text)
+{
+    if (sc.log) fprintf(sc.log, "UI    %s%s\n", what, text);
+}
+
+/* -Sk: r in the script (not a key; done where the preview next waits for one): cover the window and
+   check that it repaints */
+static void repaint(void)
+{
+    char buf[64];
+#ifdef DX_WIN
+    sprintf(buf, "%ld pixels differ", dxwcheck());
+#else
+    strcpy(buf, "0 pixels differ");     /* VGA: nothing covers the screen */
+#endif
+    uilog("repaint: ", buf);
+}
+
+static void scripted(void)
+{
+    while (*sc.keys == 'r') {
+        sc.keys++;
+        repaint();
+    }
+}
+
+static int skbhit(void)
+{
+    if (!sc.keys) return kbhit();
+    return *sc.keys == '/';
+}
+
+static int sgetch(void)
+{
+    int c;
+    char name[8];
+    if (!sc.keys) return getch();
+    scripted();
+    if (*sc.keys == '/') sc.keys++;
+    c = (unsigned char)*sc.keys;
+    if (c) sc.keys++;
+    switch (c) {
+    case 0: strcpy(name, "(end)"); c = 27; break;
+    case 's': strcpy(name, "SPACE"); c = ' '; break;
+    case 'e': strcpy(name, "ESC"); c = 27; break;
+    case 'w': strcpy(name, "CLOSE"); break;
+    default: name[0] = (char)c; name[1] = 0; break;
+    }
+    uilog("key ", name);
+#ifdef DX_WIN
+    c = dxwpost(c);                     /* through the window: WM_CHAR, or WM_CLOSE for w */
+#else
+    if (c == 'w') c = 27;               /* no window: closing it is ESC */
+#endif
+    return c;
 }
 
 /* read waiting keys; while paused, wait for the next one */
 static void poll(dxsim *s)
 {
     if (sc.unat) return;
-    while (kbhit()) key(s, getch());
+    while (skbhit()) key(s, sgetch());
     while (sc.pause && !sc.quit) {
         status(s, "PAUSED - SPACE continues");
-        key(s, getch());
+        key(s, sgetch());
     }
 }
 
@@ -232,6 +303,15 @@ static void status(dxsim *s, const char *msg)
         sprintf(l2, "X%9.4f Y%9.4f Z%9.4f F%7.1f  move %3ums SPC B F +- ESC",
                 p[0], p[1], p[2], s->feed, movems[sc.speed]);
     l1[79] = l2[79] = 0;
+    if (sc.keys && (strcmp(l1, sc.last1) || strcmp(l2, sc.last2))) {
+        size_t n;
+        strcpy(sc.last1, l1);
+        strcpy(sc.last2, l2);
+        for (n = strlen(l1); n && l1[n - 1] == ' '; n--) l1[n - 1] = 0;
+        for (n = strlen(l2); n && l2[n - 1] == ' '; n--) l2[n - 1] = 0;
+        uilog("1 ", l1);
+        uilog("2 ", l2);
+    }
     while (strlen(l1) < 79) strcat(l1, " ");
     while (strlen(l2) < 79) strcat(l2, " ");
     _settextcolor(15);
@@ -244,6 +324,10 @@ static void status(dxsim *s, const char *msg)
 /* before each block (dxsim.blkhook): block-by-block stops before program blocks */
 static void blkhook(dxsim *s)
 {
+    if (sc.first) {                         /* not in dxscbeg: the state is still the measuring pass's */
+        sc.first = 0;
+        status(s, "RUN");
+    }
     if (sc.quit || sc.unat) return;
     poll(s);
     if (sc.block && s->start.blk < s->corp0 && (sc.over < 0 || s->gdepth <= sc.over)) {
@@ -251,7 +335,7 @@ static void blkhook(dxsim *s)
         sc.over = -1;                       /* O applies to the block it is pressed at */
         s->bt = dxbtext(s, s->start.blk);
         status(s, "BLOCK: key=next I=into O=over");
-        c = getch();
+        c = sgetch();
         if (c == 'o' || c == 'O') sc.over = s->gdepth;      /* skip the calls this block makes */
         else if (c == 'i' || c == 'I') sc.over = -1;
         else key(s, c);
@@ -269,9 +353,10 @@ void dxscbeg(dxsim *s, dxplot *pl)
     _setvideomode(_VRES16COLOR);
     _clearscreen(_GCLEARSCREEN);
     _setcliprgn(0, 0, SCW - 1, SCH - 1);
+    sc.log = sc.keys ? s->trace : 0;
     s->blkhook = blkhook;
     s->bt = "";
-    status(s, "RUN");
+    sc.first = 1;
 }
 
 /* part zero of one view: a small grey cross */
@@ -420,12 +505,12 @@ void dxscend(dxsim *s)
     status(s, msg);
     if (sc.bmp) bmpok = savebmp(sc.bmp);
     if (!sc.unat) {
-        while (kbhit()) getch();
-        getch();
+        while (skbhit()) sgetch();
+        sgetch();
     }
     _setvideomode(_DEFAULTMODE);
     if (!bmpok) fprintf(stderr, "dxsim: cannot write %s\n", sc.bmp);
-    if (sc.unat && s->trace)
+    if ((sc.unat || sc.keys) && s->trace)
         fprintf(s->trace, "SCREEN  moves %ld points %ld offscreen %ld time %ld ms\n", sc.moves, sc.pts,
                 sc.bad, sc.ms);
 #ifdef DX_SCSTUB

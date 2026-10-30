@@ -19,7 +19,8 @@ static const char *const help[] = {
     "  -pc        colour feed moves by the macro or canned cycle that made them, with a key",
     "  -S / -Sf   live preview, paced per move / at the feed rate (DOS VGA, DXSIMW window)",
     "  -Sa        the preview unattended (tests): no waits, no keys, a SCREEN line in the trace",
-    "  -bmp FILE  with -S/-Sf/-Sa: save the finished screen as FILE (16-colour BMP)",
+    "  -Sk KEYS   the preview with scripted keys (UI tests): s SPACE, e ESC, /K typed ahead; UI lines in the trace",
+    "  -bmp FILE  with -S/-Sf/-Sa/-Sk: save the finished screen as FILE (16-colour BMP)",
     "  -M FILE    load M-macro definitions (M<n>: ... |) from FILE",
     "  -s         trace variable assignments",
     "  -b         echo program blocks;  -B  also built-in cycle blocks",
@@ -168,7 +169,7 @@ static int evalexpr(dxsim *s, FILE *out, const char *expr)
 int main(int argc, char **argv)
 {
     dxsim *s = &sim;
-    const char *prog = 0, *trace = 0, *pfile = 0, *expr = 0, *bmpf = 0;
+    const char *prog = 0, *trace = 0, *pfile = 0, *expr = 0, *bmpf = 0, *keys = 0;
     const char *macf[8];
     char *pfiles[4], *models[4];
     const char *mapf = 0;
@@ -208,6 +209,7 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-S")) screen = 1;
         else if (!strcmp(a, "-Sf")) screen = 2;
         else if (!strcmp(a, "-Sa")) screen = 3;
+        else if (!strcmp(a, "-Sk") && nx) { screen = 4; keys = nx; i++; }
         else if (!strcmp(a, "-bmp") && nx) { bmpf = nx; i++; }
         else if (!strcmp(a, "-M") && nx) { if (nmacf < 8) macf[nmacf++] = nx; i++; }
         else if (!strcmp(a, "-s")) s->vtrace = 1;
@@ -313,7 +315,7 @@ int main(int argc, char **argv)
     }
 
 #ifndef DX_SCREEN
-    if (screen || bmpf) {
+    if (screen || bmpf || keys) {
         fprintf(stderr, "dxsim: -S and -bmp need a build with the preview (makefile.wat dos, dos32 or win32w)\n");
         return 1;
     }
@@ -323,7 +325,7 @@ int main(int argc, char **argv)
         return 1;
     }
     if (screen) {
-        dxscinit(screen == 2, screen == 3, bmpf);
+        dxscinit(screen == 2, screen == 3, bmpf, keys);
         if (!trace) quiet = 1;          /* text on the graphics screen would spoil it */
     }
 #endif

@@ -1,0 +1,16 @@
+UI    1 MAIN 1                                     RUN
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+L2      RAPID X0.0000 Y0.0000 Z0.1000
+UI    1 MAIN 2  N1G0G90X0Y0Z.1                     RUN
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    1 MAIN 3  N2G33X1.                           ERROR line 3: Parser: Illegal G-Code
+UI    2 X   0.0000 Y   0.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+SCREEN  moves 1 points 4 offscreen 0 time 20 ms
+ERROR   line 3: Parser: Illegal G-Code
+        N2G33X1.
+          ^
+------- summary
+moves   1 (rapid 0.1000, feed 0.0000 in)
+extent  X0.0000 Y0.0000 Z0.0000 .. X0.0000 Y0.0000 Z0.1000
+final   X0.0000 Y0.0000 Z0.1000  (G90, G0, T0)

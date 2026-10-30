@@ -318,6 +318,7 @@ Closing the window is the same as ESC; the picture is redrawn when the window is
 DXSIM -S  PROGRAM.TXT        draw as the program runs, a fixed pause after each move
 DXSIM -Sf PROGRAM.TXT        draw at the programmed feed rate (rapids at 472 ipm): about machine time
 DXSIM -Sa PROGRAM.TXT        unattended (tests): no waits, no keys, ends by itself; a SCREEN line in -o
+DXSIM -Sk /Bnnn PROGRAM.TXT  scripted keys (UI tests): each key and status line goes into the -o trace
 DXSIM -S PROGRAM.TXT -bmp F.BMP   also save the finished screen as a 16-colour BMP
 ```
 
@@ -353,8 +354,8 @@ wmake -f makefile.wat dos fb tests          DXSIM.EXE + FB2DX.EXE + ..\tests\DXT
 wmake -f makefile.wat win32 fb32 tests32    the same for the Windows console
 cd ..\tests
 RUNTESTS                                    results on screen and in RESULTS.TXT
-PREVIEW                                     the preview builds (DXSIMW.EXE or the DOS DXSIM.EXE), unattended,
-                                            with a BMP of every picture in SCREENS.HTM
+PREVIEW                                     the preview builds (DXSIMW.EXE or the DOS DXSIM.EXE) and their
+                                            keys, unattended; a BMP of every picture in SCREENS.HTM
 ```
 
 `WATCOM.md` is the step-by-step procedure for building and testing with Open Watcom on DOS or Windows,
@@ -396,6 +397,11 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
    printed digit.
 10. `DXTEST -sc PREVIEW [-bmp]` runs only the preview tests: every `tests.lst` program through a preview
    build with `-Sa`, compared with `expected/screen.out`; `-bmp` saves the pictures (`PREVIEW.BAT`).
+   Then `ui.lst` runs the preview with scripted keys (`-Sk`): block by block, step over and into, pause,
+   speed, ESC, closing the window, and a cover-and-repaint check; each trace, keys and status lines
+   included, must match `expected/ui*.out`. 157 checks.
+11. `make test-wine` builds the Windows programs with MinGW and runs `RUNTESTS.BAT` and `PREVIEW.BAT`
+   under Wine, the preview on a virtual X display (needs mingw-w64, wine64 and xvfb).
 
 ## FANUC macro translator (`fb2dx`)
 

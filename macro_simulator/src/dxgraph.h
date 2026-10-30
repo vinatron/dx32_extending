@@ -38,6 +38,8 @@ short dxwtcol(short c);
 void  dxwtpos(short row, short col);
 void  dxwtext(char *text);
 short dxwgetpx(short x, short y);
+int   dxwpost(int c);
+long  dxwcheck(void);
 int   dxwkbhit(void);
 int   dxwgetch(void);
 void  dxwdelay(unsigned ms);

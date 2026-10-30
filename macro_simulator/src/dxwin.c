@@ -270,15 +270,12 @@ void dxwtext(char *text)
     pump();
 }
 
-/* the colour index of a pixel (-bmp): the nearest of the 16 VGA colours (smoothed text has others) */
-short dxwgetpx(short x, short y)
+/* the nearest of the 16 VGA colours (smoothed text, or a display with fewer colours, has others) */
+static short nearest(COLORREF c)
 {
-    COLORREF c;
     long d, best = 0x7fffffffL;
     short i, k = 0;
-    if (!mem) return 0;
-    c = GetPixel(mem, x, y);
-    if (c == CLR_INVALID) return 0;
+    if (c == CLR_INVALID) return -1;
     for (i = 0; i < 16; i++) {
         long r = (long)GetRValue(c) - GetRValue(vga[i]), g = (long)GetGValue(c) - GetGValue(vga[i]),
              b = (long)GetBValue(c) - GetBValue(vga[i]);
@@ -286,6 +283,57 @@ short dxwgetpx(short x, short y)
         if (d < best) { best = d; k = i; }
     }
     return k;
+}
+
+/* the colour index of a pixel (-bmp) */
+short dxwgetpx(short x, short y)
+{
+    short k;
+    if (!mem) return 0;
+    k = nearest(GetPixel(mem, x, y));
+    return k < 0 ? 0 : k;
+}
+
+/* -Sk: a scripted key, sent through the window like a typed one; 'w' closes the window */
+int dxwpost(int c)
+{
+    if (!wnd) return c == 'w' ? 27 : c;
+    if (c == 'w') PostMessage(wnd, WM_CLOSE, 0, 0);
+    else PostMessage(wnd, WM_CHAR, (WPARAM)c, 0);
+    return dxwgetch();
+}
+
+/* -Sk r: cover the window with another one, take it away, and compare what WM_PAINT drew with the
+   bitmap (every second pixel of the part on the desktop); the number that differ */
+long dxwcheck(void)
+{
+    HWND top;
+    HDC dc;
+    POINT o;
+    long bad = 0;
+    int x, y;
+    int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
+    if (!wnd || !mem) return 0;
+    /* on top, so nothing else (the console it was started from) covers it while it is read back */
+    SetWindowPos(wnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+    o.x = o.y = 0;
+    ClientToScreen(wnd, &o);
+    top = CreateWindow("STATIC", "", WS_POPUP | WS_VISIBLE | WS_BORDER, o.x + 40, o.y + 40, W - 80, H - 80,
+                       wnd, NULL, GetModuleHandle(NULL), NULL);
+    pump();
+    Sleep(50);
+    if (top) DestroyWindow(top);
+    pump();
+    UpdateWindow(wnd);
+    dc = GetDC(wnd);
+    for (y = 0; y < H; y += 2)
+        for (x = 0; x < W; x += 2) {
+            if (o.x + x < 0 || o.x + x >= sw || o.y + y < 0 || o.y + y >= sh) continue;   /* off the desktop */
+            if (nearest(GetPixel(dc, x, y)) != nearest(GetPixel(mem, x, y))) bad++;
+        }
+    ReleaseDC(wnd, dc);
+    SetWindowPos(wnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+    return bad;
 }
 
 int dxwkbhit(void)
