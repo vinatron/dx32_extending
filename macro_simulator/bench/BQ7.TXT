@@ -1,0 +1,10 @@
+; BQ7.TXT - open question L1: is "?Q7<NE>0W8=1.27!" (G87 body) an assignment?
+; No motion is expected; keep Z clear anyway. Needs the PPPL option for the assignments.
+; Assignment blocks carry no N number: the "=" must be the 3rd or 4th character.
+Q7=1.
+W8=0.
+?Q7<NE>0W8=1.27!
+M0
+; At the M0 stop look at W8: 1.27 = it is an assignment (the manual's intent),
+; 0 = read literally as a W word (what dxsim does). Note any error message.
+M2

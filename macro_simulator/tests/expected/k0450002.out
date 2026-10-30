@@ -1,0 +1,17 @@
+FILE     ../../fanuc_macros/programs/p045_O0002.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p045_O1001.nc (from line 36)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+REFUSED  line 8: G43 H other than the tool in the spindle: the DX32 takes the length of the tool itself
+REFUSED  line 9: L as the repeat count: known for series 0, 6, 10 and 15; give -series
+REFUSED  line 12: only G91 G28 Z0 (Z to the reference point) translates
+REFUSED  line 18: G43 H other than the tool in the spindle: the DX32 takes the length of the tool itself
+REFUSED  line 19: L as the repeat count: known for series 0, 6, 10 and 15; give -series
+REFUSED  line 22: only G91 G28 Z0 (Z to the reference point) translates
+REFUSED  line 28: G43 H other than the tool in the spindle: the DX32 takes the length of the tool itself
+REFUSED  line 29: G84 does not translate yet
+REFUSED  line 29: address R does not translate yet
+REFUSED  line 29: address L does not translate yet
+REFUSED  line 32: only G91 G28 Z0 (Z to the reference point) translates
+REFUSED  line 33: only G91 G28 Z0 (Z to the reference point) translates
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

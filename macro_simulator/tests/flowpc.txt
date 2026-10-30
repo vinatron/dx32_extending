@@ -1,0 +1,26 @@
+; -pc demo: the main program cuts a frame, macro #1 drills a row with G81, M100 spots two points
+N1G0G90X0Y0Z.1T1M6
+N2S1000M3
+#1; Drill row
+G81Z.3F10.
+X1.Y1.
+X2.
+X3.
+G80
+$
+M100: ; Spot
+G1Z-.05F5.
+G0Z.1
+|
+N10G1X0Y0Z-.1F20.
+N11X4.
+N12Y2.
+N13X0
+N14Y0
+N15G0Z.1
+=#1
+N30G0X1.Y1.5
+N31M100
+N32X3.
+N33M100
+N40G0X0Y0M2

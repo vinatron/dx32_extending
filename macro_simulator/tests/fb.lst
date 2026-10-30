@@ -1,0 +1,46 @@
+; fb2dx tests, one per line:
+;   NAME (expected/NAME.out), PROG (PROG.nc), options
+fbbolt   fbbolt   -eval
+fbboltp  fbbolt   -parse
+fbthen   fbthen   -eval
+fb30i    fb30i    -eval
+fb30in   fb30i    -eval -fparam nat=0
+fb30i16  fb30i    -eval -series 16 -fparam nat=0
+fbma     fbmacroa -eval
+fbmaa    fbmacroa -eval -series a -fparam avar=0 -fparam is=b
+fbdpi    fbdpi    -eval
+fbdpion  fbdpi    -eval -bdel on -fparam dpi=0 -fparam is=b
+fbdpidef fbdpi    -eval -bdel off -fparam default
+fbvac    fbvac    -eval
+fbm98    fbm98    -eval
+fbm98s0  fbm98    -eval -series 0
+fbspec2  fbspec2  -eval
+fberr    fberr    -eval
+fbstrw   fbstr    -fparam nat=0 -w fbwstr.txt -check
+fbthenw  fbthen   -w fbwthen.txt
+fbfixw   fbfix    -w fbwfix.txt -check
+fbatanw  fbatan   -series 30i -fparam nat=1 -w fbwatan1.txt -check
+fbboltw  fbbolt   -w fbwbolt.txt -check
+fbloopw  fbloop   -w fbwloop.txt -check
+fbgotow  fbgoto   -w fbwgoto.txt -check
+fbjmpx   fbjmpx   -w fbwjmpx.txt
+fbexitw  fbexit   -w fbwexit.txt -check
+fbcallw  fbcall   -w fbwcall.txt -check
+fbarcw   fbarc    -w fbwarc.txt -check
+fbarcx   fbarcx   -w fbwarcx.txt
+fbdrillw fbdrill  -fparam d83=.5 -fparam d73=.2 -w fbwdrill.txt -check
+fbdrillx fbdrill  -w fbwdrilx.txt
+fbxcen   fbarc    -against fbxcen.txt
+fbxend   fbarc    -against fbxend.txt
+fbjobw   fbjob    -g28 m25 -w fbwjob.txt -check
+fbjobx   fbjob    -w fbwjobx.txt
+fbvarg   fbvarg   -w fbwvarg.txt
+fbcompw  fbcomp   -fparam default -w fbwcomp.txt -check
+fbcompx  fbcomp   -w fbwcompx.txt
+fbcompb  fbcomp   -fparam sup=1 -fparam dpi=0 -w fbwcompb.txt
+fbroww   fbrow    -series 16 -w fbwrow.txt -check
+fbrowx   fbrow    -w fbwrowx.txt
+fbrotw   fbrot    -fparam default -w fbwrot.txt -check
+fbrotx   fbrotx   -fparam default -w fbwrotx.txt
+fbxrot   fbrot    -fparam default -against fbxrot.txt
+fbrotdw  fbrotd   -fparam default -w fbwrotd.txt -check

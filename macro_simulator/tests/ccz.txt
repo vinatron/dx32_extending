@@ -1,0 +1,12 @@
+; cutter compensation: a Z-only move is carried to the next element and made first, after the corner blend
+N1T1M6
+N2G0X-1.Y1.Z.1
+N3G41Y0
+N4G1X0Y0F20.
+N5X1.5
+N6Z-.2F5.
+N7Y-1.5F20.
+N8X0
+N9Y.1
+N10G40X-1.Y1.
+N11M2

@@ -1,0 +1,14 @@
+; dxtest UI tests (dxtest -sc): NAME (expected/NAME.out), PROG (PROG.txt), KEYS for dxsim -Sk, options
+; keys: given when the preview waits (block stop, pause, end); /K typed ahead; s SPACE, e ESC,
+; w close the window, r cover the window and check the repaint (DXSIMW; 0 elsewhere)
+uiblock  mmacro   /Bnnnnnnnn
+uiover   mmacro   /BnnnnnOnn
+uiinto   mmacro   /BnnnnnInnnn
+uipause  cbolt    /ssr
+uispeed  cbolt    /+/+/+/-/F/+/-/-n
+uiesc    cg170    /e
+uiclose  ccsq     /Bnnw          -t 1=.5
+uirepair ccsq     r              -t 1=.5
+uiend    cbolt    n
+uierr    eerrg    n
+uipc     flowpc   /Bnnnnnn       -pc

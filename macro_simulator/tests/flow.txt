@@ -1,0 +1,35 @@
+; -flow test: named macros, a nested call, an M-macro, a label loop with a condition, a skipped
+; block, an =N loop and a canned cycle
+N1G0G90X0Y0Z.1T1M6
+N2S1000M3
+#1; Hole pair
+=#2X*0
+=#2X*1.
+$
+#2; One hole
+G0X*
+G1Z-.1F10.
+G0Z.1
+$
+M100: ; Spot
+G1Z-.05F5.
+G0Z.1
+|
+A1=0.
+L1
+=#1
+A1=A1+1.
+?A1<LT>2.
+=L1
+!
+?A1<EQ>5.
+M100
+!
+=N30/2
+N20G0X2.
+N30M100
+N40G81Z.3F10.
+N41X3.
+N42X4.
+N43G80
+N50G0X0Y0M2

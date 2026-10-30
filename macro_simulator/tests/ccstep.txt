@@ -1,0 +1,16 @@
+; cutter compensation, manual fig. 7-14: a step (.25) smaller than the cutter radius (1.0 dia: gouge warning); example A (G49), example B (G48)
+N1T1M6
+N2G0G41X-.2Y.6Z-.1
+N3G1X0Y0F20.
+N4X1.0
+N5Y-.25
+N6X2.0
+N7G40X2.2Y.6
+N10G0X-.2Y.6
+N12G0G41X-.2Y.6Z-.1
+N13G1G48X0Y0F20.
+N14X1.0
+N15Y-.25
+N16X2.0
+N17G40X2.2Y.6
+N20M2

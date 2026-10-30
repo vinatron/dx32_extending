@@ -1,0 +1,21 @@
+; fb2dx: fbloop.nc, FANUC series 0 6 10 15 16 0i 30i, for the DX32 (BMDC 6.89)
+; #1=D20 #2=D22
+G71G90G17
+D20=0.
+L1
+?D20<LT>3.
+D22=0.
+L2
+?D22<LT>2.
+X21=D20*10.
+Y21=D22*5.
+G0X21Y21
+G1Z-1.F100.
+G0Z1.
+D22=D22+1.
+=L2
+!
+D20=D20+1.
+=L1
+!
+M30

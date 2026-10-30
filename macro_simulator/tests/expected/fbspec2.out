@@ -1,0 +1,9 @@
+FILE     fbspec2.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+L2     CALL   G65 O9200 #1=1. #4=2. #5=3. #6=4. #7=5. #8=6. #9=7. #10=8.
+L5     NC     G21 G0 X2. Y5. Z8.
+L6     RET
+L3     NC     M30
+END    M30
+NOTE     -w FILE writes the DX32 program (features/FB2DX.md)
+RESULT   ok

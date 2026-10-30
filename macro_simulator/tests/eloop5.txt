@@ -1,0 +1,8 @@
+; ELOOP5: five nested =N loops sharing the end block N1 run (6.89 allows 5): 32 passes
+=N1/2
+=N1/2
+=N1/2
+=N1/2
+=N1/2
+N1G91G0X.1
+M2

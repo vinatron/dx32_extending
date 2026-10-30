@@ -1,0 +1,7 @@
+FILE     fbrotx.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+REFUSED  line 4: G68 needs X, Y (the centre) and R here (without them FANUC takes the current position)
+REFUSED  line 6: G68 outside G17 does not translate
+REFUSED  line 8: G68 in G91 (or not reached) does not translate
+STOP     fbwrotx.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

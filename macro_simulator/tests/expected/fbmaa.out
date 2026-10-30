@@ -1,0 +1,23 @@
+FILE     fbmacroa.nc (from line 1)
+DIALECT  series a (given)
+L2     NC     G21 G90
+L3     SET    #100 = 0.
+L4     SET    #101 = 10000.
+L5     NC     G0 X0. Y0.
+L6     SET    #100 = 10000.
+L7     JUMP   GOTO 10 -> line 5
+L5     NC     G0 X10. Y0.
+L6     SET    #100 = 20000.
+L7     JUMP   GOTO 10 -> line 5
+L5     NC     G0 X20. Y0.
+L6     SET    #100 = 30000.
+L7     JUMP   GOTO 10 -> line 5
+L5     NC     G0 X30. Y0.
+L6     SET    #100 = 40000.
+L7     JUMP   GOTO 10 -> line 5
+L5     NC     G0 X40. Y0.
+L6     SET    #100 = 50000.
+L8     NC     M30
+END    M30
+NOTE     -w FILE writes the DX32 program (features/FB2DX.md)
+RESULT   ok

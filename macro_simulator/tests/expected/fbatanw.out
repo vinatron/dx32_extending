@@ -1,0 +1,7 @@
+FILE     fbatan.nc (from line 1)
+DIALECT  series 30i (given)
+NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwatan1.txt
+CHECK    dxsim reads fbwatan1.txt cleanly and reaches all 0 FANUC end points in order
+RESULT   ok

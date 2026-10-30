@@ -1,0 +1,23 @@
+O0031 (EXITS THAT NEED A FLAG)
+G21 G90 G17
+#1 = 0
+WHILE [#1 LT 5.] DO1
+#2 = 0
+WHILE [#2 LT 5.] DO2
+G0 X#1 Y#2
+IF [[#1 * 10. + #2] EQ 23.] GOTO 10
+#2 = #2 + 1.
+END2
+#1 = #1 + 1.
+END1
+G0 X50. Y50.
+N10 G0 X-1. Y-1.
+#3 = 0
+WHILE [#3 LT 10.] DO1
+#3 = #3 + 1.
+IF [#3 EQ 4.] GOTO 20
+G0 X#3 Y5.
+END1
+G0 X60. Y60.
+N20 G0 X#3 Y-2.
+M30

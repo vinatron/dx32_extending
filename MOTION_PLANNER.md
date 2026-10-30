@@ -17,7 +17,7 @@ The firmware keeps a parameter table at **0x2a536**: 288 entries of
 |---|---|---|
 | 0x1b | 0x2abf6 | read: index at +0x404, value returned as 68882 packed decimal (BCD) at +0x406 |
 | 0x1c | 0x2ad24 | write: index at +0x404, BCD value at +0x406, stored at `table[idx].address` using `table[idx].type` (0 byte, 1 word, 2 long, 3 extended, 4 packed bit field unpacked into the long array at 0x1038) |
-| 0x24 | 0x2b3b8 | `installParams`: recompute derived values (lead/encoder scaling at 0x12064, tool-change timing at 0x364ea). The first call, 0x2c230, is a stub `rts` in this build |
+| 0x24 | 0x2b3b8 | `installParams`: recompute derived values (lead/encoder scaling at 0x12064, spindle range minimums at 0x364ea: maximum × param 72 / param 73, also called by `doDrives`). The first call, 0x2c230, is a stub `rts` in this build |
 
 Parameter values are integers in firmware position units per interpolator
 tick. **1 unit is 10 nm**: the finalizer converts program units with

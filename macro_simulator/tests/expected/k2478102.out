@@ -1,0 +1,13 @@
+FILE     ../../fanuc_macros/programs/p247_O8102.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 2)
+VACANT   line 2: #11 is read while vacant (counts as 0 here)
+VACANT   line 3: #21 is read while vacant (counts as 0 here)
+VACANT   line 4: #22 is read while vacant (counts as 0 here)
+NOTE     line 6: M99 in the main program repeats it on the control; evaluated once
+REFUSED  line 2: uses a vacant variable where the DX32 would use 0 (it has no vacant values)
+REFUSED  line 3: uses a vacant variable where the DX32 would use 0 (it has no vacant values)
+REFUSED  line 4: uses a vacant variable where the DX32 would use 0 (it has no vacant values)
+REFUSED  line 5: axis words with no G0/G1 in force (after G80, or before the first one): FANUC's motion there depends on the control; give G0 or G1
+REFUSED  line 6: M99 in the main program makes FANUC repeat it for ever; not translated
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

@@ -1,0 +1,12 @@
+FILE     fbdrill.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 15)
+NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
+NOTE     G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once
+NOTE     drilling cycles are written out as moves; cycle values in D20 D22 D23 D24 D25
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     T without M6 left out: the DX32 takes T in the M6 block
+NOTE     loops and jumps use labels L1-L1; do not call this from a loop that uses them
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwdrill.txt
+CHECK    dxsim reads fbwdrill.txt cleanly and reaches all 39 FANUC end points in order
+RESULT   ok

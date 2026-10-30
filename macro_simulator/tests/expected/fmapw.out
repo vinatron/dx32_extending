@@ -1,0 +1,11 @@
+L10     WARN  ?A1 tests variable A1, which was never set (0)
+L20     RAPID X0.0000 Y0.0000 Z0.1000
+@275a6  RAPID X1.0000 Y0.0000 Z0.1000
+@273f1  FEED  X1.0000 Y0.0000 Z-0.1000  F10.0
+@273fe  RAPID X1.0000 Y0.0000 Z0.1000
+L24     END   M2
+------- summary
+moves   4 (rapid 1.3000, feed 0.2000 in)
+extent  X0.0000 Y0.0000 Z-0.1000 .. X1.0000 Y0.0000 Z0.1000
+final   X1.0000 Y0.0000 Z0.1000  (G90, G0, T0)
+warnings 1

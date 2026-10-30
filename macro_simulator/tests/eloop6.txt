@@ -1,0 +1,9 @@
+; ELOOP6: a sixth nested =N loop stops with #14 (0x204a6)
+=N1/2
+=N1/2
+=N1/2
+=N1/2
+=N1/2
+=N1/2
+N1G91G0X.1
+M2

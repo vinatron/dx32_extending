@@ -1,0 +1,10 @@
+; BVARRULE.TXT - open question L7: in "?Q1<LT>5" is the 5 the number 5 or variable Q5?
+Q1=3.
+Q5=1.
+Q9=0.
+?Q1<LT>5
+Q9=1.
+!
+M0
+; At the M0 stop look at Q9: 0 = the 5 was read as variable Q5 (dxsim), 1 = as the number 5.
+M2

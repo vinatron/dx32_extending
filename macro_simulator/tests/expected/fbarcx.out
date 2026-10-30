@@ -1,0 +1,7 @@
+FILE     fbarcx.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+REFUSED  line 3: a G90 arc where the position is not known yet: the DX32 needs the absolute centre
+REFUSED  line 4: R below 0 (the long arc): the DX32 R arc is always the short one
+REFUSED  line 5: a helical arc (the third axis in an arc) does not translate
+STOP     fbwarcx.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

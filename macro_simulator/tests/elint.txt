@@ -1,0 +1,9 @@
+; -lint test: every error is listed with its line, nothing is run
+N1G0G90X0Y0
+N2G33X1.
+X1=(2+*3)
+?X1<XX>2.
+=L12
+T30
+X2=SIN(
+N8G1X1.Y1.F10.

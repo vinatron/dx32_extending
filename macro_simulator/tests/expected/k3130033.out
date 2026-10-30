@@ -1,0 +1,5 @@
+FILE     ../../fanuc_macros/programs/p313_O0033.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p313_O8113.nc (from line 9)
+REFUSED  line 19: cannot read the block IF[#16=20.0]GOTO20: ']' expected at "=20.0]GOTO20"
+REFUSED  line 20: cannot read the block IF[#16=21.0]GOTO21: ']' expected at "=21.0]GOTO21"
+RESULT   stopped: see REFUSED/STOP above

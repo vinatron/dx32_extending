@@ -1,0 +1,18 @@
+; dxtest plot files, one per line: NAME (expected/NAME.ext), PROG (PROG.txt), svg|plt|ps, dxsim options
+; each output format, each view, -pc colours, rapids off, cutter compensation and fillets
+psqsvg   ccsq     svg  -t 1=.5
+psqplt   ccsq     plt  -t 1=.5
+psqps    ccsq     ps   -t 1=.5
+pboltall cbolt    svg  -v all
+pcamiso  mcam     svg  -v iso
+phelix   mhelix   plt  -v all
+ppc      flowpc   svg  -pc
+ppcps    flowpc   ps   -pc
+pg18     cg170    svg  -v g18
+pg19     mg81     svg  -v g19
+pnorap   mloop    plt  -r
+pfillet  ffig37   svg
+pfcomp   fcomp    ps   -t 1=.5 -v all
+pmirror  mmirror  svg
+pcircle  m1341    plt
+ppocket  cg177    ps

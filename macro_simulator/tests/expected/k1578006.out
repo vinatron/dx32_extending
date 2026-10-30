@@ -1,0 +1,6 @@
+FILE     ../../fanuc_macros/programs/p157_O8006.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 2)
+VACANT   line 2: #9 is read while vacant (counts as 0 here)
+VACANT   line 2: #7 is read while vacant (counts as 0 here)
+REFUSED  line 2: division by 0: alarm on the control
+RESULT   stopped: see REFUSED/STOP above

@@ -1,0 +1,5 @@
+FILE     ../../fanuc_macros/programs/p264_O0027.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p264_O8107.nc (from line 10)
+DIALECT  series 10 15 16 0i 30i (Macro B at line 11, THEN at line 24)
+REFUSED  line 16: #2404: system variables do not translate
+RESULT   stopped: see REFUSED/STOP above

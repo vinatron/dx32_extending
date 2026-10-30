@@ -1,0 +1,5 @@
+FILE     fbrow.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+REFUSED  line 7: K as the repeat count: known for series 16, 0i and 30i; give -series
+STOP     fbwrowx.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

@@ -1,0 +1,6 @@
+; a block with G54-G59 is not travel-checked (0x20dc0 sets 0x4089 bit 3, 0x231ca skips the check):
+; N2 goes past X+ with G54 in the block and passes; N3 without it is refused
+N1G0X1.Y1.Z.1
+N2G54X12.5
+N3X12.6
+N4M2

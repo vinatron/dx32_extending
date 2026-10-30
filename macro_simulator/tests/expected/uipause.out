@@ -1,0 +1,78 @@
+UI    1 MAIN 1                                     RUN
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key SPACE
+UI    1 MAIN 1                                     PAUSED - SPACE continues
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key SPACE
+L2      TOOL  M6 change to T3 (TLO 0.0000 DIA 0.0000)
+L2      RAPID X-5.0000 Y4.0000 Z0.0000
+UI    1 MAIN 2  N10G0G90X-5.Y4.T3M6                RUN
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+L3      SPIN  M3 S1000
+L5      RAPID X3.5155 Y2.8750 Z0.0500
+UI    1 MAIN 5  N20A30.Z.05                        RUN
+UI    2 X  -5.0000 Y   4.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+@273f1  FEED  X3.5155 Y2.8750 Z-0.1975  F135.0
+UI    1 MAIN > G81  G1W5F1                             RUN
+UI    2 X   3.5155 Y   2.8750 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273fe  RAPID X3.5155 Y2.8750 Z0.0500
+UI    1 MAIN > G81  G0W7&                              RUN
+UI    2 X   3.5155 Y   2.8750 Z  -0.1975 F  135.0  move  20ms SPC B F +- ESC
+@276e5  RAPID X2.0000 Y3.7500 Z0.0500
+UI    1 MAIN > G81  G0B2                               RUN
+UI    2 X   3.5155 Y   2.8750 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273f1  FEED  X2.0000 Y3.7500 Z-0.1975  F135.0
+UI    1 MAIN > G81  G1W5F1                             RUN
+UI    2 X   2.0000 Y   3.7500 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273fe  RAPID X2.0000 Y3.7500 Z0.0500
+UI    1 MAIN > G81  G0W7&                              RUN
+UI    2 X   2.0000 Y   3.7500 Z  -0.1975 F  135.0  move  20ms SPC B F +- ESC
+@276e5  RAPID X0.4845 Y2.8750 Z0.0500
+UI    1 MAIN > G81  G0B2                               RUN
+UI    2 X   2.0000 Y   3.7500 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273f1  FEED  X0.4845 Y2.8750 Z-0.1975  F135.0
+UI    1 MAIN > G81  G1W5F1                             RUN
+UI    2 X   0.4845 Y   2.8750 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273fe  RAPID X0.4845 Y2.8750 Z0.0500
+UI    1 MAIN > G81  G0W7&                              RUN
+UI    2 X   0.4845 Y   2.8750 Z  -0.1975 F  135.0  move  20ms SPC B F +- ESC
+@276e5  RAPID X0.4845 Y1.1250 Z0.0500
+UI    1 MAIN > G81  G0B2                               RUN
+UI    2 X   0.4845 Y   2.8750 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273f1  FEED  X0.4845 Y1.1250 Z-0.1975  F135.0
+UI    1 MAIN > G81  G1W5F1                             RUN
+UI    2 X   0.4845 Y   1.1250 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273fe  RAPID X0.4845 Y1.1250 Z0.0500
+UI    1 MAIN > G81  G0W7&                              RUN
+UI    2 X   0.4845 Y   1.1250 Z  -0.1975 F  135.0  move  20ms SPC B F +- ESC
+@276e5  RAPID X2.0000 Y0.2500 Z0.0500
+UI    1 MAIN > G81  G0B2                               RUN
+UI    2 X   0.4845 Y   1.1250 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273f1  FEED  X2.0000 Y0.2500 Z-0.1975  F135.0
+UI    1 MAIN > G81  G1W5F1                             RUN
+UI    2 X   2.0000 Y   0.2500 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273fe  RAPID X2.0000 Y0.2500 Z0.0500
+UI    1 MAIN > G81  G0W7&                              RUN
+UI    2 X   2.0000 Y   0.2500 Z  -0.1975 F  135.0  move  20ms SPC B F +- ESC
+@276e5  RAPID X3.5155 Y1.1250 Z0.0500
+UI    1 MAIN > G81  G0B2                               RUN
+UI    2 X   2.0000 Y   0.2500 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273f1  FEED  X3.5155 Y1.1250 Z-0.1975  F135.0
+UI    1 MAIN > G81  G1W5F1                             RUN
+UI    2 X   3.5155 Y   1.1250 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+@273fe  RAPID X3.5155 Y1.1250 Z0.0500
+UI    1 MAIN > G81  G0W7&                              RUN
+UI    2 X   3.5155 Y   1.1250 Z  -0.1975 F  135.0  move  20ms SPC B F +- ESC
+L7      RAPID X-5.0000 Y4.0000 Z0.0500
+UI    1 MAIN 7  N30G0G90X-5.Y4.M2                  RUN
+UI    2 X   3.5155 Y   1.1250 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+L7      END   M2
+UI    1 MAIN 7  N30G0G90X-5.Y4.M2                  END - any key
+UI    2 X  -5.0000 Y   4.0000 Z   0.0500 F  135.0  move  20ms SPC B F +- ESC
+UI    repaint: 0 pixels differ
+UI    key (end)
+SCREEN  moves 20 points 44 offscreen 0 time 400 ms
+------- summary
+moves   20 (rapid 34.2156, feed 1.4850 in)
+extent  X-5.0000 Y0.0000 Z-0.1975 .. X3.5155 Y4.0000 Z0.0500
+final   X-5.0000 Y4.0000 Z0.0500  (G90, G0, T3)

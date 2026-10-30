@@ -1,0 +1,9 @@
+FILE     fbrot.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+NOTE     G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once
+NOTE     G68/G69/G52 written as G73 A (rotation about X0 Y0), G72 and G97 (fixture offset): a rotation about (cx,cy) is G73 plus an offset of c - R c; the G52 shift is added to it
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwrot.txt
+NOTE     -check: dxsim: L26     WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+CHECK    dxsim reads fbwrot.txt cleanly and reaches all 12 FANUC end points in order (dxsim warnings above)
+RESULT   ok

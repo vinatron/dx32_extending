@@ -1,0 +1,14 @@
+O0020 (GRID OF HOLES: NESTED WHILE LOOPS)
+G21 G90 G17
+#1 = 0
+WHILE [#1 LT 3] DO1
+#2 = 0
+WHILE [#2 LT 2] DO2
+G0 X[#1 * 10.] Y[#2 * 5.]
+G1 Z-1. F100.
+G0 Z1.
+#2 = #2 + 1
+END2
+#1 = #1 + 1
+END1
+M30

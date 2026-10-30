@@ -1,0 +1,11 @@
+; cutter compensation: an arc -> arc inside corner, G41, .5 dia: CCW R5 about (0,0) to (3,4), then CCW R2
+; about (3,2); offset circles R4.75 and R1.75 meet near (2.88,3.75)
+N1T1M6
+N2G0X6.Y-1.
+N3G41X6.Y0
+N4G1X5.F20.
+N5G3X3.Y4.I0J0
+N6X1.Y2.I3.J2.
+N7G1Y0
+N8G40X2.Y-1.
+N9M2

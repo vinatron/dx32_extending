@@ -1,0 +1,9 @@
+FILE     fbrow.nc (from line 1)
+DIALECT  series 16 (given)
+NOTE     drilling cycles are written out as moves; cycle values in D20 D22 D23 D24 D25
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     G86 restarts the spindle with M3 after each hole (TENTATIVE: FANUC restarts it in the direction it had)
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwrow.txt
+CHECK    dxsim reads fbwrow.txt cleanly and reaches all 28 FANUC end points in order
+RESULT   ok

@@ -1,0 +1,9 @@
+; cutter compensation with tool diameter 0: not active (warning), the programmed path is cut
+N1T1M6
+N2G0G41X-.5Y0
+N3G1X0F20.
+N4X1.
+N5Y-1.
+N6X0
+N7G40X-.5Y0
+N8M2
