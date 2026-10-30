@@ -20,6 +20,8 @@
  *    in SCR17\ and SCRALL\ and lists them in SCREENS.HTM.  UI.LST then runs the preview with
  *    scripted keys (dxsim -Sk) and the trace, keys and status lines included, must match
  *    EXPECTED\<name>.OUT.
+ * 6. CORPUS.LST: fb2dx on the FANUC macro corpus (../../fanuc_macros): the reports must match
+ *    EXPECTED\<name>.OUT.  Skipped where the long file names cannot be opened (16-bit DOS).
  *
  * dxsim is started with system() and always writes to a file (-o), so neither
  * shell redirection nor exit codes are needed (COMMAND.COM returns none).
@@ -582,6 +584,47 @@ static void fb(const char *args)
     if (system(cmd)) {
         /* the report file is what counts */
     }
+}
+
+/* CORPUS.LST: fb2dx on the FANUC macro corpus (../../fanuc_macros): the reports must match */
+static void corpus(void)
+{
+    char line[400], cmd[480], first[200], exp[64], why[120], what[300];
+    char *rest;
+    FILE *lst = fopen("corpus.lst", "r"), *fp;
+    if (!lst) return;
+    while (fgets(line, sizeof line, lst)) {
+        chop(line);
+        if (!line[0] || line[0] == ';') continue;
+        rest = strchr(line, ' ');
+        if (!rest) continue;
+        *rest++ = 0;
+        while (*rest == ' ') rest++;
+        if (sscanf(rest, "%199s", first) != 1) continue;
+        fp = fopen(first, "r");
+        if (!fp) {                              /* 16-bit DOS: no long names */
+            printf("skip  the corpus tests: %s cannot be opened (long file names, or no fanuc_macros)\n", first);
+            break;
+        }
+        fclose(fp);
+        remove(TMPOUT);
+        remove("dxtk.txt");                     /* the -w file of the list */
+        sprintf(cmd, "%.80s %.300s -silent -o %s", fb2dx, rest, TMPOUT);
+        if (system(cmd)) {
+            /* the report file is what counts */
+        }
+        sprintf(exp, "%s%.8s.out", EXPDIR, line);
+        if (update) copyfile(TMPOUT, exp);
+        sprintf(what, "corpus %.8s (%.60s) matches %.30s", line, strrchr(first, '/') ? strrchr(first, '/') + 1 : first,
+                exp);
+        if (!compare(TMPOUT, exp, why)) {
+            strcat(what, ": ");
+            strcat(what, why);
+            check(0, what);
+        } else check(1, what);
+    }
+    fclose(lst);
+    remove("dxtk.txt");
 }
 
 static void runfb(const char *name, const char *prog, const char *opts)
@@ -1235,6 +1278,7 @@ int main(int argc, char **argv)
         }
         fclose(lst);
         fbhand();
+        corpus();
     }
 
     sprintf(what, "built-in cycle coverage: %d of 628 non-empty blocks executed", ncov);

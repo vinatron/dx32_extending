@@ -402,6 +402,10 @@ return. Test programs use 8.3 names and are listed in `tests/tests.lst`.
    included, must match `expected/ui*.out`. 157 checks.
 11. `make test-wine` builds the Windows programs with MinGW and runs `RUNTESTS.BAT` and `PREVIEW.BAT`
    under Wine, the preview on a virtual X display (needs mingw-w64, wine64 and xvfb).
+12. `corpus.lst` runs `fb2dx` on the FANUC macro corpus in `../fanuc_macros` (Smid's book): each main
+   program with the programs it calls, and each uncalled macro alone; the reports must match
+   `expected/k*.out` (41 checks; skipped on 16-bit DOS, which cannot open the long names). The review is
+   `features/FBCORPUS.md`.
 
 ## FANUC macro translator (`fb2dx`)
 

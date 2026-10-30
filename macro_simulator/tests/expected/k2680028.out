@@ -1,0 +1,6 @@
+FILE     ../../fanuc_macros/programs/p268_O0028.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p268_O8108.nc (from line 10)
+DIALECT  series 10 15 16 0i 30i (Macro B at line 11, THEN at line 13)
+NOTE     -fparam default: the factory settings are assumed
+REFUSED  line 11: #4003: system variables do not translate
+RESULT   stopped: see REFUSED/STOP above

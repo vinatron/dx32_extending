@@ -1,0 +1,44 @@
+; fb2dx on the FANUC macro corpus (../../fanuc_macros, from Peter Smid, "FANUC CNC Custom Macros"):
+; NAME (expected/NAME.out), then the fb2dx inputs and options. A main program gets the programs it
+; calls; macros the corpus never calls run alone. Skipped where long file names are not available
+k0440001  ../../fanuc_macros/programs/p044_O0001.nc -fparam default -w dxtk.txt -check
+k0450002  ../../fanuc_macros/programs/p045_O0002.nc ../../fanuc_macros/programs/p045_O1001.nc -fparam default -w dxtk.txt -check
+k0460003  ../../fanuc_macros/programs/p046_O0003.nc ../../fanuc_macros/programs/p047_O1002.nc -fparam default -w dxtk.txt -check
+k0548001  ../../fanuc_macros/programs/p054_O8001.nc -fparam default -w dxtk.txt -check
+k1228004  ../../fanuc_macros/programs/p122_O8004.nc -fparam default -w dxtk.txt -check
+k1510011  ../../fanuc_macros/programs/p151_O0011.nc -fparam default -w dxtk.txt -check
+k1520012  ../../fanuc_macros/programs/p152_O0012.nc -fparam default -w dxtk.txt -check
+k1530013  ../../fanuc_macros/programs/p153_O0013.nc -fparam default -w dxtk.txt -check
+k1540015  ../../fanuc_macros/programs/p154_O0015.nc -fparam default -w dxtk.txt -check
+k1550016  ../../fanuc_macros/programs/p155_O0016.nc -fparam default -w dxtk.txt -check
+k1560017  ../../fanuc_macros/programs/p156_O0017.nc ../../fanuc_macros/programs/p156_O8005.nc -fparam default -w dxtk.txt -check
+k1578006  ../../fanuc_macros/programs/p157_O8006.nc -fparam default -w dxtk.txt -check
+k1688007  ../../fanuc_macros/programs/p168_O8007.nc -fparam default -w dxtk.txt -check
+k2078009  ../../fanuc_macros/programs/p207_O8009.nc -fparam default -w dxtk.txt -check
+k2088011  ../../fanuc_macros/programs/p208_O8011.nc -fparam default -w dxtk.txt -check
+k2108013  ../../fanuc_macros/programs/p210_O8013.nc -fparam default -w dxtk.txt -check
+k2118014  ../../fanuc_macros/programs/p211_O8014.nc -fparam default -w dxtk.txt -check
+k2148017  ../../fanuc_macros/programs/p214_O8017.nc -fparam default -w dxtk.txt -check
+k2148018  ../../fanuc_macros/programs/p214_O8018.nc -fparam default -w dxtk.txt -check
+k2188019  ../../fanuc_macros/programs/p218_O8019.nc -fparam default -w dxtk.txt -check
+k2218020  ../../fanuc_macros/programs/p221_O8020.nc -fparam default -w dxtk.txt -check
+k2408021  ../../fanuc_macros/programs/p240_O8021.nc -fparam default -w dxtk.txt -check
+k2418021  ../../fanuc_macros/programs/p241_O8021.nc -fparam default -w dxtk.txt -check
+k2458101  ../../fanuc_macros/programs/p245_O8101.nc -fparam default -w dxtk.txt -check
+k245v2    ../../fanuc_macros/programs/p245_O8101_v2.nc -fparam default -w dxtk.txt -check
+k2478102  ../../fanuc_macros/programs/p247_O8102.nc -fparam default -w dxtk.txt -check
+k2508103  ../../fanuc_macros/programs/p250_O8103.nc -fparam default -w dxtk.txt -check
+k2548104  ../../fanuc_macros/programs/p254_O8104.nc -fparam default -w dxtk.txt -check
+k2578105  ../../fanuc_macros/programs/p257_O8105.nc -fparam default -w dxtk.txt -check
+k2608106  ../../fanuc_macros/programs/p260_O8106.nc -fparam default -w dxtk.txt -check
+k2640027  ../../fanuc_macros/programs/p264_O0027.nc ../../fanuc_macros/programs/p264_O8107.nc -fparam default -w dxtk.txt -check
+k2680028  ../../fanuc_macros/programs/p268_O0028.nc ../../fanuc_macros/programs/p268_O8108.nc -fparam default -w dxtk.txt -check
+k2708022  ../../fanuc_macros/programs/p270_O8022.nc -fparam default -w dxtk.txt -check
+k2720029  ../../fanuc_macros/programs/p272_O0029.nc ../../fanuc_macros/programs/p272_O8109.nc -fparam default -w dxtk.txt -check
+k2758110  ../../fanuc_macros/programs/p275_O8110.nc -fparam default -w dxtk.txt -check
+k2859012  ../../fanuc_macros/programs/p285_O9012.nc -fparam default -w dxtk.txt -check
+k2859013  ../../fanuc_macros/programs/p285_O9013.nc -fparam default -w dxtk.txt -check
+k2880031  ../../fanuc_macros/programs/p288_O0031.nc -fparam default -w dxtk.txt -check
+k2958200  ../../fanuc_macros/programs/p295_O8200.nc -fparam default -w dxtk.txt -check
+k3110032  ../../fanuc_macros/programs/p311_O0032.nc ../../fanuc_macros/programs/p311_O8112.nc -fparam default -w dxtk.txt -check
+k3130033  ../../fanuc_macros/programs/p313_O0033.nc ../../fanuc_macros/programs/p313_O8113.nc -fparam default -w dxtk.txt -check

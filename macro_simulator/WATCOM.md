@@ -1,6 +1,6 @@
 # Testing the Open Watcom builds
 
-dxsim and fb2dx are tested here with gcc and clang on Linux (`make test`: 211 passed; `make test-screen`: 146). Earlier versions
+dxsim and fb2dx are tested here with gcc and clang on Linux (`make test`: 252 passed; `make test-screen`: 157). Earlier versions
 were also compiled here with Open Watcom 1.9, and built by the owner on Windows 98 SE. Everything since
 then has not been through Watcom: fb2dx (including its 16-bit DOS changes) and the firmware fixes of
 2026-10-28/29. The Watcom tools could not be run in this session. This is the procedure for building and
@@ -53,9 +53,11 @@ RUNTESTS ..\src\DXSIM4G.EXE    DOS/4GW (DOS4GW.EXE from Watcom's BINW folder on 
 `RUNTESTS` shows the results and also writes them to `RESULTS.TXT`. Each line is `ok`, `FAIL` or
 `skip`. The last line counts them.
 
-- **Expected: `211 passed, 0 failed`.** That includes 16 plot files (SVG, HPGL, PostScript, listed in
-  `PLOTS.LST`), compared with `EXPECTED\` number by number.
-- `skip  the fb2dx tests: ..\src\FB2DX.EXE not found` with `125 passed` means `FB2DX.EXE` was not built.
+- **Expected: `252 passed, 0 failed`.** That includes 16 plot files (SVG, HPGL, PostScript, listed in
+  `PLOTS.LST`), compared with `EXPECTED\` number by number, and 41 fb2dx runs on the FANUC macro
+  corpus (`CORPUS.LST`, `../fanuc_macros`). On 16-bit DOS those 41 are skipped (they have long file
+  names), so expect `211 passed` there, with a `skip` line.
+- `skip  the fb2dx tests: ..\src\FB2DX.EXE not found` with `125 passed` (and no corpus runs) means `FB2DX.EXE` was not built.
   Build it (`fb` or `fb32`) and run again.
 - A number that differs only in its last printed digit is accepted automatically, because C libraries round
   halfway cases differently. Any other difference is a `FAIL`.
@@ -152,7 +154,7 @@ To try a script yourself: `..\src\DXSIMW CBOLT.TXT -Sk /Bnnnn -o OUT.TXT`, with 
 at each stop; `/K` is a key typed ahead while it runs, `s` SPACE, `e` ESC, `w` close the window, `r` the
 repaint check. One picture: `..\src\DXSIMW -Sa -v all CBOLT.TXT -bmp CBOLT.BMP`.
 
-**Checked here without Watcom:** MinGW builds of the same Windows programs pass `RUNTESTS.BAT` (211)
+**Checked here without Watcom:** MinGW builds of the same Windows programs pass `RUNTESTS.BAT` (252)
 and `PREVIEW.BAT` (157) under Wine, the preview on a virtual display (`make test-wine`).
 
 ## 6. What to send back

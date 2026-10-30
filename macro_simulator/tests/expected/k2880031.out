@@ -1,0 +1,9 @@
+FILE     ../../fanuc_macros/programs/p288_O0031.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+REFUSED  line 9: G13 does not translate yet
+REFUSED  line 9: address D does not translate yet
+REFUSED  line 13: G13 does not translate yet
+REFUSED  line 13: address D does not translate yet
+REFUSED  line 14: only G91 G28 Z0 (Z to the reference point) translates
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

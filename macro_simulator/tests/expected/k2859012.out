@@ -1,0 +1,5 @@
+FILE     ../../fanuc_macros/programs/p285_O9012.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 2)
+VACANT   line 2: #7 is read while vacant (counts as 0 here)
+REFUSED  line 3: #4001: system variables do not translate
+RESULT   stopped: see REFUSED/STOP above
