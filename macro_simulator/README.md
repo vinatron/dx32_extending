@@ -358,8 +358,8 @@ PREVIEW                                     the preview builds (DXSIMW.EXE or th
                                             keys, unattended; a BMP of every picture in SCREENS.HTM
 ```
 
-`WATCOM.md` is the step-by-step procedure for building and testing with Open Watcom on DOS or Windows,
-and what to report.
+`BUILDTST WIN` or `BUILDTST DOS` (in this folder) builds everything with Open Watcom and runs `RUNTESTS`
+and `PREVIEW` in one go. `WATCOM.md` is the step-by-step procedure, and what to report.
 
 `DXTEST [-u] [path-to-dxsim]` must run in `tests/`. It starts `dxsim` with `system()` and only reads the
 files it writes (`-o`), so it needs neither shell redirection nor exit codes, which COMMAND.COM does not

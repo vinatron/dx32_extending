@@ -6,6 +6,30 @@ then has not been through Watcom: fb2dx (including its 16-bit DOS changes) and t
 2026-10-28/29. The Watcom tools could not be run in this session. This is the procedure for building and
 testing on a DOS or Windows machine, and what to report. It takes about 15 minutes per target.
 
+## Quick start: one batch file
+
+From `macro_simulator`, with the Watcom environment set (`SETVARS.BAT` or `OWSETENV.BAT`):
+
+```
+BUILDTST WIN        Windows 95/98/NT: builds DXSIM32, DXSIMW, FB2DX, DXTEST, then runs all the tests
+BUILDTST DOS        16-bit DOS: builds DXSIM (with the VGA preview), FB2DX, DXTEST, then the tests
+```
+
+It builds (compiler output in `BUILD.TXT`), stops with a message if the build fails, then runs
+`tests\RUNTESTS.BAT` and `tests\PREVIEW.BAT` and ends with their totals:
+
+| | Windows | 16-bit DOS |
+|---|---|---|
+| `RUNTESTS` (`tests\RESULTS.TXT`): traces, plots, fb2dx, the FANUC corpus | `252 passed, 0 failed` | `211 passed, 0 failed`, and a `skip` line for the corpus (long file names) |
+| `PREVIEW` (`tests\PREVIEW.TXT`): the preview's drawing and its keys | `157 passed, 0 failed` | `157 passed, 0 failed` |
+
+It takes about 7 minutes on Windows; leave the mouse and keyboard alone while windows flash past.
+Afterwards open `tests\SCREENS.HTM` and scroll through the pictures. If something fails, sections 4 and
+6 say what to look at and what to send. The sections below describe each step on its own.
+
+`BUILDTST.BAT` was run here under Wine with MinGW builds standing in for Watcom (success, a failed
+build, and no argument), not with Watcom itself.
+
 ## 1. What you need
 
 - **Open Watcom 1.9 or 2.0**, installed with its `SETVARS.BAT` (or `OWSETENV.BAT`) run, so that `wmake`,
