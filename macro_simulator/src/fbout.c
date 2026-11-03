@@ -944,26 +944,39 @@ static void nc(const fbs *s)
         int z = 0, xy = 0;
         for (i = 0; i < s->nw; i++) {
             int l = s->w[i].l;
-            if (l == 'G' && whole(s->w[i].e, &v) && (v == 53 || v == 49 || v == 90 || v == 91 || v == 0 || v == 1)) {
+            if (l == 'G' && whole(s->w[i].e, &v) && (v == 53 || v == 49 || v == 90 || v == 0)) {
                 if (v == 49) ntlen++;
                 continue;
             }
             if (l == 'M') continue;
             if (l == 'X' || l == 'Y' || l == 'Z') {
-                if (!whole(s->w[i].e, &v) || v != 0) {
-                    fail("G53 %c%s: a machine position other than 0 does not translate (where it is in DX32 "
-                         "coordinates is not known)", l, v != 0 ? "" : " with a variable");
+                if (!whole(s->w[i].e, &v)) {
+                    fail("G53 %c with a variable: only machine zero (a constant 0) translates", l);
+                    return;
+                }
+                if (v != 0) {
+                    fail("G53 %c%g: a machine position other than 0 does not translate (where it is in DX32 "
+                         "coordinates is not known)", l, v);
                     return;
                 }
                 if (l == 'Z') z = 1;
                 else xy = 1;
                 continue;
             }
-            fail("%c with G53 does not translate", l);
+            if (l == 'G') {
+                if (whole(s->w[i].e, &v)) fail("G%g with G53 does not translate (only G0, G49 and G90)", v);
+                else fail("G with a variable value with G53 does not translate");
+            } else fail("%c with G53 does not translate", l);
             return;
         }
         if (!z && !xy) {
             fail("G53 without an axis word");
+            return;
+        }
+        /* G53 moves at rapid to absolute machine coordinates: with G91 or G1 (in the block or in force)
+           what the control does is not established, so only G90 with G0 or no motion code translates */
+        if (findg(s, 91) || (s->modes & MO_INC)) {
+            fail("G53 in G91: how the control takes machine zero then is not known; give G90");
             return;
         }
         if (xy && !X->par.g28xy) {
@@ -974,10 +987,8 @@ static void nc(const fbs *s)
             fail("G53 Z0 (to machine zero): give -g28 m25 (the DX32 quill home) or -g28 drop (leave it out)");
             return;
         }
-        if (findg(s, 91)) out("G91");
         if (findg(s, 90)) out("G90");
         if (findg(s, 0)) out("G0");
-        if (findg(s, 1)) out("G1");
         for (i = 0; i < s->nw; i++)
             if (s->w[i].l == 'M') {
                 if (!whole(s->w[i].e, &v) || !(v == 3 || v == 4 || v == 5 || v == 7 || v == 8 || v == 9)) {

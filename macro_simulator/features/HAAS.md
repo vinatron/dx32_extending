@@ -57,7 +57,11 @@ DOS too.
   - `Z0` is written like `G28 Z`: `-g28 m25` gives `M25`, the DX32 quill home (TENTATIVE: check that it goes
     where the Haas Z home is), `-g28 drop` leaves it out;
   - `X0`/`Y0` are left out with `-g28xy stay` (the DX32 has no X/Y home move), and refused without it;
-  - a machine position other than 0 (`G53 Z-2.`) is refused: where it is in DX32 coordinates is not known;
+  - a machine position other than 0 (`G53 Z-2.`), or one given by a variable, is refused: where it is in
+    DX32 coordinates is not known;
+  - only G0, G49 and G90 may share the block, and G91 must not be in force: G53 is a rapid to absolute
+    machine coordinates, and what the control does with G91 or G1 there is not established (found in
+    review, test `fbg53x`);
   - G49 is left out with the usual NOTE; M3-M9 in the block are written.
   This also applies to FANUC programs, where G53 means the same.
 - **`P` with a decimal point** in G4 and the drilling cycles (`G82 ... P0.2` in the workbook) is refused on
@@ -99,4 +103,5 @@ DOS too.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-03 | (this commit) | Document created. `-series haas` (detected by `M97`), `M97` local subprograms, `G53` to machine zero, P with a point refused; the workbook's 9 programs as `tests/haas.lst`; tests `fbm97w`, `fbm97x`, `fbg53x` |
+| 2026-11-03 | (this commit) | G53: G91 and G1 refused (in the block or G91 in force), a variable axis value refused with its own message (Copilot review) |
+| 2026-11-03 | 6427caf | Document created. `-series haas` (detected by `M97`), `M97` local subprograms, `G53` to machine zero, P with a point refused; the workbook's 9 programs as `tests/haas.lst`; tests `fbm97w`, `fbm97x`, `fbg53x` |

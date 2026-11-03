@@ -1,7 +1,11 @@
 FILE     fbg53.nc (from line 1)
-DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
-REFUSED  line 6: G53 X0/Y0 (to machine zero): the DX32 has no X/Y home move; -g28xy stay leaves them out
-REFUSED  line 7: G53 Z: a machine position other than 0 does not translate (where it is in DX32 coordinates is not known)
-REFUSED  line 8: P0.5 with a decimal point: whole milliseconds on FANUC, possibly seconds on Haas (not known yet, features/HAAS.md); write it without the point
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 4)
+REFUSED  line 7: G53 X0/Y0 (to machine zero): the DX32 has no X/Y home move; -g28xy stay leaves them out
+REFUSED  line 8: G53 Z-2: a machine position other than 0 does not translate (where it is in DX32 coordinates is not known)
+REFUSED  line 9: G53 Z with a variable: only machine zero (a constant 0) translates
+REFUSED  line 10: G91 with G53 does not translate (only G0, G49 and G90)
+REFUSED  line 11: G1 with G53 does not translate (only G0, G49 and G90)
+REFUSED  line 12: P0.5 with a decimal point: whole milliseconds on FANUC, possibly seconds on Haas (not known yet, features/HAAS.md); write it without the point
+REFUSED  line 14: G53 in G91: how the control takes machine zero then is not known; give G90
 STOP     fbwg53x.txt not written: see REFUSED above
 RESULT   stopped: see REFUSED/STOP above
