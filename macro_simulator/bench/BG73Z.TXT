@@ -1,0 +1,18 @@
+; BG73Z.TXT - open question L10: in G73, does a block without X and Y move X/Y untransformed?
+; Dry run, no part on the table. Set part zero where X and Y have 3 in of room both ways and
+; Z1. is well clear of everything.
+N1G0G90X0Y0Z1.
+N2G73A90.
+N3G0X2.Y0Z1.
+; N3 goes to X0 Y2 (rotated 90 degrees). Note the position display.
+N4G0Z.9
+; N4 has only Z. Watch X and Y while Z moves down .1:
+;   they stay at X0 Y2: the control transforms it (what the manual's own examples assume);
+;   they go to X2 Y0: the firmware path traced at 0x224b4 (give X and Y in every G73 block).
+N5M0
+N6G0X2.Y0Z.9
+; N6 has X and Y: it must end at X0 Y2 either way.
+N7M0
+N8G72
+N9G0X0Y0Z1.
+N10M2

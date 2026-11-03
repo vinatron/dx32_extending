@@ -1,0 +1,7 @@
+O8010 (CLEAR 500+ VARIABLES - INDIVIDUALLY ONE BY ONE)
+#500 = #0
+#501 = #0
+#502 = #0
+#503 = #0
+...
+#999 = #0

@@ -1,0 +1,8 @@
+FILE     ../../fanuc_macros/programs/p156_O0017.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p156_O8005.nc (from line 11)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 6)
+REFUSED  line 4: G43 H other than the tool in the spindle: the DX32 takes the length of the tool itself
+REFUSED  line 7: axis words with no G0/G1 in force (after G80, or before the first one): FANUC's motion there depends on the control; give G0 or G1
+REFUSED  line 8: only G91 G28 Z0 (Z to the reference point) translates
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

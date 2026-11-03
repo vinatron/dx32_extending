@@ -1,0 +1,7 @@
+; a macro call written with an N number: N20=#1 is an assignment to N20 on the control (= is the 4th
+; character), not a call; dxsim warns and then stops like the control (index 20 is too big for N)
+#1
+G4P.1
+$
+N20=#1
+M2

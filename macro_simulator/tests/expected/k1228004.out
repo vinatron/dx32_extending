@@ -1,0 +1,12 @@
+FILE     ../../fanuc_macros/programs/p122_O8004.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 4)
+VACANT   line 4: #26 is read while vacant (counts as 0 here)
+VACANT   line 4: #9 is read while vacant (counts as 0 here)
+VACANT   line 5: #9 is read while vacant (counts as 0 here)
+NOTE     line 8: M99 in the main program repeats it on the control; evaluated once
+REFUSED  line 3: uses a vacant variable where the DX32 would use 0 (it has no vacant values)
+REFUSED  line 4: uses a vacant variable where the DX32 would use 0 (it has no vacant values)
+REFUSED  line 5: uses a vacant variable where the DX32 would use 0 (it has no vacant values)
+REFUSED  line 8: M99 in the main program makes FANUC repeat it for ever; not translated
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

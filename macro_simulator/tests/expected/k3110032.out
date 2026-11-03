@@ -1,0 +1,5 @@
+FILE     ../../fanuc_macros/programs/p311_O0032.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p311_O8112.nc (from line 12)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 14)
+REFUSED  line 17: #3004: system variables do not translate
+RESULT   stopped: see REFUSED/STOP above

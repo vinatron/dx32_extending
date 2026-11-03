@@ -1,0 +1,18 @@
+; BG41.TXT - confirms OPENQ A13: G41 in a block without X/Y waits for the next move block.
+; In the air, no part on the table (spindle at 500 rpm). Tool 1: diameter .5 in the tool table.
+; Set part zero with 2 in of room on all sides; Z1. must be clear.
+N1G0G90X-1.Y-1.Z1.T1M6
+N2S500M3
+N3G41
+N4G1X0Y0F20.
+N5X1.5
+N6Y1.5
+N7X0
+N8Y0
+N9G40X-1.Y-1.
+N10M5
+N11M2
+; Watch the position display at the end of N4 and N5 (block by block):
+;   firmware reading (dxsim): N4 ends at X0 Y0 (uncompensated), N5 is the approach and
+;   ends at X1.25 Y0 (offset start of N6); the bottom edge Y0 is run by the tool centre.
+;   if N4 ends at X0 Y.25 instead, the G41 block itself was the turn-on (dxsim before A13).

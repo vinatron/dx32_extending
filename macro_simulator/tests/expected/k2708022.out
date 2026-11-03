@@ -1,0 +1,8 @@
+FILE     ../../fanuc_macros/programs/p270_O8022.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+NOTE     line 4: M99 in the main program repeats it on the control; evaluated once
+REFUSED  line 2: the unit system is not known: G20/G21 before this block, or -inch/-mm
+REFUSED  line 3: the unit system is not known: G20/G21 before this block, or -inch/-mm
+REFUSED  line 4: M99 in the main program makes FANUC repeat it for ever; not translated
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

@@ -1,0 +1,4 @@
+FILE     fb30i.nc (from line 1)
+DIALECT  series 0i 30i (Macro B at line 2, POW/ADP/ATAN[a,b]/ATAN[x]/MOD at line 2, AND/OR of conditions at line 5)
+STOP     line 2: ATAN/ASIN/ACOS result range: give -fparam nat=0|1 (parameter NAT on 0i/30i) (fb2dx -series list)
+RESULT   stopped: see REFUSED/STOP above

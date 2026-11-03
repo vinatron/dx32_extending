@@ -1,0 +1,3 @@
+FILE     ../../fanuc_macros/programs/p207_O8009.nc (from line 1)
+REFUSED  line 3: cannot read the block WHILE[#25LE360.0]: DO expected after WHILE at ""
+RESULT   stopped: see REFUSED/STOP above

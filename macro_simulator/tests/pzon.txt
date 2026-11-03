@@ -1,0 +1,5 @@
+; the same with the family nibble 2 (section ZLOW, as on the 6.89 and TC22 files): no stay-above rule,
+; so already N1, at the home height, is refused
+N1G0X1.Y1.
+N2G0Z15.1
+N3M2

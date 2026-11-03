@@ -1,0 +1,5 @@
+FILE     ../../fanuc_macros/programs/p272_O0029.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p272_O8109.nc (from line 13)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 14)
+REFUSED  line 14: #4001: system variables do not translate
+RESULT   stopped: see REFUSED/STOP above

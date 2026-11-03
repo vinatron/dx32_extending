@@ -1,0 +1,11 @@
+; cutter compensation, manual fig. 7-15 example 1: 1.5 in square, G41, tool .5 dia (-t 1=.5)
+N10G0G90X-1.Y1.T1M6
+N20G41Y0Z0
+N21G1X0Y0F20.
+N22X1.5
+N23Y-1.5
+N24X0
+N25Y.1
+N26G0G40X-1.Y1.
+N30T2M6
+N40M2

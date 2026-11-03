@@ -1,0 +1,7 @@
+FILE     fbarc.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 7)
+NOTE     -check: dxsim: L8      WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+NOTE     -check: dxsim: L12     WARN  arc end point is not on the circle (radius 0.3543 at start, 0.3957 at end)
+REFUSED  line 5: -check: the DX32 arc (line 12 of the output) has its centre at X0.0394 Y0.0000, FANUC's is at X0.0000 Y0.0000 (inches)
+STOP     -check: fbxcen.txt does not follow the FANUC tool path; do not run it
+RESULT   stopped: see REFUSED/STOP above

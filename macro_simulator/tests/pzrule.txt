@@ -1,0 +1,5 @@
+; Z positive limit set below home (param 22 = -.05 in, PZTEST.INI). With the param 98 family nibble 0
+; (section ZRULE) a move may stay above the limit but not go higher (0x232ae): N1 passes, N2 is refused
+N1G0X1.Y1.
+N2G0Z15.1
+N3M2

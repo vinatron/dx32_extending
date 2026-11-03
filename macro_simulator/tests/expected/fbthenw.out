@@ -1,0 +1,5 @@
+FILE     fbthen.nc (from line 1)
+DIALECT  series 10 15 16 0i 30i (Macro B at line 2, THEN at line 3)
+REFUSED  line 5: uses a vacant variable where the DX32 would use 0 (it has no vacant values)
+STOP     fbwthen.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

@@ -1,0 +1,11 @@
+; fillets inside cutter compensation: the fillet's lines and arc are compensated (G41, .5 dia), as the
+; firmware passes fillet moves on to the compensation (0x1c55a)
+N1T1M6
+N2G0X-1.Y0Z0
+N3G41X-.5
+N4G1X0F10.
+N5G23X2.Y0R.5
+N6G23X2.Y2.R.5
+N7G1X0Y2.
+N8G40X-.5Y2.5
+N9M2

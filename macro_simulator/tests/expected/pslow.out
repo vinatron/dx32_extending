@@ -1,0 +1,14 @@
+------- machine parameters: P689.SYS [SLOW]
+travel  X 0.0000 .. 22.2000  Y 0.0000 .. 16.2000  Z -20.0000 .. 0.2000 in (params 17-22, machine coordinates)
+zero    not given (-zero): only the size of the part is checked
+rapid   X/Y 472.0 ipm  Z 300.0 ipm (params 7, 8); spindle max 6000 rpm (params 73-76)
+zcheck  Z checked (params 98, 62)
+------- program
+L2      WARN  S100 is below the range 1 minimum 488 rpm (param 74 x param 72 / param 73); the control raises it: Spindle Speed Too Low.
+L2      SPIN  M3 S100
+L4      SPIN  M5 S500
+L5      END   M2
+------- summary
+moves   0 (rapid 0.0000, feed 0.0000 in)
+final   X0.0000 Y0.0000 Z0.0000  (G90, G0, T0)
+warnings 1

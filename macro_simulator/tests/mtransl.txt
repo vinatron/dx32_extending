@@ -1,0 +1,14 @@
+; manual figure 4-11, G97 translation
+#1
+N10G0G90X-.5Y0Z0
+N20G1X0Y0F15.
+N30X1.Y1.
+N40G2X1.Y0I1.J.5
+N50G1X-.5Y0
+N60G0X-1.Y1.
+$
+N1S1000M3
+=#1; Do part in base coordinate system
+N70G97Y2.5; Setup new coordinate system
+=#1; Do 2nd part in new coordinate system.
+N80G96G90G0X-1.Y1.M2; Return to base coordinate.

@@ -1,0 +1,60 @@
+UI    1 MAIN 1                                     RUN
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key B
+UI    1 MAIN 1  ; manual chapter 10: macro #3 with BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+UI    1 MAIN 2  N1G0G90X1.Y1.Z.1T1M6               BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+L2      TOOL  M6 change to T1 (TLO 0.0000 DIA 0.0000)
+L2      RAPID X0.0000 Y0.0000 Z0.1000
+UI    1 MAIN 2  N1G0G90X1.Y1.Z.1T1M6               BLOCK
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+L2      RAPID X1.0000 Y1.0000 Z0.1000
+UI    1 MAIN 3  N2S1000M3                          BLOCK: key=next I=into O=over
+UI    2 X   1.0000 Y   1.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+L3      SPIN  M3 S1000
+UI    1 MAIN 4  #3; Peck Cycle                     BLOCK: key=next I=into O=over
+UI    2 X   1.0000 Y   1.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+UI    1 MAIN 10  $                                  BLOCK: key=next I=into O=over
+UI    2 X   1.0000 Y   1.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+UI    1 MAIN 11  =#3Z*-.5F*10.Z*.5Z*-.5Z*-.2F*20.Z* BLOCK: key=next I=into O=over
+UI    2 X   1.0000 Y   1.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key I
+UI    1 MAIN 11 > #3 4  #3; Peck Cycle                     BLOCK: key=next I=into O=ove
+UI    2 X   1.0000 Y   1.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+UI    1 MAIN 11 > #3 5  G1Z*F*                             BLOCK: key=next I=into O=ove
+UI    2 X   1.0000 Y   1.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+L5      FEED  X1.0000 Y1.0000 Z-0.5000  F10.0
+UI    1 MAIN 11 > #3 5  G1Z*F*                             BLOCK
+UI    2 X   1.0000 Y   1.0000 Z   0.1000 F   10.0  move  20ms SPC B F +- ESC
+UI    1 MAIN 11 > #3 6  G0Z*                               BLOCK: key=next I=into O=ove
+UI    2 X   1.0000 Y   1.0000 Z  -0.5000 F   10.0  move  20ms SPC B F +- ESC
+UI    key n
+L6      RAPID X1.0000 Y1.0000 Z0.5000
+UI    1 MAIN 11 > #3 6  G0Z*                               BLOCK
+UI    2 X   1.0000 Y   1.0000 Z  -0.5000 F   10.0  move  20ms SPC B F +- ESC
+UI    1 MAIN 11 > #3 7  Z*                                 BLOCK: key=next I=into O=ove
+UI    2 X   1.0000 Y   1.0000 Z   0.5000 F   10.0  move  20ms SPC B F +- ESC
+UI    key n
+L7      RAPID X1.0000 Y1.0000 Z-0.5000
+UI    1 MAIN 11 > #3 7  Z*                                 BLOCK
+UI    2 X   1.0000 Y   1.0000 Z   0.5000 F   10.0  move  20ms SPC B F +- ESC
+UI    1 MAIN 11 > #3 8  G1Z*F*                             BLOCK: key=next I=into O=ove
+UI    2 X   1.0000 Y   1.0000 Z  -0.5000 F   10.0  move  20ms SPC B F +- ESC
+UI    key (end)
+L8      FEED  X1.0000 Y1.0000 Z-0.2000  F20.0
+UI    1 MAIN 11 > #3 9  G1Z*F*                             STOPPED - any key
+UI    2 X   1.0000 Y   1.0000 Z  -0.2000 F   20.0  move  20ms SPC B F +- ESC
+UI    key (end)
+SCREEN  moves 5 points 10 offscreen 0 time 100 ms
+------- summary
+moves   6 (rapid 3.5142, feed 0.9000 in)
+extent  X0.0000 Y0.0000 Z-0.5000 .. X1.0000 Y1.0000 Z0.5000
+final   X1.0000 Y1.0000 Z-0.2000  (G90, G1, T1)

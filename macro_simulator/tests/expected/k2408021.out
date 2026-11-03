@@ -1,0 +1,5 @@
+FILE     ../../fanuc_macros/programs/p240_O8021.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 4)
+NOTE     -fparam default: the factory settings are assumed
+REFUSED  line 3: the unit system is not known: G20/G21 in the program, or -inch/-mm
+RESULT   stopped: see REFUSED/STOP above

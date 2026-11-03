@@ -1,0 +1,12 @@
+; manual chapter 10: macro #3 with '*' parameters
+N1G0G90X1.Y1.Z.1T1M6
+N2S1000M3
+#3; Peck Cycle
+G1Z* F*
+G0Z*
+Z*
+G1Z*F*
+Z*
+$
+=#3Z*-.5F*10.Z*.5Z*-.5Z*-.2F*20.Z*.7
+N10G0X0Y0M2

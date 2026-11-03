@@ -1,0 +1,6 @@
+FILE     fbarc.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 7)
+NOTE     -check: dxsim: L8      WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+REFUSED  line 6: -check: the DX32 program goes to X-0.3937 Y0.0394 Z-0.0394 (line 15 of the output); FANUC goes to X-0.3937 Y0.0000 Z-0.0394 (inches)
+STOP     -check: fbxend.txt does not follow the FANUC tool path; do not run it
+RESULT   stopped: see REFUSED/STOP above

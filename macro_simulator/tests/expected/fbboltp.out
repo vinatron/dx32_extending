@@ -1,0 +1,19 @@
+FILE     fbbolt.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 8)
+L2            PROG     O1
+L3            NC       G21 G90 G17
+L4            NC       G0 X0. Y0. Z5.
+L5            NC       G65 P9010 X10. Y20. R30. A15. B6. K-2.
+L6            NC       M30
+L7            PROG     O9010
+L8            ASSIGN   #10 = 0
+L9            WHILE    [#10 LT #2] DO1
+L10           ASSIGN   #11 = #1+[[#10*360.]/#2]
+L11           NC       X[#24+[#18*COS[#11]]] Y[#25+[#18*SIN[#11]]]
+L12           NC       G1 Z#6 F100.
+L13           NC       G0 Z5.
+L14           ASSIGN   #10 = #10+1
+L15           END      END1
+L16           NC       M99
+NOTE     -w FILE writes the DX32 program (features/FB2DX.md)
+RESULT   ok

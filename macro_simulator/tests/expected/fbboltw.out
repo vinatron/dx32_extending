@@ -1,0 +1,11 @@
+FILE     fbbolt.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 8)
+NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
+NOTE     G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once
+NOTE     loops and jumps use labels L1-L1; do not call this from a loop that uses them
+NOTE     1 called program(s) written as DX32 macros #1-#1, nested 1 deep
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwbolt.txt
+NOTE     -check: dxsim: L12     WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+CHECK    dxsim reads fbwbolt.txt cleanly and reaches all 19 FANUC end points in order (dxsim warnings above)
+RESULT   ok

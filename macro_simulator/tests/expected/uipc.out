@@ -1,0 +1,37 @@
+UI    1 MAIN 1                                     RUN
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key B
+UI    1 MAIN 1  ; -pc demo: the main program cuts  BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+UI    1 MAIN 2  N1G0G90X0Y0Z.1T1M6                 BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+L2      TOOL  M6 change to T1 (TLO 0.0000 DIA 0.0000)
+L2      RAPID X0.0000 Y0.0000 Z0.1000
+UI    1 MAIN 2  N1G0G90X0Y0Z.1T1M6                 BLOCK
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    1 MAIN 3  N2S1000M3                          BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+L3      SPIN  M3 S1000
+UI    1 MAIN 4  #1; Drill row                      BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+UI    1 MAIN 10  $                                  BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+UI    1 MAIN 11  M100:; Spot                        BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+UI    1 MAIN 14  |                                  BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key (end)
+UI    1 MAIN 15  |                                  STOPPED - any key
+UI    2 X   0.0000 Y   0.0000 Z   0.1000 F    0.0  move  20ms SPC B F +- ESC
+UI    key (end)
+SCREEN  moves 1 points 4 offscreen 0 time 20 ms
+------- summary
+moves   1 (rapid 0.1000, feed 0.0000 in)
+extent  X0.0000 Y0.0000 Z0.0000 .. X0.0000 Y0.0000 Z0.1000
+final   X0.0000 Y0.0000 Z0.1000  (G90, G0, T1)

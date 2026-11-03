@@ -1,0 +1,1663 @@
+{
+  "source": "Peter Smid, FANUC CNC Custom Macros (Industrial Press, 2005)",
+  "pdf_pages": 336,
+  "note": "Mechanical extraction of printed Courier New example blocks; no executable code repairs applied. Fragment files may be intentionally incomplete or contain invalid demonstrations. Validate visually before use.",
+  "items": [
+    {
+      "path": "fragments/p027_snippet_000.txt",
+      "pdf_page_start": 27,
+      "pdf_page_end": 27,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 22
+    },
+    {
+      "path": "fragments/p028_snippet_001.txt",
+      "pdf_page_start": 28,
+      "pdf_page_end": 28,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 24
+    },
+    {
+      "path": "programs/p044_O0001.nc",
+      "pdf_page_start": 44,
+      "pdf_page_end": 44,
+      "kind": "numbered-program",
+      "program_number": "O0001",
+      "source_complete": true,
+      "features": [],
+      "lines": 44
+    },
+    {
+      "path": "programs/p045_O0002.nc",
+      "pdf_page_start": 45,
+      "pdf_page_end": 45,
+      "kind": "numbered-program",
+      "program_number": "O0002",
+      "source_complete": true,
+      "features": [],
+      "lines": 35
+    },
+    {
+      "path": "programs/p045_O1001.nc",
+      "pdf_page_start": 45,
+      "pdf_page_end": 45,
+      "kind": "numbered-program",
+      "program_number": "O1001",
+      "source_complete": true,
+      "features": [],
+      "lines": 8
+    },
+    {
+      "path": "programs/p046_O0003.nc",
+      "pdf_page_start": 46,
+      "pdf_page_end": 46,
+      "kind": "numbered-program",
+      "program_number": "O0003",
+      "source_complete": true,
+      "features": [],
+      "lines": 29
+    },
+    {
+      "path": "programs/p047_O1002.nc",
+      "pdf_page_start": 47,
+      "pdf_page_end": 47,
+      "kind": "numbered-program",
+      "program_number": "O1002",
+      "source_complete": true,
+      "features": [],
+      "lines": 10
+    },
+    {
+      "path": "fragments/p048_snippet_005.txt",
+      "pdf_page_start": 48,
+      "pdf_page_end": 48,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p048_snippet_006.txt",
+      "pdf_page_start": 48,
+      "pdf_page_end": 48,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 6
+    },
+    {
+      "path": "programs/p054_O8001.nc",
+      "pdf_page_start": 54,
+      "pdf_page_end": 54,
+      "kind": "numbered-program",
+      "program_number": "O8001",
+      "source_complete": true,
+      "features": [],
+      "lines": 16
+    },
+    {
+      "path": "fragments/p073_snippet_010.txt",
+      "pdf_page_start": 73,
+      "pdf_page_end": 73,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p077_snippet_013.txt",
+      "pdf_page_start": 77,
+      "pdf_page_end": 77,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p077_snippet_014.txt",
+      "pdf_page_start": 77,
+      "pdf_page_end": 77,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p078_snippet_015.txt",
+      "pdf_page_start": 78,
+      "pdf_page_end": 78,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p078_snippet_016.txt",
+      "pdf_page_start": 78,
+      "pdf_page_end": 78,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p079_snippet_017.txt",
+      "pdf_page_start": 79,
+      "pdf_page_end": 79,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p090_snippet_023.txt",
+      "pdf_page_start": 90,
+      "pdf_page_end": 90,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p090_snippet_024.txt",
+      "pdf_page_start": 90,
+      "pdf_page_end": 90,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p091_snippet_025.txt",
+      "pdf_page_start": 91,
+      "pdf_page_end": 91,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p091_snippet_026.txt",
+      "pdf_page_start": 91,
+      "pdf_page_end": 91,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p091_snippet_027.txt",
+      "pdf_page_start": 91,
+      "pdf_page_end": 91,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p091_snippet_028.txt",
+      "pdf_page_start": 91,
+      "pdf_page_end": 91,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p092_snippet_029.txt",
+      "pdf_page_start": 92,
+      "pdf_page_end": 92,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 6
+    },
+    {
+      "path": "fragments/p093_snippet_030.txt",
+      "pdf_page_start": 93,
+      "pdf_page_end": 93,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p093_snippet_031.txt",
+      "pdf_page_start": 93,
+      "pdf_page_end": 93,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p093_snippet_032.txt",
+      "pdf_page_start": 93,
+      "pdf_page_end": 93,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p094_snippet_033.txt",
+      "pdf_page_start": 94,
+      "pdf_page_end": 94,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "offsets"
+      ],
+      "lines": 6
+    },
+    {
+      "path": "fragments/p098_O0004.txt",
+      "pdf_page_start": 98,
+      "pdf_page_end": 98,
+      "kind": "numbered-program",
+      "program_number": "O0004",
+      "source_complete": false,
+      "features": [],
+      "lines": 9
+    },
+    {
+      "path": "fragments/p098_O0005.txt",
+      "pdf_page_start": 98,
+      "pdf_page_end": 98,
+      "kind": "numbered-program",
+      "program_number": "O0005",
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 9
+    },
+    {
+      "path": "fragments/p098_O8001.txt",
+      "pdf_page_start": 98,
+      "pdf_page_end": 98,
+      "kind": "numbered-program",
+      "program_number": "O8001",
+      "source_complete": false,
+      "features": [],
+      "lines": 6
+    },
+    {
+      "path": "fragments/p098_O8002.txt",
+      "pdf_page_start": 98,
+      "pdf_page_end": 98,
+      "kind": "numbered-program",
+      "program_number": "O8002",
+      "source_complete": false,
+      "features": [],
+      "lines": 7
+    },
+    {
+      "path": "fragments/p109_snippet_041.txt",
+      "pdf_page_start": 109,
+      "pdf_page_end": 109,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 6
+    },
+    {
+      "path": "fragments/p110_snippet_042.txt",
+      "pdf_page_start": 110,
+      "pdf_page_end": 110,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p116_snippet_045.txt",
+      "pdf_page_start": 116,
+      "pdf_page_end": 116,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p122_snippet_047.txt",
+      "pdf_page_start": 122,
+      "pdf_page_end": 122,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 14
+    },
+    {
+      "path": "fragments/p122_snippet_048.txt",
+      "pdf_page_start": 122,
+      "pdf_page_end": 122,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 12
+    },
+    {
+      "path": "programs/p122_O8004.nc",
+      "pdf_page_start": 122,
+      "pdf_page_end": 122,
+      "kind": "numbered-program",
+      "program_number": "O8004",
+      "source_complete": true,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 9
+    },
+    {
+      "path": "fragments/p123_O0006.txt",
+      "pdf_page_start": 123,
+      "pdf_page_end": 123,
+      "kind": "numbered-program",
+      "program_number": "O0006",
+      "source_complete": false,
+      "features": [],
+      "lines": 15
+    },
+    {
+      "path": "fragments/p124_O0007.txt",
+      "pdf_page_start": 124,
+      "pdf_page_end": 124,
+      "kind": "numbered-program",
+      "program_number": "O0007",
+      "source_complete": false,
+      "features": [],
+      "lines": 15
+    },
+    {
+      "path": "fragments/p124_O0008.txt",
+      "pdf_page_start": 124,
+      "pdf_page_end": 124,
+      "kind": "numbered-program",
+      "program_number": "O0008",
+      "source_complete": false,
+      "features": [],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p125_O0009.txt",
+      "pdf_page_start": 125,
+      "pdf_page_end": 125,
+      "kind": "numbered-program",
+      "program_number": "O0009",
+      "source_complete": false,
+      "features": [],
+      "lines": 19
+    },
+    {
+      "path": "fragments/p125_snippet_049.txt",
+      "pdf_page_start": 125,
+      "pdf_page_end": 125,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 14
+    },
+    {
+      "path": "fragments/p126_O0010.txt",
+      "pdf_page_start": 126,
+      "pdf_page_end": 126,
+      "kind": "numbered-program",
+      "program_number": "O0010",
+      "source_complete": false,
+      "features": [],
+      "lines": 19
+    },
+    {
+      "path": "fragments/p130_snippet_053.txt",
+      "pdf_page_start": 130,
+      "pdf_page_end": 130,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 7
+    },
+    {
+      "path": "fragments/p133_snippet_055.txt",
+      "pdf_page_start": 133,
+      "pdf_page_end": 133,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p133_snippet_058.txt",
+      "pdf_page_start": 133,
+      "pdf_page_end": 133,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p134_snippet_059.txt",
+      "pdf_page_start": 134,
+      "pdf_page_end": 134,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p134_snippet_060.txt",
+      "pdf_page_start": 134,
+      "pdf_page_end": 134,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p135_snippet_061.txt",
+      "pdf_page_start": 135,
+      "pdf_page_end": 135,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 9
+    },
+    {
+      "path": "fragments/p136_snippet_064.txt",
+      "pdf_page_start": 136,
+      "pdf_page_end": 136,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p136_snippet_065.txt",
+      "pdf_page_start": 136,
+      "pdf_page_end": 136,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p137_snippet_072.txt",
+      "pdf_page_start": 137,
+      "pdf_page_end": 137,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p138_snippet_073.txt",
+      "pdf_page_start": 138,
+      "pdf_page_end": 138,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p139_snippet_074.txt",
+      "pdf_page_start": 139,
+      "pdf_page_end": 139,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p139_snippet_075.txt",
+      "pdf_page_start": 139,
+      "pdf_page_end": 139,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p140_snippet_076.txt",
+      "pdf_page_start": 140,
+      "pdf_page_end": 140,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p140_snippet_077.txt",
+      "pdf_page_start": 140,
+      "pdf_page_end": 140,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p140_snippet_078.txt",
+      "pdf_page_start": 140,
+      "pdf_page_end": 140,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p140_snippet_079.txt",
+      "pdf_page_start": 140,
+      "pdf_page_end": 140,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 7
+    },
+    {
+      "path": "fragments/p141_snippet_080.txt",
+      "pdf_page_start": 141,
+      "pdf_page_end": 141,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 7
+    },
+    {
+      "path": "fragments/p142_snippet_085.txt",
+      "pdf_page_start": 142,
+      "pdf_page_end": 142,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p143_snippet_090.txt",
+      "pdf_page_start": 143,
+      "pdf_page_end": 143,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 3
+    },
+    {
+      "path": "fragments/p147_snippet_093.txt",
+      "pdf_page_start": 147,
+      "pdf_page_end": 147,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p147_snippet_094.txt",
+      "pdf_page_start": 147,
+      "pdf_page_end": 147,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p148_snippet_095.txt",
+      "pdf_page_start": 148,
+      "pdf_page_end": 148,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p149_O8888.txt",
+      "pdf_page_start": 149,
+      "pdf_page_end": 150,
+      "kind": "numbered-program",
+      "program_number": "O8888",
+      "source_complete": false,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 56
+    },
+    {
+      "path": "programs/p151_O0011.nc",
+      "pdf_page_start": 151,
+      "pdf_page_end": 151,
+      "kind": "numbered-program",
+      "program_number": "O0011",
+      "source_complete": true,
+      "features": [],
+      "lines": 14
+    },
+    {
+      "path": "programs/p152_O0012.nc",
+      "pdf_page_start": 152,
+      "pdf_page_end": 152,
+      "kind": "numbered-program",
+      "program_number": "O0012",
+      "source_complete": true,
+      "features": [],
+      "lines": 14
+    },
+    {
+      "path": "fragments/p153_O0014.txt",
+      "pdf_page_start": 153,
+      "pdf_page_end": 153,
+      "kind": "numbered-program",
+      "program_number": "O0014",
+      "source_complete": false,
+      "features": [],
+      "lines": 5
+    },
+    {
+      "path": "programs/p153_O0013.nc",
+      "pdf_page_start": 153,
+      "pdf_page_end": 153,
+      "kind": "numbered-program",
+      "program_number": "O0013",
+      "source_complete": true,
+      "features": [],
+      "lines": 15
+    },
+    {
+      "path": "fragments/p154_snippet_096.txt",
+      "pdf_page_start": 154,
+      "pdf_page_end": 154,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 5
+    },
+    {
+      "path": "programs/p154_O0015.nc",
+      "pdf_page_start": 154,
+      "pdf_page_end": 154,
+      "kind": "numbered-program",
+      "program_number": "O0015",
+      "source_complete": true,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 20
+    },
+    {
+      "path": "programs/p155_O0016.nc",
+      "pdf_page_start": 155,
+      "pdf_page_end": 155,
+      "kind": "numbered-program",
+      "program_number": "O0016",
+      "source_complete": true,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 16
+    },
+    {
+      "path": "programs/p156_O0017.nc",
+      "pdf_page_start": 156,
+      "pdf_page_end": 156,
+      "kind": "numbered-program",
+      "program_number": "O0017",
+      "source_complete": true,
+      "features": [
+        "call",
+        "arithmetic"
+      ],
+      "lines": 10
+    },
+    {
+      "path": "programs/p156_O8005.nc",
+      "pdf_page_start": 156,
+      "pdf_page_end": 156,
+      "kind": "numbered-program",
+      "program_number": "O8005",
+      "source_complete": true,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p157_O0017.txt",
+      "pdf_page_start": 157,
+      "pdf_page_end": 157,
+      "kind": "numbered-program",
+      "program_number": "O0017",
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 9
+    },
+    {
+      "path": "programs/p157_O8006.nc",
+      "pdf_page_start": 157,
+      "pdf_page_end": 157,
+      "kind": "numbered-program",
+      "program_number": "O8006",
+      "source_complete": true,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p168_snippet_101.txt",
+      "pdf_page_start": 168,
+      "pdf_page_end": 168,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 3
+    },
+    {
+      "path": "programs/p168_O8007.nc",
+      "pdf_page_start": 168,
+      "pdf_page_end": 168,
+      "kind": "numbered-program",
+      "program_number": "O8007",
+      "source_complete": true,
+      "features": [
+        "system-vars"
+      ],
+      "lines": 10
+    },
+    {
+      "path": "fragments/p170_snippet_102.txt",
+      "pdf_page_start": 170,
+      "pdf_page_end": 170,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 6
+    },
+    {
+      "path": "fragments/p170_snippet_103.txt",
+      "pdf_page_start": 170,
+      "pdf_page_end": 170,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 6
+    },
+    {
+      "path": "fragments/p171_snippet_104.txt",
+      "pdf_page_start": 171,
+      "pdf_page_end": 171,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 6
+    },
+    {
+      "path": "fragments/p171_snippet_105.txt",
+      "pdf_page_start": 171,
+      "pdf_page_end": 171,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 6
+    },
+    {
+      "path": "fragments/p171_snippet_106.txt",
+      "pdf_page_start": 171,
+      "pdf_page_end": 171,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 6
+    },
+    {
+      "path": "fragments/p190_O0018.txt",
+      "pdf_page_start": 190,
+      "pdf_page_end": 190,
+      "kind": "numbered-program",
+      "program_number": "O0018",
+      "source_complete": false,
+      "features": [
+        "system-vars"
+      ],
+      "lines": 10
+    },
+    {
+      "path": "fragments/p195_snippet_111.txt",
+      "pdf_page_start": 195,
+      "pdf_page_end": 195,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "conditional"
+      ],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p195_snippet_112.txt",
+      "pdf_page_start": 195,
+      "pdf_page_end": 195,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "conditional"
+      ],
+      "lines": 7
+    },
+    {
+      "path": "fragments/p196_snippet_114.txt",
+      "pdf_page_start": 196,
+      "pdf_page_end": 196,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "conditional",
+        "system-vars"
+      ],
+      "lines": 7
+    },
+    {
+      "path": "fragments/p197_snippet_115.txt",
+      "pdf_page_start": 197,
+      "pdf_page_end": 197,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "conditional",
+        "system-vars"
+      ],
+      "lines": 4
+    },
+    {
+      "path": "fragments/p205_snippet_117.txt",
+      "pdf_page_start": 205,
+      "pdf_page_end": 205,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "conditional"
+      ],
+      "lines": 7
+    },
+    {
+      "path": "fragments/p205_snippet_118.txt",
+      "pdf_page_start": 205,
+      "pdf_page_end": 205,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "conditional"
+      ],
+      "lines": 7
+    },
+    {
+      "path": "fragments/p205_snippet_119.txt",
+      "pdf_page_start": 205,
+      "pdf_page_end": 205,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "conditional"
+      ],
+      "lines": 7
+    },
+    {
+      "path": "fragments/p205_snippet_120.txt",
+      "pdf_page_start": 205,
+      "pdf_page_end": 205,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "conditional"
+      ],
+      "lines": 7
+    },
+    {
+      "path": "programs/p207_O8009.nc",
+      "pdf_page_start": 207,
+      "pdf_page_end": 207,
+      "kind": "numbered-program",
+      "program_number": "O8009",
+      "source_complete": true,
+      "features": [
+        "loop",
+        "arithmetic"
+      ],
+      "lines": 9
+    },
+    {
+      "path": "fragments/p208_O0019.txt",
+      "pdf_page_start": 208,
+      "pdf_page_end": 208,
+      "kind": "numbered-program",
+      "program_number": "O0019",
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 6
+    },
+    {
+      "path": "fragments/p208_O8010.txt",
+      "pdf_page_start": 208,
+      "pdf_page_end": 208,
+      "kind": "numbered-program",
+      "program_number": "O8010",
+      "source_complete": false,
+      "features": [],
+      "lines": 7
+    },
+    {
+      "path": "programs/p208_O8011.nc",
+      "pdf_page_start": 208,
+      "pdf_page_end": 208,
+      "kind": "numbered-program",
+      "program_number": "O8011",
+      "source_complete": true,
+      "features": [
+        "loop"
+      ],
+      "lines": 8
+    },
+    {
+      "path": "fragments/p210_O8012.txt",
+      "pdf_page_start": 210,
+      "pdf_page_end": 210,
+      "kind": "numbered-program",
+      "program_number": "O8012",
+      "source_complete": false,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm"
+      ],
+      "lines": 8
+    },
+    {
+      "path": "programs/p210_O8013.nc",
+      "pdf_page_start": 210,
+      "pdf_page_end": 210,
+      "kind": "numbered-program",
+      "program_number": "O8013",
+      "source_complete": true,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 10
+    },
+    {
+      "path": "fragments/p211_O8015.txt",
+      "pdf_page_start": 211,
+      "pdf_page_end": 211,
+      "kind": "numbered-program",
+      "program_number": "O8015",
+      "source_complete": false,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 14
+    },
+    {
+      "path": "programs/p211_O8014.nc",
+      "pdf_page_start": 211,
+      "pdf_page_end": 211,
+      "kind": "numbered-program",
+      "program_number": "O8014",
+      "source_complete": true,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 11
+    },
+    {
+      "path": "fragments/p212_O8016.txt",
+      "pdf_page_start": 212,
+      "pdf_page_end": 212,
+      "kind": "numbered-program",
+      "program_number": "O8016",
+      "source_complete": false,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm"
+      ],
+      "lines": 10
+    },
+    {
+      "path": "programs/p214_O8017.nc",
+      "pdf_page_start": 214,
+      "pdf_page_end": 214,
+      "kind": "numbered-program",
+      "program_number": "O8017",
+      "source_complete": true,
+      "features": [
+        "system-vars"
+      ],
+      "lines": 18
+    },
+    {
+      "path": "programs/p214_O8018.nc",
+      "pdf_page_start": 214,
+      "pdf_page_end": 214,
+      "kind": "numbered-program",
+      "program_number": "O8018",
+      "source_complete": true,
+      "features": [
+        "loop",
+        "system-vars"
+      ],
+      "lines": 6
+    },
+    {
+      "path": "programs/p218_O8019.nc",
+      "pdf_page_start": 218,
+      "pdf_page_end": 218,
+      "kind": "numbered-program",
+      "program_number": "O8019",
+      "source_complete": true,
+      "features": [
+        "system-vars"
+      ],
+      "lines": 5
+    },
+    {
+      "path": "programs/p221_O8020.nc",
+      "pdf_page_start": 221,
+      "pdf_page_end": 221,
+      "kind": "numbered-program",
+      "program_number": "O8020",
+      "source_complete": true,
+      "features": [
+        "system-vars",
+        "arithmetic"
+      ],
+      "lines": 12
+    },
+    {
+      "path": "fragments/p233_snippet_126.txt",
+      "pdf_page_start": 233,
+      "pdf_page_end": 233,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 20
+    },
+    {
+      "path": "fragments/p234_snippet_127.txt",
+      "pdf_page_start": 234,
+      "pdf_page_end": 234,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 20
+    },
+    {
+      "path": "fragments/p238_snippet_128.txt",
+      "pdf_page_start": 238,
+      "pdf_page_end": 238,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [],
+      "lines": 20
+    },
+    {
+      "path": "fragments/p240_snippet_129.txt",
+      "pdf_page_start": 240,
+      "pdf_page_end": 240,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 13
+    },
+    {
+      "path": "programs/p240_O8021.nc",
+      "pdf_page_start": 240,
+      "pdf_page_end": 240,
+      "kind": "numbered-program",
+      "program_number": "O8021",
+      "source_complete": true,
+      "features": [],
+      "lines": 12
+    },
+    {
+      "path": "fragments/p241_snippet_130.txt",
+      "pdf_page_start": 241,
+      "pdf_page_end": 241,
+      "kind": "teaching-fragment",
+      "program_number": null,
+      "source_complete": false,
+      "features": [
+        "call",
+        "conditional",
+        "system-vars",
+        "alarm"
+      ],
+      "lines": 34
+    },
+    {
+      "path": "programs/p241_O8021.nc",
+      "pdf_page_start": 241,
+      "pdf_page_end": 241,
+      "kind": "numbered-program",
+      "program_number": "O8021",
+      "source_complete": true,
+      "features": [],
+      "lines": 12
+    },
+    {
+      "path": "fragments/p245_O0021.txt",
+      "pdf_page_start": 245,
+      "pdf_page_end": 245,
+      "kind": "numbered-program",
+      "program_number": "O0021",
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 9
+    },
+    {
+      "path": "programs/p245_O8101.nc",
+      "pdf_page_start": 245,
+      "pdf_page_end": 245,
+      "kind": "numbered-program",
+      "program_number": "O8101",
+      "source_complete": true,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 7
+    },
+    {
+      "path": "programs/p245_O8101_v2.nc",
+      "pdf_page_start": 245,
+      "pdf_page_end": 245,
+      "kind": "numbered-program",
+      "program_number": "O8101",
+      "source_complete": true,
+      "features": [
+        "arithmetic"
+      ],
+      "lines": 5
+    },
+    {
+      "path": "fragments/p247_O0022.txt",
+      "pdf_page_start": 247,
+      "pdf_page_end": 247,
+      "kind": "numbered-program",
+      "program_number": "O0022",
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 9
+    },
+    {
+      "path": "programs/p247_O8102.nc",
+      "pdf_page_start": 247,
+      "pdf_page_end": 247,
+      "kind": "numbered-program",
+      "program_number": "O8102",
+      "source_complete": true,
+      "features": [],
+      "lines": 7
+    },
+    {
+      "path": "fragments/p250_O0023.txt",
+      "pdf_page_start": 250,
+      "pdf_page_end": 250,
+      "kind": "numbered-program",
+      "program_number": "O0023",
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 9
+    },
+    {
+      "path": "programs/p250_O8103.nc",
+      "pdf_page_start": 250,
+      "pdf_page_end": 250,
+      "kind": "numbered-program",
+      "program_number": "O8103",
+      "source_complete": true,
+      "features": [
+        "loop",
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 36
+    },
+    {
+      "path": "fragments/p254_O0024.txt",
+      "pdf_page_start": 254,
+      "pdf_page_end": 254,
+      "kind": "numbered-program",
+      "program_number": "O0024",
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 10
+    },
+    {
+      "path": "programs/p254_O8104.nc",
+      "pdf_page_start": 254,
+      "pdf_page_end": 254,
+      "kind": "numbered-program",
+      "program_number": "O8104",
+      "source_complete": true,
+      "features": [
+        "loop",
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 24
+    },
+    {
+      "path": "fragments/p257_O0025.txt",
+      "pdf_page_start": 257,
+      "pdf_page_end": 257,
+      "kind": "numbered-program",
+      "program_number": "O0025",
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 10
+    },
+    {
+      "path": "programs/p257_O8105.nc",
+      "pdf_page_start": 257,
+      "pdf_page_end": 257,
+      "kind": "numbered-program",
+      "program_number": "O8105",
+      "source_complete": true,
+      "features": [
+        "loop",
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 29
+    },
+    {
+      "path": "fragments/p260_O0026.txt",
+      "pdf_page_start": 260,
+      "pdf_page_end": 260,
+      "kind": "numbered-program",
+      "program_number": "O0026",
+      "source_complete": false,
+      "features": [
+        "call"
+      ],
+      "lines": 10
+    },
+    {
+      "path": "programs/p260_O8106.nc",
+      "pdf_page_start": 260,
+      "pdf_page_end": 261,
+      "kind": "numbered-program",
+      "program_number": "O8106",
+      "source_complete": true,
+      "features": [
+        "loop",
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 58
+    },
+    {
+      "path": "programs/p264_O0027.nc",
+      "pdf_page_start": 264,
+      "pdf_page_end": 264,
+      "kind": "numbered-program",
+      "program_number": "O0027",
+      "source_complete": true,
+      "features": [
+        "call"
+      ],
+      "lines": 9
+    },
+    {
+      "path": "programs/p264_O8107.nc",
+      "pdf_page_start": 264,
+      "pdf_page_end": 265,
+      "kind": "numbered-program",
+      "program_number": "O8107",
+      "source_complete": true,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 36
+    },
+    {
+      "path": "programs/p268_O0028.nc",
+      "pdf_page_start": 268,
+      "pdf_page_end": 268,
+      "kind": "numbered-program",
+      "program_number": "O0028",
+      "source_complete": true,
+      "features": [
+        "call"
+      ],
+      "lines": 9
+    },
+    {
+      "path": "programs/p268_O8108.nc",
+      "pdf_page_start": 268,
+      "pdf_page_end": 269,
+      "kind": "numbered-program",
+      "program_number": "O8108",
+      "source_complete": true,
+      "features": [
+        "conditional",
+        "system-vars",
+        "arithmetic"
+      ],
+      "lines": 54
+    },
+    {
+      "path": "programs/p270_O8022.nc",
+      "pdf_page_start": 270,
+      "pdf_page_end": 270,
+      "kind": "numbered-program",
+      "program_number": "O8022",
+      "source_complete": true,
+      "features": [],
+      "lines": 5
+    },
+    {
+      "path": "programs/p272_O0029.nc",
+      "pdf_page_start": 272,
+      "pdf_page_end": 272,
+      "kind": "numbered-program",
+      "program_number": "O0029",
+      "source_complete": true,
+      "features": [
+        "call"
+      ],
+      "lines": 12
+    },
+    {
+      "path": "programs/p272_O8109.nc",
+      "pdf_page_start": 272,
+      "pdf_page_end": 272,
+      "kind": "numbered-program",
+      "program_number": "O8109",
+      "source_complete": true,
+      "features": [
+        "loop",
+        "conditional",
+        "system-vars",
+        "arithmetic"
+      ],
+      "lines": 20
+    },
+    {
+      "path": "fragments/p275_O0030.txt",
+      "pdf_page_start": 275,
+      "pdf_page_end": 275,
+      "kind": "numbered-program",
+      "program_number": "O0030",
+      "source_complete": false,
+      "features": [],
+      "lines": 10
+    },
+    {
+      "path": "programs/p275_O8110.nc",
+      "pdf_page_start": 275,
+      "pdf_page_end": 275,
+      "kind": "numbered-program",
+      "program_number": "O8110",
+      "source_complete": true,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 38
+    },
+    {
+      "path": "programs/p285_O9012.nc",
+      "pdf_page_start": 285,
+      "pdf_page_end": 286,
+      "kind": "numbered-program",
+      "program_number": "O9012",
+      "source_complete": true,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 15
+    },
+    {
+      "path": "programs/p285_O9013.nc",
+      "pdf_page_start": 285,
+      "pdf_page_end": 285,
+      "kind": "numbered-program",
+      "program_number": "O9013",
+      "source_complete": true,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm",
+        "arithmetic"
+      ],
+      "lines": 15
+    },
+    {
+      "path": "programs/p288_O0031.nc",
+      "pdf_page_start": 288,
+      "pdf_page_end": 288,
+      "kind": "numbered-program",
+      "program_number": "O0031",
+      "source_complete": true,
+      "features": [],
+      "lines": 16
+    },
+    {
+      "path": "programs/p295_O8200.nc",
+      "pdf_page_start": 295,
+      "pdf_page_end": 295,
+      "kind": "numbered-program",
+      "program_number": "O8200",
+      "source_complete": true,
+      "features": [
+        "loop"
+      ],
+      "lines": 12
+    },
+    {
+      "path": "programs/p311_O0032.nc",
+      "pdf_page_start": 311,
+      "pdf_page_end": 311,
+      "kind": "numbered-program",
+      "program_number": "O0032",
+      "source_complete": true,
+      "features": [
+        "call"
+      ],
+      "lines": 11
+    },
+    {
+      "path": "programs/p311_O8112.nc",
+      "pdf_page_start": 311,
+      "pdf_page_end": 312,
+      "kind": "numbered-program",
+      "program_number": "O8112",
+      "source_complete": true,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm",
+        "probing"
+      ],
+      "lines": 45
+    },
+    {
+      "path": "programs/p313_O0033.nc",
+      "pdf_page_start": 313,
+      "pdf_page_end": 313,
+      "kind": "numbered-program",
+      "program_number": "O0033",
+      "source_complete": true,
+      "features": [
+        "call"
+      ],
+      "lines": 8
+    },
+    {
+      "path": "programs/p313_O8113.nc",
+      "pdf_page_start": 313,
+      "pdf_page_end": 314,
+      "kind": "numbered-program",
+      "program_number": "O8113",
+      "source_complete": true,
+      "features": [
+        "conditional",
+        "system-vars",
+        "alarm",
+        "probing",
+        "arithmetic"
+      ],
+      "lines": 31
+    }
+  ]
+}

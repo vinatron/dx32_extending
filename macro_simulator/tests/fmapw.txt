@@ -1,0 +1,24 @@
+; -map warnings: #2 never called, #7 called but never defined (in a branch the run skips), #3 calls
+; itself (also skipped), and label L8 in a program that uses canned cycles
+#1; Used
+G4P.1
+$
+#2; Unused
+G4P.1
+$
+#3; Self
+?A1<GT>0.
+=#3
+!
+$
+L8
+=#1
+=#3
+?A1<GT>0.
+=#7
+!
+G0X0Y0Z.1
+G81Z.2F10.
+X1.
+G80
+M2

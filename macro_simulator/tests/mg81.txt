@@ -1,0 +1,11 @@
+; Programmer's manual chapter 5, G81 example (Y5 printed without a point is read as Y.5)
+N1G0G90X0Y0T1M6
+N5X1.Y.5Z.05; Position for first hole
+.N10G81Z1.1F80.; Set the drill cycle
+N15X1.; Drill first hole
+N20X.5Y1.; Drill second hole
+N25G0X2.Z-.45; Rapid to X position third hole
+.N30G81Z.6F80.; Set up drill cycle
+N35Y1.; Drill third hole
+N40X2.5Y.5; Drill fourth hole
+N45G0X0Y0M2; End of program

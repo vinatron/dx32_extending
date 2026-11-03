@@ -1,0 +1,13 @@
+; travel test: G81 drilling with part zero at machine Z-15. (Z limit -20, so part Z down to -5.)
+; G81 Z is the depth below the current Z and the cycle drills at the next position:
+; from Z.5, Z4. reaches -3.5 (line 7) and Z6. reaches -5.5 (line 11, error reported there)
+N1G0G90X1.Y1.Z.5
+N2S1000M3
+N3G81Z4.F10.
+N4X2.
+N5G80
+N6G0X3.Y1.Z.5
+N7G81Z6.F10.
+N8X3.5
+N9G80
+N10M2

@@ -1,0 +1,17 @@
+FILE     fbjob.nc (from line 1)
+DIALECT  series 10 15 16 0i 30i (Macro B at line 18, THEN at line 18)
+NOTE     line 18: the #0 test is always false here (the run covers every call); written so
+NOTE     line 19: the #0 test is always false here (the run covers every call); written so
+NOTE     line 29: not reached when evaluated; translated as written
+NOTE     line 30: not reached when evaluated; translated as written
+NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
+NOTE     drilling cycles are written out as moves; cycle values in D20 D22 D23 D24 D25
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     G28 Z0 written as M25, the DX32 quill home (TENTATIVE: check that it goes where FANUC's reference point is) (-g28)
+NOTE     #3000/#3006 written as a comment with the message and M2/M0; the DX32 shows no message
+NOTE     loops and jumps use labels L1-L1; do not call this from a loop that uses them
+NOTE     1 called program(s) written as DX32 macros #1-#1, nested 1 deep
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwjob.txt
+CHECK    dxsim reads fbwjob.txt cleanly and reaches all 44 FANUC end points in order
+RESULT   ok

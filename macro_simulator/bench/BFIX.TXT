@@ -1,0 +1,11 @@
+; BFIX.TXT - open question L8: do the integer functions (LSR, NOT, AND...) round or truncate?
+A1=LSR(0,2.5)
+A2=LSR(0,3.5)
+A3=LSR(0,2.7)
+A4=LSR(0,2.2)
+A5=NOT(-1.5)
+M0
+; At the M0 stop look at A1-A5.
+; Rounded to nearest, ties to even (dxsim): A1=2 A2=4 A3=3 A4=2 A5=1
+; Truncated: A1=2 A2=3 A3=2 A4=2 A5=0
+M2

@@ -1,0 +1,13 @@
+; CCAGAIN: G42 while compensating (OPENQ A13). 0x20d0e sets state 2 whatever the state: the held
+; records N21 and N22 (held, nothing cut yet) are dropped, N23 goes uncompensated from where the tool
+; is (the turn-on point of N20), and N24 is the new approach.
+N10G0G90X-1.Y1.T1M6
+N20G41Y0Z0
+N21G1X0Y0F20.
+N22X1.5
+N23G42Y-1.5
+N24X0
+N25Y.1
+N26X-.5
+N27G0G40X-1.Y1.
+N40M2

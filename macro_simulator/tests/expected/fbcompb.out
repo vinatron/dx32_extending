@@ -1,0 +1,5 @@
+FILE     fbcomp.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+REFUSED  line 8: G41 with start-up type B: the DX32 approaches like type A; -comp dx32 accepts that
+STOP     fbwcompb.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

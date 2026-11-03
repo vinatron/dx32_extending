@@ -1,0 +1,7 @@
+#1 = #0
+IF[#1 EQ 0
+IF[#1 NE 0]
+IF[#1 GT 0]
+IF[#1 GE 0]
+IF[#1 LT 0]
+IF[#1 LE 0]

@@ -1,0 +1,4 @@
+FILE     ../../fanuc_macros/programs/p221_O8020.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 2)
+REFUSED  line 2: #3003: system variables do not translate
+RESULT   stopped: see REFUSED/STOP above

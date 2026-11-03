@@ -1,0 +1,6 @@
+; error test: a G170 block without F; the cycle text stops, the report names line 4
+T1//0.
+N1G0G90X0Y0Z.1T1M6
+N2S1000M3
+N3G170X1.Y1.Z0X1.Y1.R.1Z.2P.1P.1
+N4M2

@@ -1,0 +1,19 @@
+ERROR   line 3: Parser: Illegal G-Code
+        N2G33X1.
+          ^
+ERROR   line 4: PPPL: Improper Function call
+        X1=(2+*3)
+              ^
+ERROR   line 5: Parser: Illegal Condition Code
+        ?X1<XX>2.
+              ^
+ERROR   line 6: Parser: #9 Internal Addressing Error
+        =L12
+         ^
+ERROR   line 7: Parser: #15 Internal Addressing Error
+        T30
+        ^
+ERROR   line 8: PPPL: Syntax Error-Parsed past End of Line
+        X2=SIN(
+              ^
+6 errors in 9 lines

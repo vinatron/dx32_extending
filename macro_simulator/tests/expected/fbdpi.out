@@ -1,0 +1,4 @@
+FILE     fbdpi.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+STOP     line 2: a number without a decimal point in a dimension word: give -fparam dpi=0|1, or -fparam default (fb2dx -series list)
+RESULT   stopped: see REFUSED/STOP above

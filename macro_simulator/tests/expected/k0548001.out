@@ -1,0 +1,23 @@
+FILE     ../../fanuc_macros/programs/p054_O8001.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+NOTE     line 15: M99 in the main program repeats it on the control; evaluated once
+REFUSED  line 2: address W does not translate yet
+REFUSED  line 3: address U does not translate yet
+REFUSED  line 4: address U does not translate yet
+REFUSED  line 5: address W does not translate yet
+REFUSED  line 6: address U does not translate yet
+REFUSED  line 6: address W does not translate yet
+REFUSED  line 7: address U does not translate yet
+REFUSED  line 8: address U does not translate yet
+REFUSED  line 8: address W does not translate yet
+REFUSED  line 9: address W does not translate yet
+REFUSED  line 10: address U does not translate yet
+REFUSED  line 10: address W does not translate yet
+REFUSED  line 11: address U does not translate yet
+REFUSED  line 12: address W does not translate yet
+REFUSED  line 13: address U does not translate yet
+REFUSED  line 13: address W does not translate yet
+REFUSED  line 14: address W does not translate yet
+REFUSED  line 15: M99 in the main program makes FANUC repeat it for ever; not translated
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

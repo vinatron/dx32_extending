@@ -1,0 +1,6 @@
+; G83 deep hole, total .9, first peck .3, then .2
+N1G0G90X0Y0Z.1T1M6
+N5S1000M3
+N10G83X1.Y1.Z.9Z.3Z.2F10.
+N15G80
+N20M2

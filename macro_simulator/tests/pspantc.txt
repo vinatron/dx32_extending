@@ -1,0 +1,8 @@
+; the same program on a TC22 parameter file with the VMC-1000 section (40 in of X): no travel warning; S8000 is above 7500
+; and S8000 is above this machine's spindle maximum
+N1G0G90X0Y0Z.1
+N2S8000M3
+N3G1Z-.1F20.
+N4G1X25.
+N5G0Z.1
+N6M2

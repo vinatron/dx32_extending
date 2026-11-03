@@ -1,0 +1,5 @@
+ERROR   line 7: Parser: #14 Internal Addressing Error
+        =N1/2
+------- summary
+moves   0 (rapid 0.0000, feed 0.0000 in)
+final   X0.0000 Y0.0000 Z0.0000  (G90, G0, T0)

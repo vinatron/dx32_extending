@@ -1,0 +1,11 @@
+; BLOOP.TXT - open question L4 (answered from the firmware; this confirms it): how deep do =N loops nest?
+; The 6.89 firmware allows 5 and stops at the 6th with "Parser: #14 Internal Addressing Error".
+; If the control stops at the 5th =N line instead, the limit is 4, as the manual says.
+=N1/2
+=N1/2
+=N1/2
+=N1/2
+=N1/2
+=N1/2
+N1G4Q.1
+M2

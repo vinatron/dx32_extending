@@ -1,0 +1,10 @@
+UI    1 MAIN 1                                     RUN
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key ESC
+UI    1 MAIN 2  T1//0.                             STOPPED - any key
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key (end)
+SCREEN  moves 0 points 4 offscreen 0 time 0 ms
+------- summary
+moves   0 (rapid 0.0000, feed 0.0000 in)
+final   X0.0000 Y0.0000 Z0.0000  (G90, G0, T1)

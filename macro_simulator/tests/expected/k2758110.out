@@ -1,0 +1,42 @@
+FILE     ../../fanuc_macros/programs/p275_O8110.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 2)
+NOTE     line 30: the FANUC alarm 101 (LENGTH ALONG NOT DEFINED) stops the program here
+NOTE     line 2: the #0 test is always true here (the run covers every call); written so
+REFUSED  line 3: not reached when evaluated, and reads #11, which the run never set
+REFUSED  line 4: not reached when evaluated, and reads #18, which the run never set
+REFUSED  line 5: not reached when evaluated, and reads #7, which the run never set
+REFUSED  line 6: not reached when evaluated, and reads #9, which the run never set
+REFUSED  line 7: not reached when evaluated, and reads #26, which the run never set
+REFUSED  line 8: not reached when evaluated, and reads #7, which the run never set
+REFUSED  line 9: not reached when evaluated, and reads #120, which the run never set
+REFUSED  line 10: not reached when evaluated, and reads #11, which the run never set
+REFUSED  line 11: not reached when evaluated, and reads #31, which the run never set
+REFUSED  line 12: not reached when evaluated, and reads #120, which the run never set
+REFUSED  line 13: not reached when evaluated, and reads #23, which the run never set
+NOTE     line 14: not reached when evaluated; translated as written
+REFUSED  line 14: the unit system is not known: G20/G21 before this block, or -inch/-mm
+REFUSED  line 15: not reached when evaluated, and reads #26, which the run never set
+REFUSED  line 16: not reached when evaluated, and reads #32, which the run never set
+REFUSED  line 17: not reached when evaluated, and reads #32, which the run never set
+REFUSED  line 18: not reached when evaluated, and reads #33, which the run never set
+REFUSED  line 19: not reached when evaluated, and reads #18, which the run never set
+REFUSED  line 20: not reached when evaluated, and reads #31, which the run never set
+REFUSED  line 21: not reached when evaluated, and reads #18, which the run never set
+REFUSED  line 22: not reached when evaluated, and reads #33, which the run never set
+REFUSED  line 23: not reached when evaluated, and reads #18, which the run never set
+REFUSED  line 24: not reached when evaluated, and reads #31, which the run never set
+REFUSED  line 25: not reached when evaluated, and reads #18, which the run never set
+REFUSED  line 26: not reached when evaluated, and reads #33, which the run never set
+REFUSED  line 27: not reached when evaluated, and reads #32, which the run never set
+REFUSED  line 28: not reached when evaluated, and reads #32, which the run never set
+NOTE     line 29: not reached when evaluated; translated as written
+NOTE     line 31: not reached when evaluated; translated as written
+NOTE     line 32: not reached when evaluated; translated as written
+NOTE     line 33: not reached when evaluated; translated as written
+NOTE     line 34: not reached when evaluated; translated as written
+NOTE     line 35: not reached when evaluated; translated as written
+NOTE     line 36: not reached when evaluated; translated as written
+NOTE     line 37: not reached when evaluated; translated as written
+REFUSED  line 37: M99 in the main program makes FANUC repeat it for ever; not translated
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

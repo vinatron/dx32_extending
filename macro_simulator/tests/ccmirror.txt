@@ -1,0 +1,12 @@
+; cutter compensation: the 1.5 square of ccsq with X mirrored (G31): the side is swapped (0x20c86), so the mirrored part is still cut from outside
+N10G0G90X-1.Y1.T1M6
+N15G31
+N20G41Y0Z0
+N21G1X0Y0F20.
+N22X1.5
+N23Y-1.5
+N24X0
+N25Y.1
+N26G0G40X-1.Y1.
+N27G30
+N40M2

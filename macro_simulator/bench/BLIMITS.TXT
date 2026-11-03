@@ -1,0 +1,12 @@
+; BLIMITS.TXT - open question L2: 6.89 limits against the 1994 manual (indices, functions).
+; It should stop with an error at the Q20 line. Note the line and the message.
+X50=1.5
+Q19=2.
+A1=LGE(2.718281828)
+A2=HSN(90.)
+A3=LSR(2,16.)
+M0
+Q20=1.
+M2
+; Expected on 6.89: at the M0 stop X50 = 1.5, Q19 = 2, A1 = 1, A2 = 2.3013, A3 = 4; then
+; an error at Q20 (Q has indices 1-19; dxsim: "Parser: #16 Internal Addressing Error", 0x251ca). The 1994 manual allows only 1-9.

@@ -1,0 +1,12 @@
+O8200 (VARIABLE SETTINGS PRINT-OUT)
+POPEN
+#1 = 0
+WHILE[#1 LE [#5-#4]] DO1
+#2 = #[#4+[#1]]
+#3 = #4+#1
+DPRNT[VAR #3[5] ***DATA #2[57]]
+#1 = #1+1
+END1
+PCLOSE
+M99
+%

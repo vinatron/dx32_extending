@@ -1,0 +1,4 @@
+FILE     fbmacroa.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+STOP     line 3: G65 with H: Macro A operation or Macro B argument #11: give -series a for Macro A, or the Macro B series (fb2dx -series list)
+RESULT   stopped: see REFUSED/STOP above

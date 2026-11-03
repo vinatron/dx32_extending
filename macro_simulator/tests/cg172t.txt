@@ -1,0 +1,6 @@
+; pocket taller than wide (other branch of A12)
+T1//.25
+N1G0G90X0Y0Z.1T1M6
+N2S1000M3
+N5G172X0Y0Z.1X1.Y2.R.1Z.3Z.15P.1P.1F20.P.02
+N10G0Z1.M2

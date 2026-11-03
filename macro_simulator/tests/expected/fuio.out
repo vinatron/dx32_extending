@@ -1,0 +1,21 @@
+L3      IO    WRI(64) <- 15
+L6      IO    WRI(0) <- 7 (read-only entry: not written)
+L8      IO    PUT(11) <- 3e+09
+L11     IO    WRI(150) <- 5 (read-only entry: not written)
+L14     END   M2
+------- summary
+moves   0 (rapid 0.0000, feed 0.0000 in)
+final   X0.0000 Y0.0000 Z0.0000  (G90, G0, T0)
+------- variables
+A1  = 3840
+A2  = 15
+A3  = 3855
+A4  = 15
+A5  = 7
+A6  = 0
+A7  = 3e+09
+A8  = 3e+09
+A9  = -1.29497e+09
+B1  = 5
+B2  = 0
+B3  = 0

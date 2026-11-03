@@ -1,0 +1,5 @@
+FILE     fbrot.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+REFUSED  line 5: -check: the DX32 program goes to X2.2181 Y-1.3252 Z0.1969 (line 23 of the output); FANUC goes to X1.8244 Y0.2496 Z0.1969 (inches)
+STOP     -check: fbxrot.txt does not follow the FANUC tool path; do not run it
+RESULT   stopped: see REFUSED/STOP above

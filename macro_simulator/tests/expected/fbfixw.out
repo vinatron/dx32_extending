@@ -1,0 +1,8 @@
+FILE     fbfix.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 2, more common variables at line 31)
+NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
+NOTE     FIX/FUP/ROUND are built on LSR: exact below 4294967296 (TENTATIVE, bench/BFIX.TXT)
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwfix.txt
+CHECK    dxsim reads fbwfix.txt cleanly and reaches all 0 FANUC end points in order
+RESULT   ok

@@ -1,0 +1,5 @@
+FILE     fbcomp.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+REFUSED  line 8: G41: give the FANUC start-up type, -fparam sup=0 (type A) or 1 (type B), or -fparam default
+STOP     fbwcompx.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

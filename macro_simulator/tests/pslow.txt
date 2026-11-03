@@ -1,0 +1,5 @@
+; PSLOW: range minimum = param 74 x param 72 / param 73 (0x364ea): 1463 x 2000 / 6000 = 488 rpm
+S100M3
+S500
+M5
+M2

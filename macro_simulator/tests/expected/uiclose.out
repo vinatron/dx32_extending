@@ -1,0 +1,25 @@
+UI    1 MAIN 1                                     RUN
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key B
+UI    1 MAIN 1  ; cutter compensation, manual fig. BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+UI    1 MAIN 2  N10G0G90X-1.Y1.T1M6                BLOCK: key=next I=into O=over
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key n
+L2      TOOL  M6 change to T1 (TLO 0.0000 DIA 0.5000)
+L2      RAPID X-1.0000 Y1.0000 Z0.0000
+UI    1 MAIN 2  N10G0G90X-1.Y1.T1M6                BLOCK
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    1 MAIN 3  N20G41Y0Z0                         BLOCK: key=next I=into O=over
+UI    2 X  -1.0000 Y   1.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key CLOSE
+L3      RAPID X-1.0000 Y0.0000 Z0.0000
+UI    1 MAIN 4  N20G41Y0Z0                         STOPPED - any key
+UI    2 X  -1.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+UI    key (end)
+SCREEN  moves 1 points 6 offscreen 0 time 20 ms
+------- summary
+moves   2 (rapid 2.4142, feed 0.0000 in)
+extent  X-1.0000 Y0.0000 Z0.0000 .. X0.0000 Y1.0000 Z0.0000
+final   X-1.0000 Y0.0000 Z0.0000  (G90, G0, T1)

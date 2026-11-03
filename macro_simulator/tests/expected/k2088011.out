@@ -1,0 +1,8 @@
+FILE     ../../fanuc_macros/programs/p208_O8011.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 2)
+NOTE     line 7: M99 in the main program repeats it on the control; evaluated once
+REFUSED  line 4: #0 (vacant): the DX32 has no vacant value
+REFUSED  line 4: #[...]: an indirect variable does not translate (the DX32 has no indirection)
+REFUSED  line 7: M99 in the main program makes FANUC repeat it for ever; not translated
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

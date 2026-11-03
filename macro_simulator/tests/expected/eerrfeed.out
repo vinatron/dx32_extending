@@ -1,0 +1,8 @@
+L2      RAPID X0.0000 Y0.0000 Z0.1000
+L3      SPIN  M3 S1000
+ERROR   line 4: Parser: No Feedrate Specified
+        N3G1X1.
+------- summary
+moves   1 (rapid 0.1000, feed 0.0000 in)
+extent  X0.0000 Y0.0000 Z0.0000 .. X0.0000 Y0.0000 Z0.1000
+final   X0.0000 Y0.0000 Z0.1000  (G90, G1, T0)

@@ -1,0 +1,16 @@
+L4      WARN  fillet radius too big for its lines: a tangent point lies outside the line, the tool goes backwards (the firmware does not check)
+L4      WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+L4      FEED  X2.2500 Y0.0000 Z0.0000  F10.0
+L4      WARN  fillet arc of more than 180 degrees: G22/G23 does not match the turn, or the radius is too big for the lines
+L4      ARC2  X2.0000 Y-0.2500 Z0.0000  CX2.2500 Y-0.2500 R0.2500  -270.000 deg  F10.0
+L4      FEED  X2.0000 Y2.0000 Z0.0000  F10.0
+L5      RAPID X0.0000 Y0.0000 Z0.0000
+L7      FEED  X-1.0000 Y0.0000 Z0.0000  F10.0
+L7      ARC3  X1.0000 Y2.0000 Z0.0000  CX-1.0000 Y2.0000 R2.0000  +90.000 deg  F10.0
+L7      FEED  X1.0000 Y1.0000 Z0.0000  F10.0
+L8      END   M2
+------- summary
+moves   7 (rapid 2.8284, feed 10.8197 in)
+extent  X-1.0000 Y-0.5000 Z0.0000 .. X2.5000 Y2.0000 Z0.0000
+final   X1.0000 Y1.0000 Z0.0000  (G90, G1, T0)
+warnings 3

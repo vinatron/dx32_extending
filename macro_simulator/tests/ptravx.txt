@@ -1,0 +1,7 @@
+; travel test: -P P689.SYS -zero 10.,8.,-15. (X 0..22.2, Y 0..16.2, Z -20..0.2)
+; part X may reach 12.2; N4 asks for 12.3 -> Parser: Commanded X Axis Move Too Far Positive
+N1G0G90X0Y0Z.1
+N2S1000M3
+N3G1X12.2F20.
+N4G1X12.3Y1.
+N5M2

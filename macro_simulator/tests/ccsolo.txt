@@ -1,0 +1,12 @@
+; CCSOLO: G41 in a block without X Y Z (OPENQ A13). The state machine runs only for a block with an
+; axis word (0x1cf64), so N21 is the uncompensated turn-on move and N22 the approach: the top side
+; Y0 is cut with the tool centre on the line. Compare ccsq, where G41 is on a move.
+N10G0G90X-1.Y1.T1M6
+N20G41
+N21G1X0Y0F20.
+N22X1.5
+N23Y-1.5
+N24X0
+N25Y.1
+N26G0G40X-1.Y1.
+N40M2

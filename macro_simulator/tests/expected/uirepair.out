@@ -1,0 +1,43 @@
+UI    1 MAIN 1                                     RUN
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+L2      TOOL  M6 change to T1 (TLO 0.0000 DIA 0.5000)
+L2      RAPID X-1.0000 Y1.0000 Z0.0000
+UI    1 MAIN 2  N10G0G90X-1.Y1.T1M6                RUN
+UI    2 X   0.0000 Y   0.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+L3      RAPID X-1.0000 Y0.0000 Z0.0000
+UI    1 MAIN 3  N20G41Y0Z0                         RUN
+UI    2 X  -1.0000 Y   1.0000 Z   0.0000 F    0.0  move  20ms SPC B F +- ESC
+L4      WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+L4      FEED  X0.0000 Y0.2500 Z0.0000  F20.0  CDC
+UI    1 MAIN 4  N21G1X0Y0F20.                      RUN
+UI    2 X   1.5000 Y   0.0000 Z   0.0000 F   20.0  move  20ms SPC B F +- ESC
+L5      FEED  X1.5000 Y0.2500 Z0.0000  F20.0  CDC
+UI    1 MAIN 5  N22X1.5                            RUN
+UI    2 X   1.5000 Y   0.0000 Z   0.0000 F   20.0  move  20ms SPC B F +- ESC
+L5      ARC2  X1.7500 Y0.0000 Z0.0000  CX1.5000 Y0.0000 R0.2500  -90.000 deg  F30.0  CDC blend
+L6      FEED  X1.7500 Y-1.5000 Z0.0000  F20.0  CDC
+UI    1 MAIN 6  N23Y-1.5                           RUN
+UI    2 X   1.5000 Y  -1.5000 Z   0.0000 F   20.0  move  20ms SPC B F +- ESC
+L6      ARC2  X1.5000 Y-1.7500 Z0.0000  CX1.5000 Y-1.5000 R0.2500  -90.000 deg  F30.0  CDC blend
+L7      FEED  X0.0000 Y-1.7500 Z0.0000  F20.0  CDC
+UI    1 MAIN 7  N24X0                              RUN
+UI    2 X   0.0000 Y  -1.5000 Z   0.0000 F   20.0  move  20ms SPC B F +- ESC
+L7      ARC2  X-0.2500 Y-1.5000 Z0.0000  CX0.0000 Y-1.5000 R0.2500  -90.000 deg  F30.0  CDC blend
+L8      FEED  X-0.2500 Y0.1000 Z0.0000  F20.0  CDC
+UI    1 MAIN 8  N25Y.1                             RUN
+UI    2 X   0.0000 Y   0.1000 Z   0.0000 F   20.0  move  20ms SPC B F +- ESC
+L9      RAPID X-1.0000 Y1.0000 Z0.0000
+UI    1 MAIN 9  N26G0G40X-1.Y1.                    RUN
+UI    2 X   0.0000 Y   0.1000 Z   0.0000 F   20.0  move  20ms SPC B F +- ESC
+L10     TOOL  M6 change to T2 (TLO 0.0000 DIA 0.0000)
+L11     END   M2
+UI    1 MAIN 11  N40M2                              END - any key
+UI    2 X  -1.0000 Y   1.0000 Z   0.0000 F   20.0  move  20ms SPC B F +- ESC
+UI    repaint: 0 pixels differ
+UI    key (end)
+SCREEN  moves 11 points 108 offscreen 0 time 220 ms
+------- summary
+moves   11 (rapid 3.5858, feed 8.3089 in)
+extent  X-1.0000 Y-1.7500 Z0.0000 .. X1.7500 Y1.0000 Z0.0000
+final   X-1.0000 Y1.0000 Z0.0000  (G90, G0, T2)
+warnings 1

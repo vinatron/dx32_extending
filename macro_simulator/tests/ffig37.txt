@@ -1,0 +1,12 @@
+; fillets, manual fig. 3-7: seven R.25 fillets. The manual writes F20, which the control reads as variable F20 (0): F20. here
+N5G0X1.75Y0Z0
+N10G1X1.75Y.5F20.
+N15G23X2.5Y.5R.25
+N20G22X3.5Y2.0R.25
+N25G23X4.5Y2.25R.25
+N30G23X3.0Y3.5R.25
+N35G23X1.0Y2.75R.25
+N40G22X2.Y1.75R.25
+N45G23X1.Y.5R.25
+N50G1X1.75Y.5
+N60M2

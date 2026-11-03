@@ -1,0 +1,4 @@
+; error test: unknown G code -> Parser: Illegal G-Code, ^ under the word
+N1G0G90X0Y0Z.1
+N2G33X1.
+N3M2

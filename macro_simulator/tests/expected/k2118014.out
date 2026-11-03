@@ -1,0 +1,15 @@
+FILE     ../../fanuc_macros/programs/p211_O8014.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 2)
+VACANT   line 2: #4 is read while vacant (counts as 0 here)
+NOTE     line 7: the FANUC alarm 101 (HOLE SPACING TOO SMALL) stops the program here
+REFUSED  line 2: uses a vacant variable where the DX32 would use 0 (it has no vacant values)
+REFUSED  line 3: not reached when evaluated, and reads #11, which the run never set
+REFUSED  line 4: not reached when evaluated, and reads #11, which the run never set
+REFUSED  line 5: not reached when evaluated, and reads #24, which the run never set
+NOTE     line 6: not reached when evaluated; translated as written
+NOTE     line 8: not reached when evaluated; translated as written
+NOTE     line 9: not reached when evaluated; translated as written
+NOTE     line 10: not reached when evaluated; translated as written
+REFUSED  line 10: M99 in the main program makes FANUC repeat it for ever; not translated
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above
