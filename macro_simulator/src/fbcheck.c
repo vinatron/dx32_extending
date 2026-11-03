@@ -54,6 +54,7 @@ static int fanuc(fbx *x, int *idx, int max)
 
 int fbcheck(fbx *x, const char *prog, const char *dxsim)
 {
+    const char *src = x->cand == (1 << FS_HAAS) ? "Haas" : "FANUC";
     int *fi;
     char line[300], last[300], kind[16], where[32];
     FILE *fp;
@@ -133,7 +134,7 @@ int fbcheck(fbx *x, const char *prog, const char *dxsim)
         if (j < n && near(mx, f->x) && near(my, f->y) && near(mz, f->z)) {
             if (f->hasc && hasc && !(near(cx, f->cx) && near(cy, f->cy))) {
                 fbrep(x, "REFUSED", f->line, "-check: the DX32 arc (line %d of the output) has its centre at "
-                      "X%.4f Y%.4f, FANUC's is at X%.4f Y%.4f (inches)", dxline, cx, cy, f->cx, f->cy);
+                      "X%.4f Y%.4f, %s's is at X%.4f Y%.4f (inches)", dxline, cx, cy, src, f->cx, f->cy);
                 bad = 1;
                 break;
             }
@@ -145,10 +146,10 @@ int fbcheck(fbx *x, const char *prog, const char *dxsim)
         } else {
             if (j < n)
                 fbrep(x, "REFUSED", f->line, "-check: the DX32 program goes to X%.4f Y%.4f Z%.4f (line %d of "
-                      "the output); FANUC goes to X%.4f Y%.4f Z%.4f (inches)", mx, my, mz, dxline, f->x, f->y, f->z);
+                      "the output); %s goes to X%.4f Y%.4f Z%.4f (inches)", mx, my, mz, dxline, src, f->x, f->y, f->z);
             else
                 fbrep(x, "REFUSED", 0, "-check: the DX32 program moves on to X%.4f Y%.4f Z%.4f (line %d of the "
-                      "output) after the last FANUC move", mx, my, mz, dxline);
+                      "output) after the last %s move", mx, my, mz, dxline, src);
             bad = 1;
             break;
         }
@@ -158,17 +159,17 @@ int fbcheck(fbx *x, const char *prog, const char *dxsim)
     remove(CHKTMP);
     if (!bad && j < n) {
         fbmv *f = fbmvat(x, fi[j]);
-        fbrep(x, "REFUSED", f->line, "-check: the DX32 program stops after %d of the %d FANUC end points; the next "
-              "is X%.4f Y%.4f Z%.4f (inches)", j, n, f->x, f->y, f->z);
+        fbrep(x, "REFUSED", f->line, "-check: the DX32 program stops after %d of the %d %s end points; the next "
+              "is X%.4f Y%.4f Z%.4f (inches)", j, n, src, f->x, f->y, f->z);
         bad = 1;
     }
     free(fi);
     if (bad) {
-        fbrep(x, "STOP", 0, "-check: %.200s does not follow the FANUC tool path; do not run it", prog);
+        fbrep(x, "STOP", 0, "-check: %.200s does not follow the %s tool path; do not run it", prog, src);
         x->stop = 1;
         return 0;
     }
-    fbrep(x, "CHECK", 0, "dxsim reads %.200s cleanly and reaches all %d FANUC end points in order%s", prog, n,
+    fbrep(x, "CHECK", 0, "dxsim reads %.200s cleanly and reaches all %d %s end points in order%s", prog, n, src,
           nwarn ? " (dxsim warnings above)" : "");
     return 1;
 }

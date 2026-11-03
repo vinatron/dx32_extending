@@ -1,0 +1,22 @@
+; fb2dx: fbm97.nc, Haas, for the DX32 (BMDC 6.89)
+#1; N100 (M97)
+G91G1X.5
+Y.5
+X-.5
+Y-.5
+G90
+$
+G70G17G40G80G90
+T1M6
+G0G54X1.Y1.S2000M3
+Z.1M8
+G1Z-.1F10.
+=#1
+G0Z.5
+X3.Y1.
+G1Z-.1
+=#1
+G0Z1.M9
+M5
+M25
+M30

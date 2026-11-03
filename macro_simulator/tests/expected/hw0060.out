@@ -1,0 +1,24 @@
+FILE     haas/hw0060.nc (from line 1)
+DIALECT  series haas (given)
+REFUSED  line 30: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 31: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 32: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 33: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 34: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 35: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 36: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 37: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 38: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 39: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 40: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 41: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 42: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 43: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 44: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 45: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 52: G84 does not translate yet
+REFUSED  line 52: address R does not translate yet
+REFUSED  line 60: address R does not translate yet
+REFUSED  line 64: address R does not translate yet
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

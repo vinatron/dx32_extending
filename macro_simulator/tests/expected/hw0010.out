@@ -1,0 +1,8 @@
+FILE     haas/hw0010.nc (from line 1)
+DIALECT  series haas (given)
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     G28 Z written as M25, the DX32 quill home (TENTATIVE: check that it goes where FANUC's reference point is) (-g28)
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    dxtk.txt
+CHECK    dxsim reads dxtk.txt cleanly and reaches all 13 Haas end points in order
+RESULT   ok

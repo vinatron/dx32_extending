@@ -1,0 +1,14 @@
+FILE     haas/hw0080.nc (from line 1)
+FILE     haas/hw0081.nc (from line 57)
+DIALECT  series haas (given)
+REFUSED  line 9: G41: the Haas start-up type is not known yet (features/HAAS.md): give -fparam sup=0 (type A) or 1 (type B)
+REFUSED  line 32: G13 does not translate yet
+REFUSED  line 32: address I does not translate yet
+REFUSED  line 32: address K does not translate yet
+REFUSED  line 32: address Q does not translate yet
+REFUSED  line 32: address D does not translate yet
+REFUSED  line 45: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 51: G84 does not translate yet
+REFUSED  line 51: address R does not translate yet
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

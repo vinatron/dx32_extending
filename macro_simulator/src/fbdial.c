@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "fb2dx.h"
 
 static const struct { const char *key, *ctrl, *macro; } sers[FB_NSER] = {
@@ -14,20 +15,22 @@ static const struct { const char *key, *ctrl, *macro; } sers[FB_NSER] = {
     { "15",  "Series 15, 150", "Macro B" },
     { "16",  "Series 16, 18, 20, 21, 160/180/210, i and is models, Power Mate i", "Macro B" },
     { "0i",  "0i-A to 0i-D, 0i Mate", "Macro B" },
-    { "30i", "30i, 31i, 32i, 35i (A and B), 0i-F, 0i-F Plus", "Macro B, newer" }
+    { "30i", "30i, 31i, 32i, 35i (A and B), 0i-F, 0i-F Plus", "Macro B, newer" },
+    { "haas", "Haas mills (features/HAAS.md); detected only by M97", "Macro B like" }
 };
 
 /* what exists where: y yes, n no, ? not known, o option, - not this macro type.
    Columns in the order of sers[]. */
 static const struct { const char *name, *shrt, *cell; } feats[FB_NFEAT] = {
-    { "Macro B statements and expressions (#i=, [ ], IF, WHILE, functions)", "Macro B", "-yyyyyyy" },
-    { "IF [c] THEN", "THEN", "-nn??yyy" },
-    { "ASIN ACOS", "ASIN/ACOS", "-nn???yy" },
-    { "LN EXP", "LN/EXP", "-nn????y" },
-    { "POW, ADP, ATAN[a,b], ATAN[x], MOD", "POW/ADP/ATAN[a,b]/ATAN[x]/MOD", "-nnnnn?y" },
-    { "AND OR between conditions", "AND/OR of conditions", "-nnnnn?y" },
-    { "named system variables #_NAME", "#_NAME", "-nnnnn?y" },
-    { "common variables beyond #100-#149, #500-#531", "more common variables", "-oo??ooy" }
+    { "Macro B statements and expressions (#i=, [ ], IF, WHILE, functions)", "Macro B", "-yyyyyyyy" },
+    { "IF [c] THEN", "THEN", "-nn??yyy?" },
+    { "ASIN ACOS", "ASIN/ACOS", "-nn???yy?" },
+    { "LN EXP", "LN/EXP", "-nn????y?" },
+    { "POW, ADP, ATAN[a,b], ATAN[x], MOD", "POW/ADP/ATAN[a,b]/ATAN[x]/MOD", "-nnnnn?y?" },
+    { "AND OR between conditions", "AND/OR of conditions", "-nnnnn?y?" },
+    { "named system variables #_NAME", "#_NAME", "-nnnnn?y?" },
+    { "common variables beyond #100-#149, #500-#531", "more common variables", "-oo??ooy?" },
+    { "M97 P: call the subprogram at N P in the same program", "M97", "nnnnnnnny" }
 };
 
 static const char *const means[FB_NMEAN] = {
@@ -40,7 +43,8 @@ static const char *const means[FB_NMEAN] = {
 };
 
 /* series where ATAN's range is set by parameter NAT (6004 bit 0): 0i and 30i, TENTATIVE */
-#define NATSER  ((1 << FS_0I) | (1 << FS_30I))
+#define NATSER  ((1 << FS_0I) | (1 << FS_30I) | (1 << FS_HAAS))
+#define HAAS    (1 << FS_HAAS)
 /* series where ROUND in an address rounds to the least increment: 16, 0i, 30i; others not known */
 #define RNDSER  ((1 << FS_16) | (1 << FS_0I) | (1 << FS_30I))
 /* series where M98 P > 4 digits = repetitions (4 digits) and program (4 digits); 30i also needs o8=0 */
@@ -83,6 +87,7 @@ void fbslist(FILE *fp)
     fprintf(fp, "  d73=N     G73 retract after each peck (parameter 5114), in program units\n");
     fprintf(fp, "  sup=0|1   G41/G42 start-up type A (0) or B (1); parameter 5003 bit 0 (SUP)\n");
     fprintf(fp, "  default   the factory settings: dpi=0 is=b nat=0 o8=0 sup=0 (not d83/d73: set per machine)\n");
+    fprintf(fp, "            FANUC's: on -series haas, dpi= nat= sup= must be given (features/HAAS.md)\n");
 }
 
 void fbfeat(fbx *x, int f, int line)
@@ -120,11 +125,11 @@ int fbfparam(fbpar *p, const char *a)
         return 1;
     }
     if ((v[1] != '0' && v[1] != '1') || v[2]) return 0;
-    if (!strncmp(a, "dpi=", 4)) p->dpi = v[1] - '0';
-    else if (!strncmp(a, "nat=", 4)) p->nat = v[1] - '0';
+    if (!strncmp(a, "dpi=", 4)) p->dpi = v[1] - '0', p->dpiset = 1;
+    else if (!strncmp(a, "nat=", 4)) p->nat = v[1] - '0', p->natset = 1;
     else if (!strncmp(a, "o8=", 3)) p->o8 = v[1] - '0';
     else if (!strncmp(a, "avar=", 5)) p->avar = v[1] - '0';
-    else if (!strncmp(a, "sup=", 4)) p->sup = v[1] - '0';
+    else if (!strncmp(a, "sup=", 4)) p->sup = v[1] - '0', p->supset = 1;
     else return 0;
     return 1;
 }
@@ -209,12 +214,15 @@ static int needpar(fbx *x, int m, const char *what)
 /* decide the series; record the meaning items and settle them.  0 = stop. */
 int fbdetect(fbx *x)
 {
-    int f, i, mask = FS_ALL, ok = 1;
+    int f, i, mask, ok = 1;
     char nm[64], why[240];
 
     /* G65 with H: decided first, because it decides what the other words are */
     for (i = 0; i < x->nst; i++)
         if (isg65h(x->st[i])) fbmean(x, FM_G65H, x->st[i]->line);
+    for (i = 0; i < x->nst; i++)
+        if (x->st[i]->k == ST_NC && wconst(x->st[i], 'M') == 97) fbfeat(x, FF_M97, x->st[i]->line);
+    mask = x->featl[FF_M97] ? FS_ALL : FS_FANUC;    /* Haas only when M97 says so */
 
     why[0] = 0;
     for (f = 0; f < FB_NFEAT; f++) {
@@ -233,7 +241,7 @@ int fbdetect(fbx *x)
             ok = 0;
         }
         mask &= m;
-        if (m != FS_ALL && strlen(why) < 140) {
+        if ((m & FS_FANUC) != FS_FANUC && strlen(why) < 140) {
             char t[80];
             sprintf(t, "%s%s at line %d", why[0] ? ", " : "", feats[f].shrt, x->featl[f]);
             strcat(why, t);
@@ -279,10 +287,14 @@ int fbdetect(fbx *x)
     }
 
     if (x->meanl[FM_DPI]) {
+        if ((x->cand & HAAS) && !x->par.dpiset)     /* -fparam default is FANUC's factory setting */
+            return needpar(x, FM_DPI, "-fparam dpi=0|1 (Haas: not known yet, features/HAAS.md)");
         if (x->par.dpi < 0) return needpar(x, FM_DPI, "-fparam dpi=0|1, or -fparam default");
         if (x->par.dpi == 0 && x->par.is < 0) return needpar(x, FM_DPI, "-fparam is=b|c");
     }
     if (x->meanl[FM_ATAN] && (x->cand & NATSER)) {
+        if ((x->cand & HAAS) && !x->par.natset)
+            return needpar(x, FM_ATAN, "-fparam nat=0|1 (Haas: the ATAN range is not known yet, features/HAAS.md)");
         if (x->par.nat < 0) return needpar(x, FM_ATAN, "-fparam nat=0|1 (parameter NAT on 0i/30i)");
         if (x->par.nat == 1 && (x->cand & ~NATSER))
             return needpar(x, FM_ATAN, "-series: nat=1 applies on 0i/30i only");
@@ -407,5 +419,69 @@ int fbmacroa(fbx *x)
         s->k = ST_ASSIGN;
     }
     if (!ok) x->stop = 1;
+    return ok;
+}
+
+/* ------------------------------------------------------------------ */
+/* Haas M97 P n: the blocks from N n (after the program's M30/M2) to M99 are a subprogram of the same
+   program.  They are made a program of their own, numbered FB_M97 + n, and M97 becomes M98 P that
+   (features/HAAS.md).  0 = stop. */
+
+int fbm97(fbx *x)
+{
+    int i, j, ok = 1;
+    if (!(x->cand & HAAS)) return 1;    /* elsewhere M97 is an M code: fbout refuses it */
+    for (i = 0; i < x->nst; i++) {
+        fbs *s = x->st[i];
+        int im = hasword(s, 'M'), ip = hasword(s, 'P'), ps, pe, e = -1, t = -1;
+        long n, id;
+        if (s->k != ST_NC || wconst(s, 'M') != 97) continue;
+        if (ip < 0 || s->w[ip].e->k != EN_NUM || s->w[ip].e->v != floor(s->w[ip].e->v) || s->w[ip].e->v < 1) {
+            fbrep(x, "REFUSED", s->line, "M97 needs a constant N number P");
+            ok = 0;
+            continue;
+        }
+        n = (long)s->w[ip].e->v;
+        for (ps = i; ps > 0 && x->st[ps]->k != ST_PROG; ps--) ;
+        for (pe = i + 1; pe < x->nst && x->st[pe]->k != ST_PROG; pe++) ;
+        for (j = ps; j < pe; j++)
+            if (e < 0 && x->st[j]->k == ST_NC && (wconst(x->st[j], 'M') == 30 || wconst(x->st[j], 'M') == 2)) e = j;
+            else if (e >= 0 && x->st[j]->n == n) {
+                t = j;
+                break;
+            }
+        id = FB_M97 + n;
+        if (t < 0) {
+            for (j = 0; j < x->nst; j++)
+                if (x->st[j]->k == ST_PROG && x->st[j]->prog == id) t = j;
+            if (t < 0) {
+                fbrep(x, "REFUSED", s->line, "M97 P%ld: no N%ld after the program's M30/M2 (a local subprogram "
+                      "inside the main program does not translate yet)", n, n);
+                ok = 0;
+                continue;
+            }
+        } else {                        /* a program of its own, starting at N n */
+            fbs *p = (fbs *)fbmalloc(sizeof *p);
+            memset(p, 0, sizeof *p);
+            p->k = ST_PROG;
+            p->prog = id;
+            p->n = p->pair = -1;
+            p->tool = p->krep = -1;
+            p->line = x->st[t]->line;
+            p->file = x->st[t]->file;
+            if (x->nst == x->cap) {
+                fbs **a = (fbs **)fbmalloc((unsigned)((x->cap * 2) * sizeof *a));
+                memcpy(a, x->st, x->nst * sizeof *a);
+                free(x->st);
+                x->st = a;
+                x->cap *= 2;
+            }
+            memmove(x->st + t + 1, x->st + t, (x->nst - t) * sizeof *x->st);
+            x->st[t] = p;
+            x->nst++;
+        }
+        s->w[im].e->v = 98;
+        s->w[ip].e->v = (double)id;
+    }
     return ok;
 }

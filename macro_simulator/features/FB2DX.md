@@ -195,6 +195,8 @@ FANUC jumps are turned into DX32 structures; anything that doesn't fit one of th
 
 FANUC's macro language changed over the series. fb2dx handles all of them with one table of dialects
 (`src/fbdial.c`). The table is data: a cell found wrong in a FANUC manual is corrected in one place.
+Haas mills are a ninth column, `haas`, detected only by `M97` or given with `-series haas`; `HAAS.md` has
+what differs.
 
 **The series** (`-series KEY`):
 
@@ -806,7 +808,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-03 | (this commit) | FANUC corpus proposals 5.1, 5.2, 5.4, 5.5, 5.6 (section 3.18): `-ftool`, the spindle tool kept apart from `T`, G28 through an intermediate point and `-g28xy stay`, modal information and `G#n`/`S#n` folded, `#3003`/`#3004` left out, `@FILE`; fixes for full circles without an end point, two jumps to one label, K0 dropping F; test `fbg28` |
+| 2026-11-03 | (this commit) | Haas (`HAAS.md`): `-series haas`, `M97`, `G53` to machine zero for every series, P with a decimal point refused (was read as ms) |
+| 2026-11-03 | ed20418, 81452cc | FANUC corpus proposals 5.1, 5.2, 5.4, 5.5, 5.6 (section 3.18): `-ftool`, the spindle tool kept apart from `T`, G28 through an intermediate point and `-g28xy stay`, modal information and `G#n`/`S#n` folded, `#3003`/`#3004` left out, `@FILE`; fixes for full circles without an end point, two jumps to one label, K0 dropping F; test `fbg28` |
 | 2026-10-29 | 56bb621 | Q2, Q3, Q4 answered from the firmware (LSR unsigned; G70/G71 a flag only; R arcs always ≤ 180°, R's sign ignored) |
 | 2026-10-29 | cf75c34 | Z moves under G68 (and holes' Z moves) get `X20Y20`: the DX32 transforms a G73 block only with an X or Y word (`OPENQ.md` L10); test `fbrotdw` |
 | 2026-10-28 | 49c141d | G41/G42 written on a zero move, `G91G41X0.` then `G90`: the DX32 acts on G41 only in a block with an axis word (`OPENQ.md` A13), so the bare `G41` line left FANUC's start-up move uncompensated (a gouge of the tool radius, now shown by dxsim) |

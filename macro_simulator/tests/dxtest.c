@@ -609,11 +609,12 @@ static void fb(const char *args)
 }
 
 /* CORPUS.LST: fb2dx on the FANUC macro corpus (../../fanuc_macros): the reports must match */
-static void corpus(void)
+/* a list of fb2dx runs on a corpus (corpus.lst: FANUC, haas.lst: Haas): NAME, then the inputs and options */
+static void corpus(const char *list, const char *label)
 {
     char line[400], cmd[480], first[200], exp[64], why[120], what[300];
     char *rest;
-    FILE *lst = fopen("corpus.lst", "r"), *fp;
+    FILE *lst = fopen(list, "r"), *fp;
     if (!lst) return;
     while (fgets(line, sizeof line, lst)) {
         chop(line);
@@ -625,7 +626,7 @@ static void corpus(void)
         if (sscanf(rest, "%199s", first) != 1) continue;
         fp = fopen(first, "r");
         if (!fp) {                              /* 16-bit DOS: no long names */
-            say("skip  the corpus tests: %s cannot be opened (long file names, or no fanuc_macros)\n", first);
+            say("skip  the %s tests: %s cannot be opened (long file names, or no fanuc_macros)\n", label, first);
             break;
         }
         fclose(fp);
@@ -637,8 +638,8 @@ static void corpus(void)
         }
         sprintf(exp, "%s%.8s.out", EXPDIR, line);
         if (update) copyfile(TMPOUT, exp);
-        sprintf(what, "corpus %.8s (%.60s) matches %.30s", line, strrchr(first, '/') ? strrchr(first, '/') + 1 : first,
-                exp);
+        sprintf(what, "%s %.8s (%.60s) matches %.30s", label, line,
+                strrchr(first, '/') ? strrchr(first, '/') + 1 : first, exp);
         if (!compare(TMPOUT, exp, why)) {
             strcat(what, ": ");
             strcat(what, why);
@@ -1329,7 +1330,8 @@ int main(int argc, char **argv)
         }
         fclose(lst);
         fbhand();
-        corpus();
+        corpus("corpus.lst", "corpus");
+        corpus("haas.lst", "haas");
     }
 
     sprintf(what, "built-in cycle coverage: %d of 628 non-empty blocks executed", ncov);

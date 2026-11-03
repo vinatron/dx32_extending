@@ -455,7 +455,7 @@ static void opencond(const fbn *c, int neg)
 /* statements                                                           */
 
 static const fbs *cursta;       /* the statement being written */
-static int ncancel, ng28, ng28xy, nalarm, ncomp;
+static int ncancel, ng28, ng28xy, ng53, ng53xy, nalarm, ncomp;
 
 /* a condition that tests a vacant variable (#0), e.g. an argument check: the evaluation ran
    every call of the program, so if it always came out the same, it is that constant
@@ -609,6 +609,20 @@ static int ntlen, ntsel;        /* G43/G49 left out, T without M6 left out */
 
 static int nfoldg;               /* G#n folded */
 
+/* P (dwell) with a decimal point: FANUC takes P as whole milliseconds; on Haas a point is said to mean
+   seconds (features/HAAS.md, not confirmed), so it is refused rather than guessed */
+static int pdot(const fbs *s, int i)
+{
+    const fbn *e = s->w[i].e;
+    if (e->k == EN_NEG) e = e->a;
+    if (e->k == EN_NUM && e->pt) {
+        fail("P%g with a decimal point: whole milliseconds on FANUC, possibly seconds on Haas (not known "
+             "yet, features/HAAS.md); write it without the point", e->v);
+        return 1;
+    }
+    return 0;
+}
+
 /* the value of G or S word i: a constant, or G#n / S#n folded to the one value the evaluation saw */
 static int gw(const fbs *s, int i, double *v)
 {
@@ -723,6 +737,7 @@ static void dwell(const fbs *s)
             fail("G4 with %c in the same block does not translate", s->w[i].l);
             return;
         }
+    if (ip >= 0 && pdot(s, ip)) return;
     if (ip >= 0 && whole(s->w[ip].e, &v)) v /= 1000.0;
     else if (ix >= 0 && whole(s->w[ix].e, &v) && (s->w[ix].e->k == EN_NUM ? s->w[ix].e->pt : 1)) ;
     else {
@@ -760,18 +775,27 @@ static void hole(const fbs *s)
     if (m & MO_MIXC) { fail("G90/G91 changed while the cycle was on: the stored R and Z would mean something else"); return; }
     if ((m & MO_CST) && (m & MO_UNKZ)) { fail("the cycle starts where Z is not known: no initial level"); return; }
     if (inc && (m & MO_UNK)) { fail("a G91 hole where the X/Y position is not known yet"); return; }
-    if ((m & MO_C83) && !X->par.hd83) { fail("G83: give the peck clearance with -fparam d83= (parameter 5115)"); return; }
-    if ((m & MO_C73) && !X->par.hd73) { fail("G73: give the peck retract with -fparam d73= (parameter 5114)"); return; }
+    if ((m & MO_C83) && !X->par.hd83) {
+        fail(X->cand & (1 << FS_HAAS) ? "G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)" :
+             "G83: give the peck clearance with -fparam d83= (parameter 5115)");
+        return;
+    }
+    if ((m & MO_C73) && !X->par.hd73) {
+        fail(X->cand & (1 << FS_HAAS) ? "G73: give the peck retract with -fparam d73= (a Haas setting, not known yet)" :
+             "G73: give the peck retract with -fparam d73= (parameter 5114)");
+        return;
+    }
     if (kr == -2) { fail("the repeat count (K/L) differs between passes"); return; }
     if (kr < 0) kr = 1;
     if (m & (MO_KK | MO_KL)) {          /* which letter repeats depends on the series (TENTATIVE) */
-        int ok16 = (1 << FS_16) | (1 << FS_0I) | (1 << FS_30I), ok0 = (1 << FS_0) | (1 << FS_6) | (1 << FS_10) | (1 << FS_15);
+        int ok16 = (1 << FS_16) | (1 << FS_0I) | (1 << FS_30I), ok0 = (1 << FS_0) | (1 << FS_6) | (1 << FS_10) | (1 << FS_15) |
+            (1 << FS_HAAS);                 /* Haas: L, the workbook's L0 and L3 (features/HAAS.md) */
         if ((m & MO_KK) && (X->cand & ~ok16)) {
             fail("K as the repeat count: known for series 16, 0i and 30i; give -series");
             return;
         }
         if ((m & MO_KL) && (X->cand & ~ok0)) {
-            fail("L as the repeat count: known for series 0, 6, 10 and 15; give -series");
+            fail("L as the repeat count: known for series 0, 6, 10, 15 and haas; give -series");
             return;
         }
     }
@@ -798,6 +822,7 @@ static void hole(const fbs *s)
             if (!dimval(s, i, txt, &npre)) return;
             sprintf(pre[npre++], "%s=%s", l == 'Z' ? cyz : l == 'R' ? cyr : cyq, txt);
         } else if (l == 'P') {
+            if (pdot(s, i)) return;
             if (!whole(s->w[i].e, &v) || v < 0) { fail("P (dwell) in a drilling block must be a constant"); return; }
             dxnum(txt, v / 1000.0);
             sprintf(pre[npre++], "%s=%s", cyp, txt);
@@ -915,6 +940,57 @@ static void nc(const fbs *s)
         xform(s);
         return;
     }
+    if (findg(s, 53)) {                 /* features/HAAS.md: machine zero, G53 X0 Y0 Z0 only */
+        int z = 0, xy = 0;
+        for (i = 0; i < s->nw; i++) {
+            int l = s->w[i].l;
+            if (l == 'G' && whole(s->w[i].e, &v) && (v == 53 || v == 49 || v == 90 || v == 91 || v == 0 || v == 1)) {
+                if (v == 49) ntlen++;
+                continue;
+            }
+            if (l == 'M') continue;
+            if (l == 'X' || l == 'Y' || l == 'Z') {
+                if (!whole(s->w[i].e, &v) || v != 0) {
+                    fail("G53 %c%s: a machine position other than 0 does not translate (where it is in DX32 "
+                         "coordinates is not known)", l, v != 0 ? "" : " with a variable");
+                    return;
+                }
+                if (l == 'Z') z = 1;
+                else xy = 1;
+                continue;
+            }
+            fail("%c with G53 does not translate", l);
+            return;
+        }
+        if (!z && !xy) {
+            fail("G53 without an axis word");
+            return;
+        }
+        if (xy && !X->par.g28xy) {
+            fail("G53 X0/Y0 (to machine zero): the DX32 has no X/Y home move; -g28xy stay leaves them out");
+            return;
+        }
+        if (z && !X->par.g28) {
+            fail("G53 Z0 (to machine zero): give -g28 m25 (the DX32 quill home) or -g28 drop (leave it out)");
+            return;
+        }
+        if (findg(s, 91)) out("G91");
+        if (findg(s, 90)) out("G90");
+        if (findg(s, 0)) out("G0");
+        if (findg(s, 1)) out("G1");
+        for (i = 0; i < s->nw; i++)
+            if (s->w[i].l == 'M') {
+                if (!whole(s->w[i].e, &v) || !(v == 3 || v == 4 || v == 5 || v == 7 || v == 8 || v == 9)) {
+                    fail("M with G53: only M3 M4 M5 M7 M8 M9 translate here");
+                    return;
+                }
+                out("M%.0f", v);
+            }
+        if (z && X->par.g28 == 1) out("M25");
+        if (z) ng53++;
+        if (xy) ng53xy++;
+        return;
+    }
     if (findg(s, 28)) {                 /* FB2DX.md 3.18: the intermediate point, then M25 or nothing */
         int inc = findg(s, 91) || ((s->modes & MO_INC) && !findg(s, 90)), zero = 1;
         for (i = 0; i < s->nw; i++) {
@@ -1019,6 +1095,11 @@ static void nc(const fbs *s)
         }
         if (g == 98 || g == 99) continue;   /* the return level of the holes (written by hole()) */
         if (g == 41 || g == 42) {       /* FB2DX.md 3.15: G41/G42 on a block of its own, before the move */
+            if ((X->cand & (1 << FS_HAAS)) && !X->par.supset) {
+                fail("G%d: the Haas start-up type is not known yet (features/HAAS.md): give -fparam sup=0 (type A) "
+                     "or 1 (type B)", g);
+                continue;
+            }
             if (X->par.sup < 0) {
                 fail("G%d: give the FANUC start-up type, -fparam sup=0 (type A) or 1 (type B), or -fparam default", g);
                 continue;
@@ -1967,7 +2048,7 @@ int fbwrite(fbx *x, const char *path)
     else if (g20) fbrep(x, "NOTE", 0, "the program switches between G20 and G21");
 
     /* arcs: G75 (multi-quadrant) at the top; G90 arcs need the position kept in X20 Y20 Z20 */
-    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = ng28xy = nfold4 = nfoldg = nsupp = nalarm = ncomp = nm3 = anyxf = nxf = 0;
+    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = ng28xy = ng53 = ng53xy = nfold4 = nfoldg = nsupp = nalarm = ncomp = nm3 = anyxf = nxf = 0;
     cursta = 0;
     for (k = 0; k < nins; k++)
         for (i = ins[k].s0; i < ins[k].end; i++) {
@@ -2038,7 +2119,8 @@ int fbwrite(fbx *x, const char *path)
             ok = 0;
         } else {
             fbsnames(line, x->cand);
-            fprintf(W, "; fb2dx: %s, FANUC series %s, for the DX32 (BMDC 6.89)\r\n", x->fname[0], line);
+            if (x->cand == (1 << FS_HAAS)) fprintf(W, "; fb2dx: %s, Haas, for the DX32 (BMDC 6.89)\r\n", x->fname[0]);
+            else fprintf(W, "; fb2dx: %s, FANUC series %s, for the DX32 (BMDC 6.89)\r\n", x->fname[0], line);
             mapline(W, "", lmap[0], 1, 33);
             mapline(W, "", map, 100, 999);
             for (k = 1; k <= 5; k++) {
@@ -2046,7 +2128,9 @@ int fbwrite(fbx *x, const char *path)
                 mapline(W, line, lmap[k], 1, 33);
             }
             for (k = 1; k < nins; k++) {        /* the called programs, as macros, first */
-                fprintf(W, "#%d; O%ld\r\n", ins[k].num, x->st[ins[k].p]->prog);
+                if (x->st[ins[k].p]->prog >= FB_M97)
+                    fprintf(W, "#%d; N%ld (M97)\r\n", ins[k].num, x->st[ins[k].p]->prog - FB_M97);
+                else fprintf(W, "#%d; O%ld\r\n", ins[k].num, x->st[ins[k].p]->prog);
                 for (i = 0; i < ins[k].ntxt; i++) fprintf(W, "%s\r\n", ins[k].txt[i]);
             }
             for (i = 0; i < ins[0].ntxt; i++) fprintf(W, "%s\r\n", ins[0].txt[i]);
@@ -2090,6 +2174,10 @@ int fbwrite(fbx *x, const char *path)
                      "program can be stopped anywhere");
     if (ng28xy) fbrep(x, "NOTE", 0, "G28 X/Y go to the intermediate point only (-g28xy stay): the DX32 has no X/Y "
                       "reference return; check the program is safe there");
+    if (ng53xy) fbrep(x, "NOTE", 0, "G53 X0/Y0 (machine zero) left out (-g28xy stay): the DX32 has no X/Y home "
+                      "move; check the program is safe there");
+    if (ng53) fbrep(x, "NOTE", 0, "G53 Z0 (machine zero) %s (-g28)", x->par.g28 == 1 ? "written as M25, the DX32 "
+                    "quill home (TENTATIVE)" : "left out: Z stays where it is; check the program is safe without it");
     if (ng28) fbrep(x, "NOTE", 0, "G28 Z %s (-g28)", x->par.g28 == 1 ? "written as M25, the DX32 quill home "
                     "(TENTATIVE: check that it goes where FANUC's reference point is)" :
                     "left out: Z stays where it is; check the program is safe without it");

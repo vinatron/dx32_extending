@@ -1,0 +1,9 @@
+FILE     fbm97.nc (from line 1)
+DIALECT  series haas (M97 at line 8)
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     G53 Z0 (machine zero) written as M25, the DX32 quill home (TENTATIVE) (-g28)
+NOTE     1 called program(s) written as DX32 macros #1-#1, nested 1 deep
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwm97.txt
+CHECK    dxsim reads fbwm97.txt cleanly and reaches all 15 Haas end points in order
+RESULT   ok

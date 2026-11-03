@@ -247,6 +247,7 @@ int main(int argc, char **argv)
     }
     if (ok) ok = fbpair(x);
     if (ok) ok = fbdetect(x);
+    if (ok) ok = fbm97(x);
     if (ok) ok = fbmacroa(x);
     if (ok && x->bdelsw < 0)
         for (i = 0; i < x->nst; i++)
