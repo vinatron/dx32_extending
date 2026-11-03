@@ -919,7 +919,7 @@ static void nc(const fbs *s)
         int inc = findg(s, 91) || ((s->modes & MO_INC) && !findg(s, 90)), zero = 1;
         for (i = 0; i < s->nw; i++) {
             int l = s->w[i].l;
-            if (l == 'G' && whole(s->w[i].e, &v) && (v == 28 || v == 90 || v == 91 || v == 0)) continue;
+            if (l == 'G' && whole(s->w[i].e, &v) && (v == 28 || v == 90 || v == 91 || v == 0 || v == 1)) continue;
             if (l == 'M') continue;
             if (l == 'X' || l == 'Y' || l == 'Z') {
                 if (!(inc && whole(s->w[i].e, &v) && v == 0)) zero = 0;
@@ -1010,7 +1010,7 @@ static void nc(const fbs *s)
         }
         if (!whole(s->w[i].e, &v)) nfoldg++;
         g = (int)v;
-        if (g28mv && (g == 28 || g == 0)) continue;
+        if (g28mv && (g == 28 || g == 0 || g == 1)) continue;
         if (g == 20 || g == 21) units = g;
         if (g == 43 || g == 49) {       /* tool length: the DX32 takes it from the tool table */
             ntlen++;
