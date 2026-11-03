@@ -114,14 +114,18 @@ static void dxpath(char *out, const char *argv0)
    COMMAND.COM cuts a command line at 127 characters, which the corpus tests' options exceed */
 static int atfile(int *pargc, char ***pargv)
 {
-    int i, n = 0, cap = *pargc + 64;
+    int i, n = 0, cap = *pargc + 256;
     char **nv = (char **)fbmalloc((unsigned)(cap * sizeof(char *)));
     for (i = 0; i < *pargc; i++) {
         const char *a = (*pargv)[i];
         FILE *fp;
         char tok[260];
         if (i == 0 || a[0] != '@') {
-            if (n < cap - 1) nv[n++] = (*pargv)[i];
+            if (n >= cap - 1) {
+                fprintf(stderr, "fb2dx: too many options (at most 256 from @ files)\n");
+                return 0;
+            }
+            nv[n++] = (*pargv)[i];
             continue;
         }
         fp = fopen(a + 1, "r");
@@ -131,7 +135,7 @@ static int atfile(int *pargc, char ***pargv)
         }
         while (fscanf(fp, "%259s", tok) == 1) {
             if (n >= cap - 1) {
-                fprintf(stderr, "fb2dx: too many options in %s (at most 64)\n", a + 1);
+                fprintf(stderr, "fb2dx: too many options in %s (at most 256 from @ files)\n", a + 1);
                 fclose(fp);
                 return 0;
             }
@@ -200,9 +204,9 @@ int main(int argc, char **argv)
             x->par.comp = 1;
         } else if (!strcmp(a, "-ftool") && i + 1 < argc) {
             a = argv[++i];
-            x->par.ftool = atoi(a);
+            x->par.ftool = strlen(a) <= 4 ? atoi(a) : -1;     /* tool numbers to 9999 */
             if (x->par.ftool < 0 || strspn(a, "0123456789") != strlen(a) || !a[0]) {
-                fprintf(stderr, "fb2dx: -ftool n, n >= 0\n");
+                fprintf(stderr, "fb2dx: -ftool n, n from 0 to 9999\n");
                 return 1;
             }
         } else if (!strcmp(a, "-tap") && i + 1 < argc) {

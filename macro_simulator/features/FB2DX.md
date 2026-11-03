@@ -728,8 +728,12 @@ What typical FANUC jobs contain, beyond the phases above:
   branches. G83 and G73 in the same block are still refused (one peck loop label per block). The return
   level must still be the same in every pass (G98 or G99): a subprogram that changes it on its last hole
   makes its first hole differ between calls, and is refused.
+- **The DX32 G84 dwells at least .05 s** at the bottom and at R (`?Q1<LT>0.05` in its text). A FANUC G84
+  without P, or with P below 50, does not dwell; the tool path is the same, so this is written with a NOTE
+  rather than refused (found in review).
+- `G#n` folded to 84, 28 or 53 (FB2DX.md 3.18) is taken in the drilling, G28 and G53 blocks too.
 - Tests: `fbtapw` (float, `-check`), `fbtapr` (rigid), `fbtapx` (no `-tap`), `fbmcyw` (one subprogram under
-  G81, G82 and G84, `-check`).
+  G81, G82 and G84, `-check`), `fbfoldgw` (`G#1` = 84, 28 and 53).
 
 ## 4. Errors and warnings (the report)
 
@@ -836,7 +840,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-03 | (this commit) | Review fixes: `M97` with two local subprograms or a target called twice (`HAAS.md`); `@FILE` with more than 64 options and `-ftool` with a non-number are errors instead of being ignored |
+| 2026-11-03 | (this commit) | Copilot review: a NOTE for the DX32 G84's .05 s minimum dwell; folded `G#n` taken by the drilling, G28 and G53 blocks; `@FILE` no longer drops the options after it; `-ftool` up to 9999 (an overflowing number was read as 0) |
+| 2026-11-03 | 5782cd0 | Review fixes: `M97` with two local subprograms or a target called twice (`HAAS.md`); `@FILE` with more than 64 options and `-ftool` with a non-number are errors instead of being ignored |
 | 2026-11-03 | b57f24f | G84 tapping as the DX32 G84 (`-tap float|rigid`), hole blocks under several cycles branch on the cycle code, P cleared at a cycle start (section 3.19) |
 | 2026-11-03 | 6427caf, 0f27338 | Haas (`HAAS.md`): `-series haas`, `M97`, `G53` to machine zero for every series, P with a decimal point refused (was read as ms) |
 | 2026-11-03 | ed20418, 81452cc | FANUC corpus proposals 5.1, 5.2, 5.4, 5.5, 5.6 (section 3.18): `-ftool`, the spindle tool kept apart from `T`, G28 through an intermediate point and `-g28xy stay`, modal information and `G#n`/`S#n` folded, `#3003`/`#3004` left out, `@FILE`; fixes for full circles without an end point, two jumps to one label, K0 dropping F; test `fbg28` |

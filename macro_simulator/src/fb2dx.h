@@ -134,6 +134,7 @@ typedef struct fbs {
     int tap;            /* a G84 (tapping) hole */
     double tapf;        /* its feed, as the evaluation saw it in force; */
     int tapfst;         /* 0 not run, 1 always tapf, 2 more than one value, 3 no feed in force */
+    int tapshort;       /* ran with a dwell (P) below .05 s, which the DX32 G84 lengthens to .05 s */
     double sysv;        /* #n = #4xxx (modal information): the value read; */
     int syst;           /* 0 not run, 1 always sysv, 2 more than one value */
 } fbs;

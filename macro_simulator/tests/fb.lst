@@ -53,4 +53,5 @@ fbg53x   fbg53    -g28 m25 -w fbwg53x.txt
 fbtapw   fbtap    -fparam default -ftool 1 -tap float -w fbwtap.txt -check
 fbtapr   fbtap    -fparam default -ftool 1 -tap rigid -w fbwtapr.txt -check
 fbtapx   fbtap    -fparam default -ftool 1 -w fbwtapx.txt
+fbfoldgw fbfoldg  -fparam default -ftool 1 -tap float -g28 m25 -w fbwfoldg.txt -check
 fbmcyw   fbmcyc   -series 16 -fparam default -ftool 1 -tap float -w fbwmcyc.txt -check

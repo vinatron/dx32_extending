@@ -455,7 +455,7 @@ static void opencond(const fbn *c, int neg)
 /* statements                                                           */
 
 static const fbs *cursta;       /* the statement being written */
-static int ntap;                /* G84 holes written */
+static int ntap, ntapq;         /* G84 holes written; with a dwell below the DX32 minimum */
 static int ncancel, ng28, ng28xy, ng53, ng53xy, nalarm, ncomp;
 
 /* a condition that tests a vacant variable (#0), e.g. an argument check: the evaluation ran
@@ -821,12 +821,12 @@ static void hole(const fbs *s)
         int l = s->w[i].l;
         double v;
         if (l == 'G') {
-            if (whole(s->w[i].e, &v) && (v == 90 || v == 91 || v == 98 || v == 99 || v == 17 || v == 81 ||
+            if (gw(s, i, &v) && (v == 90 || v == 91 || v == 98 || v == 99 || v == 17 || v == 81 ||
                 v == 82 || v == 83 || v == 73 || v == 84 || v == 85 || v == 86 || v == 89 || v == 21 || v == 20)) {
                 if (v == 20 || v == 21) units = (int)v;
                 continue;
             }
-            if (whole(s->w[i].e, &v)) fail("G%g in a drilling block does not translate", v);
+            if (gw(s, i, &v)) fail("G%g in a drilling block does not translate", v);
             else fail("G with a variable value does not translate");
             return;
         }
@@ -906,6 +906,7 @@ static void hole(const fbs *s)
                 out("G80");
                 if (X->par.tap == 2) out("M28");
                 ntap++;
+            if (s->tapshort) ntapq++;
             } else if (m & (MO_C83 | MO_C73)) {    /* the pecks: a loop down from R */
                 const char *dp = tmp(), *dn = tmp();
                 dxnum(d, (m & MO_C83) ? X->par.d83 : X->par.d73);
@@ -989,7 +990,7 @@ static void nc(const fbs *s)
         int z = 0, xy = 0;
         for (i = 0; i < s->nw; i++) {
             int l = s->w[i].l;
-            if (l == 'G' && whole(s->w[i].e, &v) && (v == 53 || v == 49 || v == 90 || v == 0)) {
+            if (l == 'G' && gw(s, i, &v) && (v == 53 || v == 49 || v == 90 || v == 0)) {
                 if (v == 49) ntlen++;
                 continue;
             }
@@ -1009,7 +1010,7 @@ static void nc(const fbs *s)
                 continue;
             }
             if (l == 'G') {
-                if (whole(s->w[i].e, &v)) fail("G%g with G53 does not translate (only G0, G49 and G90)", v);
+                if (gw(s, i, &v)) fail("G%g with G53 does not translate (only G0, G49 and G90)", v);
                 else fail("G with a variable value with G53 does not translate");
             } else fail("%c with G53 does not translate", l);
             return;
@@ -1051,7 +1052,7 @@ static void nc(const fbs *s)
         int inc = findg(s, 91) || ((s->modes & MO_INC) && !findg(s, 90)), zero = 1;
         for (i = 0; i < s->nw; i++) {
             int l = s->w[i].l;
-            if (l == 'G' && whole(s->w[i].e, &v) && (v == 28 || v == 90 || v == 91 || v == 0 || v == 1)) continue;
+            if (l == 'G' && gw(s, i, &v) && (v == 28 || v == 90 || v == 91 || v == 0 || v == 1)) continue;
             if (l == 'M') continue;
             if (l == 'X' || l == 'Y' || l == 'Z') {
                 if (!(inc && whole(s->w[i].e, &v) && v == 0)) zero = 0;
@@ -2104,7 +2105,7 @@ int fbwrite(fbx *x, const char *path)
     else if (g20) fbrep(x, "NOTE", 0, "the program switches between G20 and G21");
 
     /* arcs: G75 (multi-quadrant) at the top; G90 arcs need the position kept in X20 Y20 Z20 */
-    needpos = anyarc = anyhole = anymulti = ntlen = ntsel = ntap = ncancel = ng28 = ng28xy = ng53 = ng53xy = nfold4 = nfoldg = nsupp = nalarm = ncomp = nm3 = anyxf = nxf = 0;
+    needpos = anyarc = anyhole = anymulti = ntlen = ntsel = ntap = ntapq = ncancel = ng28 = ng28xy = ng53 = ng53xy = nfold4 = nfoldg = nsupp = nalarm = ncomp = nm3 = anyxf = nxf = 0;
     cursta = 0;
     for (k = 0; k < nins; k++)
         for (i = ins[k].s0; i < ins[k].end; i++) {
@@ -2234,6 +2235,8 @@ int fbwrite(fbx *x, const char *path)
                                 "the evaluation saw (FBCORPUS.md 5.4): the program has no outside inputs");
     if (nsupp) fbrep(x, "NOTE", 0, "#3003/#3004 (single block and feed hold suppression) left out: the DX32 "
                      "program can be stopped anywhere");
+    if (ntapq) fbrep(x, "NOTE", 0, "G84 without P (or P below 50): the DX32 G84 dwells at least .05 s at the bottom and "
+                     "at R, where FANUC does not dwell");
     if (ntap) fbrep(x, "NOTE", 0, X->par.tap == 1 ? "G84 written as the DX32 G84, plug reverse tapping: the "
                     "tap needs a floating holder, and the spindle speed and feed must suit it (DX32 manual fig. 5-3) "
                     "(-tap float)" : "G84 written as the DX32 G84 between M29 and M28, rigid tapping: only on a DX32 "

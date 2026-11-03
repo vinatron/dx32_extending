@@ -1,0 +1,15 @@
+FILE     fbfoldg.nc (from line 1)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 4)
+NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
+NOTE     drilling cycles are written out as moves; cycle values in D20 D22 D23 D24 D25
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     -ftool 1: T1 must be in the spindle when the program starts
+NOTE     modal information (#4001-#4130), G#n and S#n written as the one value the evaluation saw (FBCORPUS.md 5.4): the program has no outside inputs
+NOTE     G84 without P (or P below 50): the DX32 G84 dwells at least .05 s at the bottom and at R, where FANUC does not dwell
+NOTE     G84 written as the DX32 G84, plug reverse tapping: the tap needs a floating holder, and the spindle speed and feed must suit it (DX32 manual fig. 5-3) (-tap float)
+NOTE     G53 Z0 (machine zero) written as M25, the DX32 quill home (TENTATIVE) (-g28)
+NOTE     G28 Z written as M25, the DX32 quill home (TENTATIVE: check that it goes where FANUC's reference point is) (-g28)
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwfoldg.txt
+CHECK    dxsim reads fbwfoldg.txt cleanly and reaches all 11 FANUC end points in order
+RESULT   ok

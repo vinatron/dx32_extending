@@ -485,6 +485,7 @@ static int args(const fbs *s, val *a)
 static int gabs, gmot, gpl, known[3], gcyc, gret, tool, spin;   /* tool: the last T; spin: in the spindle */
 static double pos[3], cz, cr, cq, cinit;   /* the position and the drilling values, program units */
 static double curf;             /* the feed in force (F is modal), program units; 0 none yet */
+static double curp;             /* the dwell of the drilling cycle in force, ms (cleared when one starts without P) */
 
 /* the modal information the evaluator keeps; the rest is refused. #42xx is the block being run, which
    for a macro statement is the same state */
@@ -722,9 +723,15 @@ static void modal(fbs *s)
             if (strchr("XYZR", s->w[i].l)) hole = 1;
     if (hole) {
         long k = 1;
+        {                               /* the dwell: P, kept while the cycle lasts */
+            int ip = find(s, 'P');
+            if (ip >= 0 && wval(s, ip, &v)) curp = v;
+            else if (start) curp = 0;
+        }
         if (gcyc == 84) {               /* tapping: no MO_ bit left, so a field of its own */
             s->modes |= MO_HOLE;
             s->tap = 1;
+            if (curp < 50) s->tapshort = 1;
             if (curf <= 0) s->tapfst = 3;
             else if (s->tapfst != 3) {
                 if (!s->tapfst) s->tapf = curf, s->tapfst = 1;
@@ -833,7 +840,7 @@ int fbeval(fbx *x, FILE *out, long limit)
     gret = 98;
     tool = -1;
     spin = X->par.ftool;
-    pos[0] = pos[1] = pos[2] = cz = cr = cq = cinit = curf = 0;
+    pos[0] = pos[1] = pos[2] = cz = cr = cq = cinit = curf = curp = 0;
     ra = rcx = rcy = sh[0] = sh[1] = sh[2] = 0;
     x->nmv = 0;
     x->mvunk = 0;
