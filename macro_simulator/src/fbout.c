@@ -958,6 +958,7 @@ static void nc(const fbs *s)
             if (findg(s, 91)) out("G91");
             if (findg(s, 90)) out("G90");
             if (findg(s, 0)) out("G0");
+            if (findg(s, 1)) out("G1");     /* G28 leaves it in force: written for the blocks after */
             for (i = 0; i < s->nw; i++)
                 if (s->w[i].l == 'M') {
                     if (!whole(s->w[i].e, &v) || !(v == 3 || v == 4 || v == 5 || v == 7 || v == 8 || v == 9)) {
