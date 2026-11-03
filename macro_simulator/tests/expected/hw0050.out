@@ -1,0 +1,9 @@
+FILE     haas/hw0050.nc (from line 1)
+DIALECT  series haas (given)
+REFUSED  line 19: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 20: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 21: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 22: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 30: P0.2 with a decimal point: whole milliseconds on FANUC, possibly seconds on Haas (not known yet, features/HAAS.md); write it without the point
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

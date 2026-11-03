@@ -1,0 +1,5 @@
+FILE     haas/hw0030.nc (from line 1)
+DIALECT  series haas (given)
+REFUSED  line 9: G41: the Haas start-up type is not known yet (features/HAAS.md): give -fparam sup=0 (type A) or 1 (type B)
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

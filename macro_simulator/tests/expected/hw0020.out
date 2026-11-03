@@ -1,0 +1,18 @@
+FILE     haas/hw0020.nc (from line 1)
+DIALECT  series haas (given)
+REFUSED  line 8: G13 does not translate yet
+REFUSED  line 8: address I does not translate yet
+REFUSED  line 8: address K does not translate yet
+REFUSED  line 8: address Q does not translate yet
+REFUSED  line 8: address D does not translate yet
+REFUSED  line 9: G13 does not translate yet
+REFUSED  line 9: address I does not translate yet
+REFUSED  line 9: address D does not translate yet
+REFUSED  line 13: G13 does not translate yet
+REFUSED  line 13: address I does not translate yet
+REFUSED  line 13: address K does not translate yet
+REFUSED  line 13: address Q does not translate yet
+REFUSED  line 13: address D does not translate yet
+REFUSED  line 13: address L does not translate yet
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

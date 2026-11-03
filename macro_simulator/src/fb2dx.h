@@ -9,8 +9,10 @@
 /* ------------------------------------------------------------------ */
 /* FANUC series (FB2DX.md 3.7)                                          */
 
-enum { FS_A, FS_0, FS_6, FS_10, FS_15, FS_16, FS_0I, FS_30I, FB_NSER };
+enum { FS_A, FS_0, FS_6, FS_10, FS_15, FS_16, FS_0I, FS_30I, FS_HAAS, FB_NSER };
 #define FS_ALL   ((1 << FB_NSER) - 1)
+#define FS_FANUC (FS_ALL & ~(1 << FS_HAAS))  /* detected by default; Haas only by M97 or -series haas */
+#define FB_M97   100000000L     /* the program number given to a Haas M97 subprogram at N n: FB_M97 + n */
 #define FS_MACB  (FS_ALL & ~(1 << FS_A))
 
 /* constructs that exist on some series only: they decide detection */
@@ -23,6 +25,7 @@ enum {
     FF_LOGIC,       /* AND OR between conditions */
     FF_NAMED,       /* #_NAME system variables */
     FF_COMEXT,      /* common variables beyond #100-#149, #500-#531 */
+    FF_M97,         /* M97 P: a local subprogram call (Haas) */
     FB_NFEAT
 };
 
@@ -40,6 +43,7 @@ enum {
 /* parameter settings (-fparam); -1 = not given */
 typedef struct fbpar {
     int dpi;        /* 0 least increments, 1 whole units */
+    int dpiset, natset, supset;     /* given as dpi= nat= sup=, not only by -fparam default (Haas) */
     int nat;        /* ATAN range: 0 = 0..360, 1 = -180..180 */
     int is;         /* increment system: 'b' or 'c' */
     int o8;         /* 30i: 8-digit program numbers (M98 P is the program, L the count) */
@@ -219,6 +223,7 @@ const char *fbskey(int ser);
 void fbsnames(char *buf, int mask);
 void fbslist(FILE *fp);
 int fbdetect(fbx *x);
+int fbm97(fbx *x);
 int fbmacroa(fbx *x);
 int fbfparam(fbpar *p, const char *arg);
 void fbfeat(fbx *x, int f, int line);

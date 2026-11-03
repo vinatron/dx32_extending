@@ -46,3 +46,6 @@ fbxrot   fbrot    -fparam default -against fbxrot.txt
 fbrotdw  fbrotd   -fparam default -w fbwrotd.txt -check
 fbg28w   fbg28    @smid.rsp -w fbwg28.txt -check
 fbg28x   fbg28    -fparam default -w fbwg28x.txt
+fbm97w   fbm97    -inch -g28 m25 -w fbwm97.txt -check
+fbm97x   fbm97    -series 16 -inch -g28 m25 -w fbwm97x.txt
+fbg53x   fbg53    -g28 m25 -w fbwg53x.txt

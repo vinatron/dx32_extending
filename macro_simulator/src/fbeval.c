@@ -633,7 +633,7 @@ static void xformblk(fbs *s, int g)
 static void modal(fbs *s)
 {
     static const char ax[] = "XYZ";
-    int i, a, moved = 0, cw = 0, g4 = 0, pa, pb, newcyc = 0, start = 0, g43 = 0, hole = 0, g28 = 0;
+    int i, a, moved = 0, cw = 0, g4 = 0, pa, pb, newcyc = 0, start = 0, g43 = 0, hole = 0, g28 = 0, g53 = 0;
     double v, h = -1, d = -1;
     int g41 = 0, m6 = 0;
     for (i = 0; i < s->nw; i++) {
@@ -655,6 +655,7 @@ static void modal(fbs *s)
         else if (v == 43) g43 = 1;
         else if (v == 41 || v == 42) g41 = 1;
         else if (v == 28) g28 = 1;
+        else if (v == 53) g53 = 1;
         else if (v == 68 || v == 69 || v == 52) {
             xformblk(s, (int)v);
             return;
@@ -664,6 +665,14 @@ static void modal(fbs *s)
         spin = tool;
         if (s->tool == -1) s->tool = tool;
         else if (s->tool != tool) s->tool = -2;
+    }
+    if (g53) {                          /* machine coordinates: where they are in the program's, is not known */
+        s->modes |= gabs == 91 ? MO_INC : MO_ABS;
+        for (i = 0; i < s->nw; i++) {
+            const char *p = strchr(ax, s->w[i].l);
+            if (p) known[p - ax] = 0;
+        }
+        return;
     }
     if (g28) {                          /* through the intermediate point to the reference point */
         double np[3];
@@ -964,7 +973,8 @@ int fbeval(fbx *x, FILE *out, long limit)
                 ncs++;
                 {
                     char b[300], t[48];
-                    sprintf(b, "%s O%ld", f->g65 ? "G65" : "M98", o);
+                    if (o >= FB_M97) sprintf(b, "M97 N%ld", o - FB_M97);
+                    else sprintf(b, "%s O%ld", f->g65 ? "G65" : "M98", o);
                     if (cnt > 1) { sprintf(t, " x%ld", cnt); strcat(b, t); }
                     if (f->g65)
                         for (j = 1; j <= 33; j++)

@@ -1,0 +1,3 @@
+FILE     fbm97.nc (from line 1)
+REFUSED  line 8: M97 P: call the subprogram at N P in the same program: not on series 16
+RESULT   stopped: see REFUSED/STOP above

@@ -1,0 +1,17 @@
+; fb2dx on the Haas programs in haas/ (the answers book of the Haas Mill Programming Workbook, 2015;
+; macro_simulator/manual/haas): NAME (expected/NAME.out), then the inputs and options. haas.rsp holds
+; what the book settles: -series haas, inch, G28/G53 home moves. The settings fb2dx needs and Haas has
+; not been checked for (G41/G42 start-up type, the G83 clearance) are left out, so those runs show the
+; refusal; the runs ending in "a" give assumed values (sup=0, d83=.05) to exercise the rest of the
+; translation. features/HAAS.md has the results.
+hw0010   haas/hw0010.nc @haas.rsp -w dxtk.txt -check
+hw0020   haas/hw0020.nc @haas.rsp -w dxtk.txt -check
+hw0030   haas/hw0030.nc @haas.rsp -w dxtk.txt -check
+hw0030a  haas/hw0030.nc @haas.rsp -fparam sup=0 -w dxtk.txt -check
+hw0040   haas/hw0040.nc @haas.rsp -w dxtk.txt -check
+hw0040a  haas/hw0040.nc @haas.rsp -fparam sup=0 -w dxtk.txt -check
+hw0050   haas/hw0050.nc @haas.rsp -w dxtk.txt -check
+hw0050a  haas/hw0050.nc @haas.rsp -fparam d83=.05 -w dxtk.txt -check
+hw0060   haas/hw0060.nc @haas.rsp -w dxtk.txt -check
+hw0070   haas/hw0070.nc @haas.rsp -w dxtk.txt -check
+hw0080   haas/hw0080.nc haas/hw0081.nc @haas.rsp -w dxtk.txt -check

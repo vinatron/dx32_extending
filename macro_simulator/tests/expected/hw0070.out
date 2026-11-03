@@ -1,0 +1,30 @@
+FILE     haas/hw0070.nc (from line 1)
+DIALECT  series haas (given)
+REFUSED  line 8: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 9: G70 does not translate yet
+REFUSED  line 9: address I does not translate yet
+REFUSED  line 9: address J does not translate yet
+REFUSED  line 9: address L does not translate yet
+REFUSED  line 10: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 11: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 12: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
+REFUSED  line 19: G84 does not translate yet
+REFUSED  line 19: address R does not translate yet
+REFUSED  line 20: G70 does not translate yet
+REFUSED  line 20: address I does not translate yet
+REFUSED  line 20: address J does not translate yet
+REFUSED  line 20: address L does not translate yet
+REFUSED  line 21: address L does not translate yet
+REFUSED  line 22: G71 does not translate yet
+REFUSED  line 22: address R does not translate yet
+REFUSED  line 22: address I does not translate yet
+REFUSED  line 22: address J does not translate yet
+REFUSED  line 22: address K does not translate yet
+REFUSED  line 22: address L does not translate yet
+REFUSED  line 23: G72 does not translate yet
+REFUSED  line 23: address R does not translate yet
+REFUSED  line 23: address I does not translate yet
+REFUSED  line 23: address J does not translate yet
+REFUSED  line 23: address L does not translate yet
+STOP     dxtk.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above
