@@ -20,7 +20,7 @@ It builds (compiler output in `BUILD.TXT`), stops with a message if the build fa
 
 | | Windows | 16-bit DOS |
 |---|---|---|
-| `RUNTESTS` (`tests\RESULTS.TXT`): traces, plots, fb2dx, the FANUC corpus | `252 passed, 0 failed` | `211 passed, 0 failed`, and a `skip` line for the corpus (long file names) |
+| `RUNTESTS` (`tests\RESULTS.TXT`): traces, plots, fb2dx, the FANUC corpus | `252 passed, 0 failed` (`211` and a corpus `skip` line if `fanuc_macros` is not beside `macro_simulator`) | `211 passed, 0 failed`, and a `skip` line for the corpus (long file names) |
 | `PREVIEW` (`tests\PREVIEW.TXT`): the preview's drawing and its keys | `157 passed, 0 failed` | `157 passed, 0 failed` |
 
 It takes about 7 minutes on Windows; leave the mouse and keyboard alone while windows flash past.
@@ -80,7 +80,9 @@ RUNTESTS ..\src\DXSIM4G.EXE    DOS/4GW (DOS4GW.EXE from Watcom's BINW folder on 
 - **Expected: `252 passed, 0 failed`.** That includes 16 plot files (SVG, HPGL, PostScript, listed in
   `PLOTS.LST`), compared with `EXPECTED\` number by number, and 41 fb2dx runs on the FANUC macro
   corpus (`CORPUS.LST`, `../fanuc_macros`). On 16-bit DOS those 41 are skipped (they have long file
-  names), so expect `211 passed` there, with a `skip` line.
+  names), so expect `211 passed` there, with a `skip` line. They are skipped on Windows too when the
+  corpus is not where `CORPUS.LST` looks for it: copy the repository's `fanuc_macros` folder next to
+  `macro_simulator` (for example both on the Desktop).
 - `skip  the fb2dx tests: ..\src\FB2DX.EXE not found` with `125 passed` (and no corpus runs) means `FB2DX.EXE` was not built.
   Build it (`fb` or `fb32`) and run again.
 - A number that differs only in its last printed digit is accepted automatically, because C libraries round
