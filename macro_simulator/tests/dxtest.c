@@ -2,8 +2,9 @@
  * dxtest.c - regression tests for dxsim, in C89 so they run where dxsim runs
  * (DOS, Windows 98, Linux, z/OS).
  *
- *   dxtest [-u] [path-to-dxsim]        run from the tests directory
- *   dxtest [-u] -sc PREVIEW [-bmp]     only the preview tests (5), with a preview build
+ *   dxtest [-u] [-o FILE] [path-to-dxsim]      run from the tests directory
+ *   dxtest [-u] [-o FILE] -sc PREVIEW [-bmp]   only the preview tests (5), with a preview build
+ *   -o FILE writes the results to FILE instead of the screen
  *
  * 1. "dxsim -check" must parse every block of the built-in cycle text, and
  *    "dxsim -selftest" must pass its cutter-compensation geometry checks.
@@ -31,6 +32,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include <stdarg.h>
 
 #if defined(__DOS__) || defined(__NT__) || defined(_WIN32) || defined(MSDOS)
 #define DEFEXE  "..\\src\\DXSIM.EXE"
@@ -64,9 +66,22 @@ static int nmv;
 static unsigned long cov[MAXCOV];
 static int ncov;
 
+/* the results: stdout, or the -o file. DXTEST opens that file itself, so the programs it starts
+   do not inherit it (a batch file's > RESULTS.TXT stayed locked on Windows 98 after the run) */
+static FILE *rep;
+
+static void say(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(rep ? rep : stdout, fmt, ap);
+    va_end(ap);
+    fflush(rep ? rep : stdout);
+}
+
 static void check(int ok, const char *what)
 {
-    printf("%s %s\n", ok ? "ok   " : "FAIL ", what);
+    say("%s %s\n", ok ? "ok   " : "FAIL ", what);
     if (ok) nok++;
     else nfail++;
 }
@@ -603,7 +618,7 @@ static void corpus(void)
         if (sscanf(rest, "%199s", first) != 1) continue;
         fp = fopen(first, "r");
         if (!fp) {                              /* 16-bit DOS: no long names */
-            printf("skip  the corpus tests: %s cannot be opened (long file names, or no fanuc_macros)\n", first);
+            say("skip  the corpus tests: %s cannot be opened (long file names, or no fanuc_macros)\n", first);
             break;
         }
         fclose(fp);
@@ -828,7 +843,7 @@ static void fbhand(void)
             if (!fbget("fbwfix.txt", 101 + i, &got[0]) || !fbget("fbwfix.txt", 121 + i, &got[1]) ||
                 !fbget("fbwfix.txt", 141 + i, &got[2]) || got[0] != sg * f || got[1] != sg * c ||
                 got[2] != sg * r) {
-                printf("  %g: FIX %g FUP %g ROUND %g\n", tv[i], got[0], got[1], got[2]);
+                say("  %g: FIX %g FUP %g ROUND %g\n", tv[i], got[0], got[1], got[2]);
                 bad++;
             }
         }
@@ -1084,7 +1099,7 @@ static void screens(const char *exe, int bmp)
     FILE *lst = fopen("tests.lst", "r"), *ef, *gf, *html = 0, *fp;
     int v, found;
     if (!lst) {
-        printf("dxtest: run me in the tests directory (tests.lst not found)\n");
+        say("dxtest: run me in the tests directory (tests.lst not found)\n");
         return;
     }
     ef = fopen(EXPDIR "screen.out", "r");
@@ -1197,15 +1212,27 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "-fb") && i + 1 < argc) fb2dx = argv[++i];
         else if (!strcmp(argv[i], "-sc") && i + 1 < argc) sc = argv[++i];
         else if (!strcmp(argv[i], "-bmp")) bmp = 1;
+        else if (!strcmp(argv[i], "-o") && i + 1 < argc) {
+            rep = fopen(argv[++i], "w");
+            if (!rep) {
+                printf("dxtest: cannot write %s\n", argv[i]);
+                return 2;
+            }
+            printf("dxtest: running, results in %s\n", argv[i]);
+        }
         else dxsim = argv[i];
     }
     if (sc) {                               /* only the preview tests */
-        printf("dxtest: the preview of %s\n", sc);
+        say("dxtest: the preview of %s\n", sc);
         screens(sc, bmp);
-        printf("%d passed, %d failed%s\n", nok, nfail, update ? " (expected files rewritten)" : "");
+        say("%d passed, %d failed%s\n", nok, nfail, update ? " (expected files rewritten)" : "");
+        if (rep) {
+            fclose(rep);
+            printf("%d passed, %d failed\n", nok, nfail);
+        }
         return nfail ? 1 : 0;
     }
-    printf("dxtest: using %s\n", dxsim);
+    say("dxtest: using %s\n", dxsim);
 
     dx("-check");
     lastline(line, sizeof line);
@@ -1222,7 +1249,7 @@ int main(int argc, char **argv)
                 if (!strncmp(line, "ok", 2)) nok2++;
                 else if (!strncmp(line, "FAIL", 4)) {
                     chop(line);
-                    printf("  %s\n", line);
+                    say("  %s\n", line);
                     nbad++;
                 }
             }
@@ -1234,7 +1261,7 @@ int main(int argc, char **argv)
 
     lst = fopen("tests.lst", "r");
     if (!lst) {
-        printf("dxtest: run me in the tests directory (tests.lst not found)\n");
+        say("dxtest: run me in the tests directory (tests.lst not found)\n");
         return 2;
     }
     while (fgets(name, sizeof name, lst)) {
@@ -1255,7 +1282,7 @@ int main(int argc, char **argv)
     if (lst) {
         FILE *exe = fopen(fb2dx, "rb");
         if (!exe) {
-            printf("skip  the fb2dx tests: %s not found (build it, or give -fb path)\n", fb2dx);
+            say("skip  the fb2dx tests: %s not found (build it, or give -fb path)\n", fb2dx);
             fclose(lst);
             lst = 0;
         } else fclose(exe);
@@ -1285,6 +1312,10 @@ int main(int argc, char **argv)
     check(ncov >= 600, what);
     remove(TMPOUT);
 
-    printf("%d passed, %d failed%s\n", nok, nfail, update ? " (expected files rewritten)" : "");
+    say("%d passed, %d failed%s\n", nok, nfail, update ? " (expected files rewritten)" : "");
+    if (rep) {
+        fclose(rep);
+        printf("%d passed, %d failed\n", nok, nfail);
+    }
     return nfail ? 1 : 0;
 }

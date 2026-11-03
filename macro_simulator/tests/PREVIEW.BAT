@@ -24,15 +24,15 @@ echo No preview build found: build win32w or dos in ..\src first.
 goto end
 
 :win
-DXTEST -sc ..\src\DXSIMW.EXE -bmp > PREVIEW.TXT
+DXTEST -sc ..\src\DXSIMW.EXE -bmp -o PREVIEW.TXT
 goto show
 
 :dos
-DXTEST -sc ..\src\DXSIM.EXE -bmp > PREVIEW.TXT
+DXTEST -sc ..\src\DXSIM.EXE -bmp -o PREVIEW.TXT
 goto show
 
 :given
-DXTEST -sc %1 -bmp > PREVIEW.TXT
+DXTEST -sc %1 -bmp -o PREVIEW.TXT
 
 :show
 type PREVIEW.TXT
