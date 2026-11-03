@@ -47,6 +47,8 @@ typedef struct fbpar {
     int units;      /* 20 inch, 21 metric, 0 unknown (-inch/-mm) */
     int dflt;       /* -fparam default given */
     int g28;        /* -g28: 0 not given, 1 m25 (quill home), 2 drop */
+    int g28xy;      /* -g28xy stay: G28 X/Y go to the intermediate point only */
+    int ftool;      /* -ftool: the tool in the spindle at the start; -1 not given */
     int comp;       /* -comp dx32: the DX32's own G41/G42 lead-in is accepted for start-up type B */
     int sup;        /* FANUC start-up type of G41/G42 (parameter 5003 bit 0 SUP): 0 type A, 1 type B */
     double d83, d73;    /* G83 clearance, G73 retract (parameters 5115, 5114 on 16/0i/30i), program units */
@@ -98,6 +100,8 @@ enum {
 typedef struct fbw {
     char l;             /* address letter */
     fbn *e;             /* value */
+    double fv;          /* G#n, S#n: the value the evaluation saw (FBCORPUS.md 5.4) */
+    int fst;            /* 0 not run, 1 always fv, 2 more than one value */
 } fbw;
 
 typedef struct fbs {
@@ -122,6 +126,8 @@ typedef struct fbs {
     char *cmt;          /* the first comment in the block, or 0 (alarm messages) */
     int vtest;          /* its condition tests a vacant variable (#0, argument checks) */
     long ctrue, cfalse; /* how often its condition held / did not (IF, WHILE) */
+    double sysv;        /* #n = #4xxx (modal information): the value read; */
+    int syst;           /* 0 not run, 1 always sysv, 2 more than one value */
 } fbs;
 
 /* fbs.modes */
@@ -154,6 +160,8 @@ typedef struct fbs {
 #define MO_KL   67108864L
 #define MO_ROT  134217728L  /* ran with a G68 rotation in force (the DX32 G73) */
 #define MO_XYUNK 268435456L /* ran before X and Y were known */
+#define MO_G1IN 536870912L  /* G28: G1 / G2 or G3 in force (the DX32 G0 to the intermediate point changes it) */
+#define MO_G23IN 1073741824L
 #define MO_CYC  (MO_C81 | MO_C82 | MO_C83 | MO_C73 | MO_C85 | MO_C86 | MO_C89)
 
 #define FB_MVN  512     /* moves per chunk */

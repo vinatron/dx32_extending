@@ -7,13 +7,13 @@ REFUSED  line 4: not reached when evaluated, and reads #23, which the run never 
 REFUSED  line 5: not reached when evaluated, and reads #26, which the run never set
 REFUSED  line 6: not reached when evaluated, and reads #9, which the run never set
 NOTE     line 7: not reached when evaluated; translated as written
-REFUSED  line 7: #4003: system variables do not translate
+REFUSED  line 7: #4003: not reached when evaluated, so its value is not known
 REFUSED  line 8: not reached when evaluated, and reads #7, which the run never set
 REFUSED  line 9: not reached when evaluated, and reads #20, which the run never set
 REFUSED  line 10: not reached when evaluated, and reads #120, which the run never set
 REFUSED  line 11: not reached when evaluated, and reads #26, which the run never set
 NOTE     line 12: not reached when evaluated; translated as written
-REFUSED  line 12: #4006: system variables do not translate
+REFUSED  line 12: #4006: not reached when evaluated, so its value is not known
 REFUSED  line 13: not reached when evaluated, and reads #126, which the run never set
 REFUSED  line 14: not reached when evaluated, and reads #126, which the run never set
 REFUSED  line 15: not reached when evaluated, and reads #24, which the run never set

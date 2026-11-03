@@ -15,7 +15,9 @@ static const char *const usage[] = {
     "  -fparam N=V      dpi=0|1 is=b|c nat=0|1 o8=0|1 avar=0|1, or default; repeatable",
     "  -inch | -mm      the unit system when the program has no G20/G21",
     "  -bdel on|off     the block delete switch, for programs with / blocks",
-    "  -g28 m25|drop    G91 G28 Z0: the DX32 quill home (M25), or leave it out",
+    "  -g28 m25|drop    G28 Z: the DX32 quill home (M25), or leave it out (after any intermediate point)",
+    "  -g28xy stay      G28 X/Y: go to the intermediate point only (the DX32 has no X/Y reference return)",
+    "  -ftool n         the tool in the spindle when the program starts (for G43 H / G41 D before any M6)",
     "  -comp dx32       G41/G42 with FANUC start-up type B: accept the DX32's lead-in (FB2DX.md 3.15)",
     "  -parse           list the statements as read",
     "  -eval            evaluate the program and trace its NC blocks",
@@ -26,6 +28,7 @@ static const char *const usage[] = {
     "  -limit N         stop the evaluation after N blocks (default 100000)",
     "  -o FILE          write the report and the trace to FILE",
     "  -silent          nothing on the console",
+    "  @FILE            the options in FILE (blank- or line-separated), for long command lines",
     0
 };
 
@@ -106,6 +109,38 @@ static void dxpath(char *out, const char *argv0)
     } else strcat(out, "dxsim");
 }
 
+/* @FILE on the command line: the options in FILE, separated by blanks or new lines, in its place.
+   COMMAND.COM cuts a command line at 127 characters, which the corpus tests' options exceed */
+static int atfile(int *pargc, char ***pargv)
+{
+    int i, n = 0, cap = *pargc + 64;
+    char **nv = (char **)fbmalloc((unsigned)(cap * sizeof(char *)));
+    for (i = 0; i < *pargc; i++) {
+        const char *a = (*pargv)[i];
+        FILE *fp;
+        char tok[260];
+        if (i == 0 || a[0] != '@') {
+            if (n < cap - 1) nv[n++] = (*pargv)[i];
+            continue;
+        }
+        fp = fopen(a + 1, "r");
+        if (!fp) {
+            fprintf(stderr, "fb2dx: cannot read %s\n", a + 1);
+            return 0;
+        }
+        while (fscanf(fp, "%259s", tok) == 1)
+            if (n < cap - 1) {
+                nv[n] = (char *)fbmalloc((unsigned)(strlen(tok) + 1));
+                strcpy(nv[n++], tok);
+            }
+        fclose(fp);
+    }
+    nv[n] = 0;
+    *pargc = n;
+    *pargv = nv;
+    return 1;
+}
+
 int main(int argc, char **argv)
 {
     fbx *x = &gx;
@@ -116,9 +151,10 @@ int main(int argc, char **argv)
     int chk = 0;
     long limit = 100000;
 
+    if (!atfile(&argc, &argv)) return 1;
     x->ser = -1;
     x->bdelsw = -1;
-    x->par.dpi = x->par.nat = x->par.is = x->par.o8 = x->par.avar = x->par.sup = -1;
+    x->par.dpi = x->par.nat = x->par.is = x->par.o8 = x->par.avar = x->par.sup = x->par.ftool = -1;
     x->rep = stdout;
     for (i = 1; i < argc; i++) {
         const char *a = argv[i];
@@ -157,6 +193,18 @@ int main(int argc, char **argv)
                 return 1;
             }
             x->par.comp = 1;
+        } else if (!strcmp(a, "-ftool") && i + 1 < argc) {
+            x->par.ftool = atoi(argv[++i]);
+            if (x->par.ftool < 0) {
+                fprintf(stderr, "fb2dx: -ftool n, n >= 0\n");
+                return 1;
+            }
+        } else if (!strcmp(a, "-g28xy") && i + 1 < argc) {
+            if (strcmp(argv[++i], "stay")) {
+                fprintf(stderr, "fb2dx: -g28xy stay\n");
+                return 1;
+            }
+            x->par.g28xy = 1;
         } else if (!strcmp(a, "-g28") && i + 1 < argc) {
             a = argv[++i];
             x->par.g28 = !strcmp(a, "m25") ? 1 : !strcmp(a, "drop") ? 2 : -1;

@@ -938,6 +938,22 @@ static void fbhand(void)
         check(n == 8 && !bad && out == 2, what);
     }
 
+    /* G28 Z25. in G1: the DX32 rapids to the intermediate point, and the next X20. feeds again (G28
+       leaves the motion code as it was); the X/Y return ends at the intermediate point X40 Y20 Z15 */
+    {
+        int up = 0, feed = 0, last = 0;
+        fb("fbg28.nc @smid.rsp -w fbwg28.txt");
+        movesx("fbwg28", "");
+        for (i = 1; i < nmv; i++) {
+            if (mvs[i].k == 'R' && near(mvs[i].z, 25 / 25.4, 1e-4) && near(mvs[i - 1].z, -1 / 25.4, 1e-4)) up++;
+            if (mvs[i].k == 'F' && near(mvs[i].x, 20 / 25.4, 1e-4) && near(mvs[i].z, 25 / 25.4, 1e-4)) feed++;
+        }
+        if (nmv && near(mvs[nmv - 1].x, 40 / 25.4, 1e-4) && near(mvs[nmv - 1].y, 20 / 25.4, 1e-4) &&
+            near(mvs[nmv - 1].z, 15 / 25.4, 1e-4)) last = 1;
+        check(up == 1 && feed == 1 && last, "fb2dx G28 Z25. rapids to the intermediate point, then G1 again; "
+              "G28 X Y Z ends at the intermediate point");
+    }
+
     /* G41 with a 10 mm tool in dxsim: the approach ends at (-5,-5), the first side is cut at X-5
        (not at X0: the gouge a plain copy of the G41 block gives), the far side at X55 */
     {

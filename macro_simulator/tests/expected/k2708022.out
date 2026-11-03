@@ -1,8 +1,10 @@
-FILE     ../../fanuc_macros/programs/p270_O8022.nc (from line 1)
+FILE     kc8022.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p270_O8022.nc (from line 12)
 DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
-NOTE     line 4: M99 in the main program repeats it on the control; evaluated once
-REFUSED  line 2: the unit system is not known: G20/G21 before this block, or -inch/-mm
-REFUSED  line 3: the unit system is not known: G20/G21 before this block, or -inch/-mm
-REFUSED  line 4: M99 in the main program makes FANUC repeat it for ever; not translated
-STOP     dxtk.txt not written: see REFUSED above
-RESULT   stopped: see REFUSED/STOP above
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     -ftool 1: T1 must be in the spindle when the program starts
+NOTE     1 called program(s) written as DX32 macros #1-#1, nested 1 deep
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    dxtk.txt
+CHECK    dxsim reads dxtk.txt cleanly and reaches all 8 FANUC end points in order
+RESULT   ok

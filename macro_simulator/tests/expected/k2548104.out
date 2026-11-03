@@ -1,4 +1,23 @@
-FILE     ../../fanuc_macros/programs/p254_O8104.nc (from line 1)
-DIALECT  series 10 15 16 0i 30i (Macro B at line 2, THEN at line 6)
-REFUSED  line 2: #4003: system variables do not translate
-RESULT   stopped: see REFUSED/STOP above
+FILE     kc8104.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p254_O8104.nc (from line 11)
+DIALECT  series 16 (given)
+NOTE     -fparam default: the factory settings are assumed
+NOTE     line 16: the #0 test is always true here (the run covers every call); written so
+NOTE     line 27: not reached when evaluated; translated as written
+NOTE     line 28: not reached when evaluated; translated as written
+NOTE     line 29: not reached when evaluated; translated as written
+NOTE     line 30: not reached when evaluated; translated as written
+NOTE     line 31: not reached when evaluated; translated as written
+NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
+NOTE     FIX/FUP/ROUND are built on LSR: exact below 4294967296 (TENTATIVE, bench/BFIX.TXT)
+NOTE     drilling cycles are written out as moves; cycle values in D20 D22 D23 D24 D25
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     -ftool 1: T1 must be in the spindle when the program starts
+NOTE     modal information (#4001-#4130), G#n and S#n written as the one value the evaluation saw (FBCORPUS.md 5.4): the program has no outside inputs
+NOTE     #3000/#3006 written as a comment with the message and M2/M0; the DX32 shows no message
+NOTE     loops and jumps use labels L1-L1; do not call this from a loop that uses them
+NOTE     1 called program(s) written as DX32 macros #1-#1, nested 1 deep
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    dxtk.txt
+CHECK    dxsim reads dxtk.txt cleanly and reaches all 22 FANUC end points in order
+RESULT   ok

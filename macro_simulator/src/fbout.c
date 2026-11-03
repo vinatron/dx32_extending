@@ -455,7 +455,7 @@ static void opencond(const fbn *c, int neg)
 /* statements                                                           */
 
 static const fbs *cursta;       /* the statement being written */
-static int ncancel, ng28, nalarm, ncomp;
+static int ncancel, ng28, ng28xy, nalarm, ncomp;
 
 /* a condition that tests a vacant variable (#0), e.g. an argument check: the evaluation ran
    every call of the program, so if it always came out the same, it is that constant
@@ -491,13 +491,29 @@ static int alarm(const fbn *lhs, const fbn *e, int close)
     return 1;
 }
 
+static int nfold4, nsupp;        /* #n = #4xxx folded, #3003/#3004 writes left out */
+
 static void assign(const fbn *lhs, const fbn *e, int close)
 {
     char b[420];
     const char *n;
     if (alarm(lhs, e, close)) return;
+    if (lhs->k == EN_VAR && lhs->a->k == EN_NUM && (lhs->a->v == 3003 || lhs->a->v == 3004)) {
+        nsupp++;                        /* FBCORPUS.md 5.5: how the operator can stop it, not the path */
+        if (close) out("!");
+        return;
+    }
     b[0] = 0;
-    xe(e, b);
+    if (e->k == EN_VAR && e->a->k == EN_NUM &&
+        ((e->a->v >= 4001 && e->a->v <= 4130) || (e->a->v >= 4201 && e->a->v <= 4330))) {
+        if (cursta->syst != 1) {        /* FBCORPUS.md 5.4: folded to the value the evaluation saw */
+            fail(cursta->syst ? "#%.0f reads different values in different passes" :
+                 "#%.0f: not reached when evaluated, so its value is not known", e->a->v);
+            return;
+        }
+        dxnum(b, cursta->sysv);
+        nfold4++;
+    } else xe(e, b);
     n = varname(lhs);
     out("%s=%s%s", n, b, close ? "!" : "");
     nassign++;
@@ -591,12 +607,25 @@ static int dimval(const fbs *s, int i, char *txt, int *npre)
 /* a word from dimval()'s text: a number gets the letter, a carrier is the word itself */
 static int ntlen, ntsel;        /* G43/G49 left out, T without M6 left out */
 
+static int nfoldg;               /* G#n folded */
+
+/* the value of G or S word i: a constant, or G#n / S#n folded to the one value the evaluation saw */
+static int gw(const fbs *s, int i, double *v)
+{
+    if (whole(s->w[i].e, v)) return 1;
+    if (s->w[i].fst == 1) {
+        *v = s->w[i].fv;
+        return 1;
+    }
+    return 0;
+}
+
 static int findg(const fbs *s, double g)
 {
     int i;
     double v;
     for (i = 0; i < s->nw; i++)
-        if (s->w[i].l == 'G' && whole(s->w[i].e, &v) && v == g) return 1;
+        if (s->w[i].l == 'G' && gw(s, i, &v) && v == g) return 1;
     return 0;
 }
 
@@ -858,6 +887,7 @@ static void hole(const fbs *s)
         }
         if (needpos) out("Z20=Z21");
     }
+    if (fw[0]) out("%s", fw);           /* K0/L0: no hole here, but the feed stays for the later ones */
     if (inc) out("G91");
 }
 
@@ -866,7 +896,7 @@ static void nc(const fbs *s)
     static const char axes[] = "XYZ", ctr[] = "IJK";
     char blk[420], t[48], txt[3][48], ctxt[3][48];
     int i, npre = 0, nm = 0, hasg0 = 0, gmot = -1, hasz = 0, hasxy = 0, m98 = hasm(s, 98), g4 = 0, arc, plane, a;
-    int hasax[3] = { 0, 0, 0 }, hasc[3] = { 0, 0, 0 }, hasr = 0, compg = 0;
+    int hasax[3] = { 0, 0, 0 }, hasc[3] = { 0, 0, 0 }, hasr = 0, compg = 0, g28mv = 0, g28z = 0, g28xy = 0;
     double v;
     blk[0] = 0;
     for (i = 0; i < s->nw; i++) {
@@ -885,34 +915,71 @@ static void nc(const fbs *s)
         xform(s);
         return;
     }
-    if (findg(s, 28)) {                 /* G91 G28 Z0: the DX32 quill home (M25), or left out */
-        int bad = 0, inc = findg(s, 91) || ((s->modes & MO_INC) && !findg(s, 90));
+    if (findg(s, 28)) {                 /* FB2DX.md 3.18: the intermediate point, then M25 or nothing */
+        int inc = findg(s, 91) || ((s->modes & MO_INC) && !findg(s, 90)), zero = 1;
         for (i = 0; i < s->nw; i++) {
             int l = s->w[i].l;
-            if (l == 'G' && whole(s->w[i].e, &v) && (v == 28 || v == 90 || v == 91)) continue;
-            if (l == 'Z' && inc && whole(s->w[i].e, &v) && v == 0) continue;
-            bad = 1;
-        }
-        if (bad || findw(s, 'Z') < 0) {
-            fail("only G91 G28 Z0 (Z to the reference point) translates");
+            if (l == 'G' && whole(s->w[i].e, &v) && (v == 28 || v == 90 || v == 91 || v == 0 || v == 1)) continue;
+            if (l == 'M') continue;
+            if (l == 'X' || l == 'Y' || l == 'Z') {
+                if (!(inc && whole(s->w[i].e, &v) && v == 0)) zero = 0;
+                if (l == 'Z') g28z = 1;
+                else g28xy = 1;
+                continue;
+            }
+            fail("%c with G28 does not translate", l);
             return;
         }
-        if (!X->par.g28) {
+        if (!g28z && !g28xy) {
+            fail("G28 without an axis word");
+            return;
+        }
+        if (g28xy && !X->par.g28xy) {
+            fail("G28 X/Y: the DX32 has no X/Y reference return; -g28xy stay goes to the intermediate point only");
+            return;
+        }
+        if (g28z && !X->par.g28) {
             fail("G28 Z: give -g28 m25 (the DX32 quill home) or -g28 drop (leave it out)");
             return;
         }
-        if (findg(s, 91)) out("G91");
-        if (findg(s, 90)) out("G90");
-        if (X->par.g28 == 1) out("M25");
-        ng28++;
-        return;
+        if (s->modes & MO_ROT) {
+            fail("G28 with G68 in force does not translate");
+            return;
+        }
+        if (!zero && (s->modes & MO_G23IN)) {
+            fail("G28 with G2/G3 in force: the DX32 G0 to the intermediate point would replace it");
+            return;
+        }
+        if (!zero && (s->modes & MO_ABS) && (s->modes & MO_INC)) {
+            fail("G28 runs in G90 and in G91 in different passes");
+            return;
+        }
+        if (zero) {                     /* G91 G28 Z0: no intermediate move */
+            if (findg(s, 91)) out("G91");
+            if (findg(s, 90)) out("G90");
+            if (findg(s, 0)) out("G0");
+            if (findg(s, 1)) out("G1");     /* G28 leaves it in force: written for the blocks after */
+            for (i = 0; i < s->nw; i++)
+                if (s->w[i].l == 'M') {
+                    if (!whole(s->w[i].e, &v) || !(v == 3 || v == 4 || v == 5 || v == 7 || v == 8 || v == 9)) {
+                        fail("M with G28: only M3 M4 M5 M7 M8 M9 translate here");
+                        return;
+                    }
+                    out("M%.0f", v);
+                }
+            if (g28z && X->par.g28 == 1) out("M25");
+            if (g28z) ng28++;
+            if (g28xy) ng28xy++;
+            return;
+        }
+        g28mv = 1;                      /* a G0 to the intermediate point, written below */
     }
     if (s->modes & MO_HOLE) {
         if (s->modes & (MO_LIN | MO_ARC)) fail("this block drills in one pass and moves in another");
         else hole(s);
         return;
     }
-    if (s->modes & MO_NOMOT) {
+    if ((s->modes & MO_NOMOT) && !g28mv) {
         fail("axis words with no G0/G1 in force (after G80, or before the first one): FANUC's motion there "
              "depends on the control; give G0 or G1");
         return;
@@ -923,6 +990,11 @@ static void nc(const fbs *s)
     }
     arc = (s->modes & MO_ARC) != 0;
     plane = s->modes & MO_P18 ? 18 : s->modes & MO_P19 ? 19 : 17;
+    if (g28mv) {
+        cat(blk, "G0");
+        hasg0 = 1;
+        gmot = 0;
+    }
     /* G codes first: G20/G21 decide how the dimension words in the block are written */
     for (i = 0; i < s->nw; i++) {
         int g;
@@ -931,11 +1003,15 @@ static void nc(const fbs *s)
             ncancel++;                  /* cancels of what never translates: nothing to cancel */
             continue;
         }
-        if (!whole(s->w[i].e, &v) || v != floor(v)) {
-            fail("G with a variable value does not translate");
+        if (!gw(s, i, &v) || v != floor(v)) {
+            fail(s->w[i].fst == 2 ? "G with a variable value: it took different values in different passes" :
+                 s->w[i].fst == 0 && !whole(s->w[i].e, &v) ? "G with a variable value: not reached when evaluated" :
+                 "G with a variable value does not translate");
             continue;
         }
+        if (!whole(s->w[i].e, &v)) nfoldg++;
         g = (int)v;
+        if (g28mv && (g == 28 || g == 0 || g == 1)) continue;
         if (g == 20 || g == 21) units = g;
         if (g == 43 || g == 49) {       /* tool length: the DX32 takes it from the tool table */
             ntlen++;
@@ -1005,7 +1081,12 @@ static void nc(const fbs *s)
             continue;
         }
         if (l == 'S') {
-            if (!whole(e, &v) || v != floor(v) || v < 0) { fail("S must be a whole constant here"); continue; }
+            if (!gw(s, i, &v) || v != floor(v) || v < 0) {
+                fail(s->w[i].fst == 2 ? "S#n takes different values in different passes" :
+                     "S must be a whole constant, or a variable the evaluation saw with one whole value");
+                continue;
+            }
+            if (!whole(e, &v)) nfoldg++;
             sprintf(t, "S%.0f", v);
             cat(blk, t);
             continue;
@@ -1040,6 +1121,16 @@ static void nc(const fbs *s)
     if (arc) {                          /* FB2DX.md 3.12 */
         int pa = plane == 18 ? 2 : plane == 19 ? 1 : 0, pb = plane == 18 ? 0 : plane == 19 ? 2 : 1;
         int abs = (s->modes & MO_ABS) != 0;
+        if (!hasax[pa] && !hasax[pb] && !hasr && !((s->modes & MO_ABS) && (s->modes & MO_INC))) {
+            /* FANUC: an arc with no end point is a full circle. The DX32 needs the end point written:
+               dxsim moves nothing on a block with only I J (LANGUAGE.md 12, the pole) */
+            for (a = 0; a < 2; a++) {
+                int c = a ? pb : pa;
+                if (abs) sprintf(txt[c], "%c20", axes[c]);
+                else strcpy(txt[c], "0.");
+                hasax[c] = 1;
+            }
+        }
         if (s->modes & MO_LIN) fail("this block runs as an arc and as a line in different passes");
         else if ((s->modes & MO_ABS) && (s->modes & MO_INC)) fail("this arc runs in G90 and in G91");
         else if ((s->modes & MO_P17 ? 1 : 0) + (s->modes & MO_P18 ? 1 : 0) + (s->modes & MO_P19 ? 1 : 0) > 1)
@@ -1098,8 +1189,9 @@ static void nc(const fbs *s)
        (0x4088 bit 6, 0x1cf64; a bare G41 would make FANUC's start-up move the uncompensated one), so the
        turn-on block is a zero move in G91; FANUC's start-up move is then the approach, as in type A */
     if (compg) {
-        char gm[4];
-        sprintf(gm, gmot >= 0 ? "G%d" : "", gmot);
+        char gm[16];
+        if (gmot >= 0) sprintf(gm, "G%d", gmot);
+        else gm[0] = 0;
         if ((s->modes & MO_ABS) && !(s->modes & MO_INC)) {
             out("G91%sG%dX0.", gm, compg);
             out("G90");
@@ -1109,6 +1201,12 @@ static void nc(const fbs *s)
             fail("G%d: not reached in one of G90/G91 when evaluated; the turn-on block needs it", compg);
     }
     if (blk[0]) out("%s", blk);
+    if (g28mv) {                        /* then the reference point: M25 for Z, nothing for X/Y */
+        if (s->modes & MO_G1IN) out("G1");      /* FANUC's G28 leaves the motion code as it was */
+        if (g28z && X->par.g28 == 1) out("M25");
+        if (g28z) ng28++;
+        if (g28xy) ng28xy++;
+    }
     /* the position, for the absolute arc centres */
     if (needpos && (hasax[0] || hasax[1] || hasax[2])) {
         if (!(s->modes & (MO_ABS | MO_INC))) {
@@ -1303,6 +1401,9 @@ static void structure(fbx *x, int s0, int end, int sub)
         for (k = 0; k < nc; k++)
             if (c[k] >= t) c[k--] = c[--nc];
         qsort(c, nc, sizeof c[0], cmpint);
+        for (k = j = 0; k < nc; k++)                            /* two jumps to one label: one end */
+            if (!j || c[k] != c[j - 1]) c[j++] = c[k];
+        nc = j;
         if (!nc) {                                              /* a plain region to the target */
             stfw[i - s0] = addfw(i, t, 0, -1, x->st[i]->line);
             continue;
@@ -1315,7 +1416,6 @@ static void structure(fbx *x, int s0, int end, int sub)
         alloc(flg[f]);
         stfw[i - s0] = addfw(i, c[0], 0, f, x->st[i]->line);
         for (k = 0; k < nc; k++) {
-            if (k && c[k] == c[k - 1]) continue;
             addfw(c[k], k + 1 < nc ? c[k + 1] : t, 1, f, x->st[i]->line);
         }
     }
@@ -1867,7 +1967,7 @@ int fbwrite(fbx *x, const char *path)
     else if (g20) fbrep(x, "NOTE", 0, "the program switches between G20 and G21");
 
     /* arcs: G75 (multi-quadrant) at the top; G90 arcs need the position kept in X20 Y20 Z20 */
-    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = nalarm = ncomp = nm3 = anyxf = nxf = 0;
+    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = ng28xy = nfold4 = nfoldg = nsupp = nalarm = ncomp = nm3 = anyxf = nxf = 0;
     cursta = 0;
     for (k = 0; k < nins; k++)
         for (i = ins[k].s0; i < ins[k].end; i++) {
@@ -1982,7 +2082,15 @@ int fbwrite(fbx *x, const char *path)
     if (nxf) fbrep(x, "NOTE", 0, "G68/G69/G52 written as G73 A (rotation about X0 Y0), G72 and G97 (fixture offset): "
                    "a rotation about (cx,cy) is G73 plus an offset of c - R c; the G52 shift is added to it");
     if (ncancel) fbrep(x, "NOTE", 0, "G15/G50/G50.1/G64/G69/G13.1 left out: what they cancel never translates");
-    if (ng28) fbrep(x, "NOTE", 0, "G28 Z0 %s (-g28)", x->par.g28 == 1 ? "written as M25, the DX32 quill home "
+    if (x->par.ftool >= 0) fbrep(x, "NOTE", 0, "-ftool %d: T%d must be in the spindle when the program starts",
+                                 x->par.ftool, x->par.ftool);
+    if (nfold4 || nfoldg) fbrep(x, "NOTE", 0, "modal information (#4001-#4130), G#n and S#n written as the one value "
+                                "the evaluation saw (FBCORPUS.md 5.4): the program has no outside inputs");
+    if (nsupp) fbrep(x, "NOTE", 0, "#3003/#3004 (single block and feed hold suppression) left out: the DX32 "
+                     "program can be stopped anywhere");
+    if (ng28xy) fbrep(x, "NOTE", 0, "G28 X/Y go to the intermediate point only (-g28xy stay): the DX32 has no X/Y "
+                      "reference return; check the program is safe there");
+    if (ng28) fbrep(x, "NOTE", 0, "G28 Z %s (-g28)", x->par.g28 == 1 ? "written as M25, the DX32 quill home "
                     "(TENTATIVE: check that it goes where FANUC's reference point is)" :
                     "left out: Z stays where it is; check the program is safe without it");
     if (nalarm) fbrep(x, "NOTE", 0, "#3000/#3006 written as a comment with the message and M2/M0; the DX32 "

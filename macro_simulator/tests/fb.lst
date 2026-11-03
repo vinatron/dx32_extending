@@ -44,3 +44,5 @@ fbrotw   fbrot    -fparam default -w fbwrot.txt -check
 fbrotx   fbrotx   -fparam default -w fbwrotx.txt
 fbxrot   fbrot    -fparam default -against fbxrot.txt
 fbrotdw  fbrotd   -fparam default -w fbwrotd.txt -check
+fbg28w   fbg28    @smid.rsp -w fbwg28.txt -check
+fbg28x   fbg28    -fparam default -w fbwg28x.txt

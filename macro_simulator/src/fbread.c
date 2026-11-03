@@ -454,6 +454,8 @@ static void block(ps *s, fbs *st)
             if (n == FB_MAXW) { perr(s, "too many words in one block"); break; }
             w[n].l = *s->p++;
             w[n].e = wordval(s);
+            w[n].fv = 0;
+            w[n].fst = 0;
             n++;
         }
         st->nw = n;

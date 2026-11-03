@@ -1,4 +1,12 @@
-FILE     ../../fanuc_macros/programs/p250_O8103.nc (from line 1)
-DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 2)
-REFUSED  line 2: #4003: system variables do not translate
+FILE     kc8103.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p250_O8103.nc (from line 11)
+DIALECT  series 16 (given)
+REFUSED  line 22: G90/G91 changed while the cycle was on: the stored R and Z would mean something else
+REFUSED  line 27: G90/G91 changed while the cycle was on: the stored R and Z would mean something else
+REFUSED  line 32: G90/G91 changed while the cycle was on: the stored R and Z would mean something else
+REFUSED  line 37: G90/G91 changed while the cycle was on: the stored R and Z would mean something else
+NOTE     line 41: not reached when evaluated; translated as written
+NOTE     line 42: not reached when evaluated; translated as written
+NOTE     line 43: not reached when evaluated; translated as written
+STOP     dxtk.txt not written: see REFUSED above
 RESULT   stopped: see REFUSED/STOP above

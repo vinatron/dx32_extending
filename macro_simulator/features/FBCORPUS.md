@@ -11,9 +11,10 @@ the extraction and the copyright caveat. It is a test fixture: nothing here is f
 | Read `fanuc_macros/README.md`, `manifest.json`, `verify_corpus.py` | **done** |
 | Integrity check (`python3 fanuc_macros/verify_corpus.py`) | **passes**: 143 fixtures, 49 complete programs, 94 fragments |
 | Every file through the reader (`fb2dx -parse`) | **done**: every valid block reads (section 3) |
-| Every complete program through the translator (`-fparam default -w ... -check`) | **done**: none translates yet (section 4) |
+| Every complete program through the translator (`-fparam default -w ... -check`) | **done**: none translated (section 4, 2026-10-30) |
 | Regression tests: `tests/corpus.lst`, 41 checks in `RUNTESTS` | **done** |
-| fb2dx changes for the common blockers (section 5) | proposed, not started: the owner decides |
+| fb2dx changes for the common blockers (section 5) | **5.1, 5.2, 5.4, 5.5, 5.6 done** (2026-11-03, `FB2DX.md` 3.18); 5.3 waits for `FB2DX.md` Q6 |
+| The corpus after those changes | **13 of 41 runs translate and pass `-check`** (section 4a) |
 
 ## 2. The corpus
 
@@ -108,9 +109,77 @@ corpus), 15 runs, and each macro that no corpus program calls, alone, 26 runs: 4
 | 2 | `L` as a repeat count | series-dependent | `-series` |
 | 1 each | lathe words `U`/`W` (`O8001` is a lathe program); `G13` with `D` (circle cutting, an option on some controls); `POPEN`/`DPRNT`; `#[...]` indirection; a division by an unset argument (`O8006` alone) | out of scope, or no DX32 equivalent | none |
 
+## 4a. After the changes (2026-11-03)
+
+Every run now uses `tests/smid.rsp`: `-fparam default -ftool 1 -g28 m25 -g28xy stay`, i.e. T01 in the
+spindle at the start, as the book's programs assume. Macros that a test caller makes sense for get one
+(`tests/kc*.nc`, written for these tests and not from the book, marked so in their first comment): a
+main program with typical arguments, inside a G81 cycle where the macro positions holes. `-series` is given
+where the macro needs it (`L` repeats: 0; `IF..THEN` with `K0`: 16).
+
+**13 of 41 runs translate and pass `-check`** (none did before):
+
+| Run | Options besides `@smid.rsp` | Result |
+|---|---|---|
+| `p044_O0001` |  | refused: G84 does not translate yet; address R does not translate yet |
+| `p045_O0002 + p045_O1001` |  | refused: L as the repeat count; G84 does not translate yet; address R does not translate yet; address L does not translate yet |
+| `p046_O0003 + p047_O1002` |  | refused: L as the repeat count; G84 does not translate yet; address R does not translate yet; address L does not translate yet |
+| `p054_O8001` |  | refused: address W does not translate yet; address U does not translate yet; M99 in the main program makes FANUC repeat it for ever |
+| `kc8004 + p122_O8004` |  | **translates**, `-check`: 6 end points |
+| `p151_O0011` |  | refused: axis words with no G0/G1 in force |
+| `p152_O0012` |  | refused: axis words with no G0/G1 in force |
+| `p153_O0013` |  | refused: axis words with no G0/G1 in force |
+| `p154_O0015` |  | refused: axis words with no G0/G1 in force |
+| `p155_O0016` |  | refused: axis words with no G0/G1 in force |
+| `p156_O0017 + p156_O8005` |  | refused: axis words with no G0/G1 in force |
+| `kc8006 + p157_O8006` |  | **translates**, `-check`: 0 end points |
+| `p168_O8007` |  | refused: #4214 |
+| `p207_O8009` |  | refused: a block that does not read (section 3) |
+| `p208_O8011` |  | refused: #0; #[...]; M99 in the main program makes FANUC repeat it for ever |
+| `kc8013 + p210_O8013` |  | **translates**, `-check`: 7 end points |
+| `kc8014 + p211_O8014` |  | **translates**, `-check`: 8 end points |
+| `p214_O8017` |  | refused: #3001 |
+| `p214_O8018` |  | refused: #3001 |
+| `kc8019 + p218_O8019` |  | **translates**, `-check`: 2 end points |
+| `kc8020 + p221_O8020` |  | **translates**, `-check`: 6 end points |
+| `p240_O8021` |  | refused: the unit system is not known |
+| `p241_O8021` |  | refused: the unit system is not known |
+| `kc8101 + p245_O8101` | -series 0 | **translates**, `-check`: 18 end points |
+| `kc8101 + p245_O8101_v2` | -series 0 | **translates**, `-check`: 18 end points |
+| `kc8102 + p247_O8102` | -series 0 | **translates**, `-check`: 18 end points |
+| `kc8103 + p250_O8103` | -series 16 | refused: G90/G91 changed while the cycle was on |
+| `kc8104 + p254_O8104` | -series 16 | **translates**, `-check`: 22 end points |
+| `kc8105 + p257_O8105` | -series 16 | **translates**, `-check`: 19 end points |
+| `p260_O8106` |  | refused: blocks not reached, reading unset arguments; #4003; #4006; M99 in the main program makes FANUC repeat it for ever |
+| `p264_O0027 + p264_O8107` |  | refused: #2404 |
+| `p268_O0028 + p268_O8108` |  | refused: #2405 |
+| `kc8022 + p270_O8022` |  | **translates**, `-check`: 8 end points |
+| `p272_O0029 + p272_O8109` |  | **translates**, `-check`: 18 end points |
+| `p275_O8110` |  | refused: blocks not reached, reading unset arguments; the unit system is not known; M99 in the main program makes FANUC repeat it for ever |
+| `p285_O9012` |  | refused: #4001 |
+| `p285_O9013` |  | refused: #4001 |
+| `p288_O0031` |  | refused: G13 does not translate yet; address D does not translate yet |
+| `p295_O8200` |  | refused: POPEN does not translate; uses a vacant variable where the DX32 would use 0; DPRNT[VAR#3[5]***DATA#2[57]] does not translate; PCLOSE does not translate; M99 in the main program makes FANUC repeat it for ever |
+| `p311_O0032 + p311_O8112` |  | refused: #5041 |
+| `p313_O0033 + p313_O8113` |  | refused: a block that does not read (section 3) |
+
+What still stops them:
+- **G80 followed by axis words** (`G80 Z5.0`, six main programs, `O0011`-`O0017`): 5.3, waiting for FANUC Q6.
+- **G84 tapping** (`O0001`-`O0003`), `G13` (`O0031`), lathe programs (`O8001`, `O8021`): not translated.
+- **Machine data**: `#2404`/`#2405` (offsets), `#5041` (positions), `#3001` (the clock), `#4214` (work
+  offset number): no DX32 equivalent.
+- **The book's own errors** (section 3): `O8009`, `O0033`.
+- **`O8103`** (the frame): its first hole is in G90 and the rest in G91 inside one cycle; whether FANUC
+  then reads the stored R and Z as incremental is not known, so it stays refused.
+- **`#4001` before any G0-G3** (`O9012`, `O9013` alone): what FANUC reads there is the Q6 question.
+- **Macros alone** (`O8106`, `O8110`, `O8011`, `O8200`): their arguments are offsets, indirect variables or
+  `DPRNT` output, so a caller would not get them through either.
+
 ## 5. Proposed fb2dx changes
 
 Each keeps the rule that fb2dx never guesses: where the answer depends on the machine, an option says it.
+
+Status 2026-11-03: 1, 2, 4, 5 and 6 are done (`FB2DX.md` 3.18); 3 waits for Q6.
 
 1. **`-ftool n`: the tool in the spindle at the start.** Smid's programs begin with T01 already in the
    spindle and preselect the next tool (`T02` on the first motion line). With the start tool given,
@@ -146,4 +215,5 @@ reports. On 16-bit DOS they are skipped (long file names).
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-30 | (this commit) | Corpus reviewed: integrity, reader, translator; source errors listed; blockers counted; changes proposed; `tests/corpus.lst` |
+| 2026-11-03 | (this commit) | 5.1, 5.2, 5.4, 5.5, 5.6 built; test callers `tests/kc*.nc`, `tests/smid.rsp`; 13 of 41 runs translate (section 4a); three fb2dx bugs found by the corpus fixed (`FB2DX.md` 3.18) |
+| 2026-10-30 | 4066726 | Corpus reviewed: integrity, reader, translator; source errors listed; blockers counted; changes proposed; `tests/corpus.lst` |
