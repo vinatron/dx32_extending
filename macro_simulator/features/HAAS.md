@@ -103,6 +103,7 @@ DOS too.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-03 | (this commit) | G84 and hole subprograms under several cycles (`FB2DX.md` 3.19): `hw0060a` translates; `-tap float` in `haas.rsp` |
+| 2026-11-03 | (this commit) | Review: two `M97` local subprograms in one program (the second was not found), the same `M97` target called twice (its program was inserted twice); test `fbm97bw` |
+| 2026-11-03 | b57f24f | G84 and hole subprograms under several cycles (`FB2DX.md` 3.19): `hw0060a` translates; `-tap float` in `haas.rsp` |
 | 2026-11-03 | 0f27338 | G53: G91 and G1 refused (in the block or G91 in force), a variable axis value refused with its own message (Copilot review) |
 | 2026-11-03 | 6427caf | Document created. `-series haas` (detected by `M97`), `M97` local subprograms, `G53` to machine zero, P with a point refused; the workbook's 9 programs as `tests/haas.lst`; tests `fbm97w`, `fbm97x`, `fbg53x` |

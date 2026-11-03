@@ -442,25 +442,28 @@ int fbm97(fbx *x)
             continue;
         }
         n = (long)s->w[ip].e->v;
-        for (ps = i; ps > 0 && x->st[ps]->k != ST_PROG; ps--) ;
-        for (pe = i + 1; pe < x->nst && x->st[pe]->k != ST_PROG; pe++) ;
+        /* the program's own bounds: an M97 program inserted for an earlier call is not one */
+        for (ps = i; ps > 0 && !(x->st[ps]->k == ST_PROG && x->st[ps]->prog < FB_M97); ps--) ;
+        for (pe = i + 1; pe < x->nst && !(x->st[pe]->k == ST_PROG && x->st[pe]->prog < FB_M97); pe++) ;
         for (j = ps; j < pe; j++)
             if (e < 0 && x->st[j]->k == ST_NC && (wconst(x->st[j], 'M') == 30 || wconst(x->st[j], 'M') == 2)) e = j;
-            else if (e >= 0 && x->st[j]->n == n) {
+            else if (e >= 0 && x->st[j]->k != ST_PROG && x->st[j]->n == n) {
                 t = j;
                 break;
             }
         id = FB_M97 + n;
-        if (t < 0) {
-            for (j = 0; j < x->nst; j++)
-                if (x->st[j]->k == ST_PROG && x->st[j]->prog == id) t = j;
-            if (t < 0) {
-                fbrep(x, "REFUSED", s->line, "M97 P%ld: no N%ld after the program's M30/M2 (a local subprogram "
-                      "inside the main program does not translate yet)", n, n);
-                ok = 0;
-                continue;
+        for (j = 0; j < x->nst; j++)    /* called before: its program is there already */
+            if (x->st[j]->k == ST_PROG && x->st[j]->prog == id) {
+                t = j;
+                break;
             }
-        } else {                        /* a program of its own, starting at N n */
+        if (t < 0) {
+            fbrep(x, "REFUSED", s->line, "M97 P%ld: no N%ld after the program's M30/M2 (a local subprogram "
+                  "inside the main program does not translate yet)", n, n);
+            ok = 0;
+            continue;
+        }
+        if (x->st[t]->k != ST_PROG) {   /* the first call: a program of its own, starting at N n */
             fbs *p = (fbs *)fbmalloc(sizeof *p);
             memset(p, 0, sizeof *p);
             p->k = ST_PROG;

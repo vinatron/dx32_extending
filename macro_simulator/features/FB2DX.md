@@ -836,7 +836,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-03 | (this commit) | G84 tapping as the DX32 G84 (`-tap float|rigid`), hole blocks under several cycles branch on the cycle code, P cleared at a cycle start (section 3.19) |
+| 2026-11-03 | (this commit) | Review fixes: `M97` with two local subprograms or a target called twice (`HAAS.md`); `@FILE` with more than 64 options and `-ftool` with a non-number are errors instead of being ignored |
+| 2026-11-03 | b57f24f | G84 tapping as the DX32 G84 (`-tap float|rigid`), hole blocks under several cycles branch on the cycle code, P cleared at a cycle start (section 3.19) |
 | 2026-11-03 | 6427caf, 0f27338 | Haas (`HAAS.md`): `-series haas`, `M97`, `G53` to machine zero for every series, P with a decimal point refused (was read as ms) |
 | 2026-11-03 | ed20418, 81452cc | FANUC corpus proposals 5.1, 5.2, 5.4, 5.5, 5.6 (section 3.18): `-ftool`, the spindle tool kept apart from `T`, G28 through an intermediate point and `-g28xy stay`, modal information and `G#n`/`S#n` folded, `#3003`/`#3004` left out, `@FILE`; fixes for full circles without an end point, two jumps to one label, K0 dropping F; test `fbg28` |
 | 2026-10-29 | 56bb621 | Q2, Q3, Q4 answered from the firmware (LSR unsigned; G70/G71 a flag only; R arcs always ≤ 180°, R's sign ignored) |

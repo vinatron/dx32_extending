@@ -129,11 +129,15 @@ static int atfile(int *pargc, char ***pargv)
             fprintf(stderr, "fb2dx: cannot read %s\n", a + 1);
             return 0;
         }
-        while (fscanf(fp, "%259s", tok) == 1)
-            if (n < cap - 1) {
-                nv[n] = (char *)fbmalloc((unsigned)(strlen(tok) + 1));
-                strcpy(nv[n++], tok);
+        while (fscanf(fp, "%259s", tok) == 1) {
+            if (n >= cap - 1) {
+                fprintf(stderr, "fb2dx: too many options in %s (at most 64)\n", a + 1);
+                fclose(fp);
+                return 0;
             }
+            nv[n] = (char *)fbmalloc((unsigned)(strlen(tok) + 1));
+            strcpy(nv[n++], tok);
+        }
         fclose(fp);
     }
     nv[n] = 0;
@@ -195,8 +199,9 @@ int main(int argc, char **argv)
             }
             x->par.comp = 1;
         } else if (!strcmp(a, "-ftool") && i + 1 < argc) {
-            x->par.ftool = atoi(argv[++i]);
-            if (x->par.ftool < 0) {
+            a = argv[++i];
+            x->par.ftool = atoi(a);
+            if (x->par.ftool < 0 || strspn(a, "0123456789") != strlen(a) || !a[0]) {
                 fprintf(stderr, "fb2dx: -ftool n, n >= 0\n");
                 return 1;
             }
