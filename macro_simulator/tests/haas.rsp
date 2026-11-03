@@ -2,3 +2,4 @@
 -inch
 -g28 m25
 -g28xy stay
+-tap float

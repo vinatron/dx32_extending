@@ -1225,7 +1225,7 @@ static void screens(const char *exe, int bmp)
 
 int main(int argc, char **argv)
 {
-    char line[256], name[80], what[100];
+    char line[256], name[160], what[100];
     FILE *lst;
     int i;
 

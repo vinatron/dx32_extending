@@ -16,6 +16,7 @@ static const char *const usage[] = {
     "  -inch | -mm      the unit system when the program has no G20/G21",
     "  -bdel on|off     the block delete switch, for programs with / blocks",
     "  -g28 m25|drop    G28 Z: the DX32 quill home (M25), or leave it out (after any intermediate point)",
+    "  -tap float|rigid G84: the DX32 G84 with a floating tap holder, or rigid tapping with M29/M28",
     "  -g28xy stay      G28 X/Y: go to the intermediate point only (the DX32 has no X/Y reference return)",
     "  -ftool n         the tool in the spindle when the program starts (for G43 H / G41 D before any M6)",
     "  -comp dx32       G41/G42 with FANUC start-up type B: accept the DX32's lead-in (FB2DX.md 3.15)",
@@ -197,6 +198,13 @@ int main(int argc, char **argv)
             x->par.ftool = atoi(argv[++i]);
             if (x->par.ftool < 0) {
                 fprintf(stderr, "fb2dx: -ftool n, n >= 0\n");
+                return 1;
+            }
+        } else if (!strcmp(a, "-tap") && i + 1 < argc) {
+            a = argv[++i];
+            x->par.tap = !strcmp(a, "float") ? 1 : !strcmp(a, "rigid") ? 2 : -1;
+            if (x->par.tap < 0) {
+                fprintf(stderr, "fb2dx: -tap float or rigid\n");
                 return 1;
             }
         } else if (!strcmp(a, "-g28xy") && i + 1 < argc) {

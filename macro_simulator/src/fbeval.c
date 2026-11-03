@@ -484,6 +484,7 @@ static int args(const fbs *s, val *a)
 /* the modal state of the axes, as the FANUC control keeps it (for the writer, FB2DX.md 3.12) */
 static int gabs, gmot, gpl, known[3], gcyc, gret, tool, spin;   /* tool: the last T; spin: in the spindle */
 static double pos[3], cz, cr, cq, cinit;   /* the position and the drilling values, program units */
+static double curf;             /* the feed in force (F is modal), program units; 0 none yet */
 
 /* the modal information the evaluator keeps; the rest is refused. #42xx is the block being run, which
    for a macro statement is the same state */
@@ -596,7 +597,7 @@ static void holemoves(const fbs *s, int start, long k)
                     addmv('R', nx, ny, gcyc == 83 ? ar : dn + X->par.d73, 0, 0, 0);
                 }
         } else addmv('F', nx, ny, az, 0, 0, 0);
-        if (gcyc == 85 || gcyc == 89) addmv('F', nx, ny, ar, 0, 0, 0);     /* feed out to R */
+        if (gcyc == 85 || gcyc == 89 || gcyc == 84) addmv('F', nx, ny, ar, 0, 0, 0);    /* feed out to R */
         addmv('R', nx, ny, ret, 0, 0, 0);
         pos[0] = nx;
         pos[1] = ny;
@@ -641,6 +642,7 @@ static void modal(fbs *s)
         if (l == 'T' && wval(s, i, &v)) tool = (int)v;
         if (l == 'H' && wval(s, i, &v)) h = v;
         if (l == 'D' && wval(s, i, &v)) d = v;
+        if (l == 'F' && wval(s, i, &v)) curf = v;
         if (l == 'S' && s->w[i].e->k != EN_NUM && wval(s, i, &v)) fold(&s->w[i].fv, &s->w[i].fst, v);   /* S#n */
         if (l == 'M' && wval(s, i, &v) && v == 6) m6 = 1;
         if (l != 'G' || !wval(s, i, &v)) continue;
@@ -650,7 +652,7 @@ static void modal(fbs *s)
         else if (v == 17 || v == 18 || v == 19) gpl = (int)v;
         else if (v == 4) g4 = 1;
         else if (v == 80) gcyc = 0, gmot = 80;
-        else if (v == 81 || v == 82 || v == 83 || v == 73 || v == 85 || v == 86 || v == 89) newcyc = (int)v;
+        else if (v == 81 || v == 82 || v == 83 || v == 73 || v == 84 || v == 85 || v == 86 || v == 89) newcyc = (int)v;
         else if (v == 98 || v == 99) gret = (int)v;
         else if (v == 43) g43 = 1;
         else if (v == 41 || v == 42) g41 = 1;
@@ -720,8 +722,17 @@ static void modal(fbs *s)
             if (strchr("XYZR", s->w[i].l)) hole = 1;
     if (hole) {
         long k = 1;
-        s->modes |= MO_HOLE | (gcyc == 81 ? MO_C81 : gcyc == 82 ? MO_C82 : gcyc == 83 ? MO_C83 :
-                               gcyc == 73 ? MO_C73 : gcyc == 85 ? MO_C85 : gcyc == 86 ? MO_C86 : MO_C89);
+        if (gcyc == 84) {               /* tapping: no MO_ bit left, so a field of its own */
+            s->modes |= MO_HOLE;
+            s->tap = 1;
+            if (curf <= 0) s->tapfst = 3;
+            else if (s->tapfst != 3) {
+                if (!s->tapfst) s->tapf = curf, s->tapfst = 1;
+                else if (s->tapf != curf) s->tapfst = 2;
+            }
+        } else
+            s->modes |= MO_HOLE | (gcyc == 81 ? MO_C81 : gcyc == 82 ? MO_C82 : gcyc == 83 ? MO_C83 :
+                                   gcyc == 73 ? MO_C73 : gcyc == 85 ? MO_C85 : gcyc == 86 ? MO_C86 : MO_C89);
         if (gabs != cycabs) s->modes |= MO_MIXC;
         if (gabs == 91 && (!known[0] || !known[1])) s->modes |= MO_UNK;
         for (i = 0; i < s->nw; i++)
@@ -822,7 +833,7 @@ int fbeval(fbx *x, FILE *out, long limit)
     gret = 98;
     tool = -1;
     spin = X->par.ftool;
-    pos[0] = pos[1] = pos[2] = cz = cr = cq = cinit = 0;
+    pos[0] = pos[1] = pos[2] = cz = cr = cq = cinit = curf = 0;
     ra = rcx = rcy = sh[0] = sh[1] = sh[2] = 0;
     x->nmv = 0;
     x->mvunk = 0;

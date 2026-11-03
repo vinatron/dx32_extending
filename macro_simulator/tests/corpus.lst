@@ -4,8 +4,8 @@
 ; makes sense; the rest run alone. smid.rsp holds the options the book assumes (FBCORPUS.md 5).
 ; Skipped where long file names are not available
 k0440001  ../../fanuc_macros/programs/p044_O0001.nc @smid.rsp -w dxtk.txt -check
-k0450002  ../../fanuc_macros/programs/p045_O0002.nc ../../fanuc_macros/programs/p045_O1001.nc @smid.rsp -w dxtk.txt -check
-k0460003  ../../fanuc_macros/programs/p046_O0003.nc ../../fanuc_macros/programs/p047_O1002.nc @smid.rsp -w dxtk.txt -check
+k0450002  ../../fanuc_macros/programs/p045_O0002.nc ../../fanuc_macros/programs/p045_O1001.nc -series 0 @smid.rsp -w dxtk.txt -check
+k0460003  ../../fanuc_macros/programs/p046_O0003.nc ../../fanuc_macros/programs/p047_O1002.nc -series 0 @smid.rsp -w dxtk.txt -check
 k0548001  ../../fanuc_macros/programs/p054_O8001.nc @smid.rsp -w dxtk.txt -check
 k1228004  kc8004.nc ../../fanuc_macros/programs/p122_O8004.nc @smid.rsp -w dxtk.txt -check
 k1510011  ../../fanuc_macros/programs/p151_O0011.nc @smid.rsp -w dxtk.txt -check

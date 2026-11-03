@@ -1,0 +1,10 @@
+FILE     fbtap.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+NOTE     drilling cycles are written out as moves; cycle values in D20 D22 D23 D24 D25
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     -ftool 1: T1 must be in the spindle when the program starts
+NOTE     G84 written as the DX32 G84, plug reverse tapping: the tap needs a floating holder, and the spindle speed and feed must suit it (DX32 manual fig. 5-3) (-tap float)
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwtap.txt
+CHECK    dxsim reads fbwtap.txt cleanly and reaches all 14 FANUC end points in order
+RESULT   ok

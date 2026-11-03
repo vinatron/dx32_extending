@@ -8,7 +8,5 @@ REFUSED  line 32: address K does not translate yet
 REFUSED  line 32: address Q does not translate yet
 REFUSED  line 32: address D does not translate yet
 REFUSED  line 45: G83: give the peck clearance with -fparam d83= (a Haas setting, not known yet)
-REFUSED  line 51: G84 does not translate yet
-REFUSED  line 51: address R does not translate yet
 STOP     dxtk.txt not written: see REFUSED above
 RESULT   stopped: see REFUSED/STOP above
