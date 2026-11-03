@@ -1,0 +1,12 @@
+FILE     fbg28.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+NOTE     G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     T without M6 left out: the DX32 takes T in the M6 block
+NOTE     -ftool 1: T1 must be in the spindle when the program starts
+NOTE     G28 X/Y go to the intermediate point only (-g28xy stay): the DX32 has no X/Y reference return; check the program is safe there
+NOTE     G28 Z written as M25, the DX32 quill home (TENTATIVE: check that it goes where FANUC's reference point is) (-g28)
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwg28.txt
+CHECK    dxsim reads fbwg28.txt cleanly and reaches all 10 FANUC end points in order
+RESULT   ok

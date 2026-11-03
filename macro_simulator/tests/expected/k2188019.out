@@ -1,4 +1,11 @@
-FILE     ../../fanuc_macros/programs/p218_O8019.nc (from line 1)
-DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 2)
-REFUSED  line 2: #3003: system variables do not translate
-RESULT   stopped: see REFUSED/STOP above
+FILE     kc8019.nc (from line 1)
+FILE     ../../fanuc_macros/programs/p218_O8019.nc (from line 10)
+DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 11)
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     -ftool 1: T1 must be in the spindle when the program starts
+NOTE     #3003/#3004 (single block and feed hold suppression) left out: the DX32 program can be stopped anywhere
+NOTE     1 called program(s) written as DX32 macros #1-#1, nested 1 deep
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    dxtk.txt
+CHECK    dxsim reads dxtk.txt cleanly and reaches all 2 FANUC end points in order
+RESULT   ok

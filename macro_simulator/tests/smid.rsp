@@ -1,0 +1,4 @@
+-fparam default
+-ftool 1
+-g28 m25
+-g28xy stay

@@ -84,6 +84,20 @@ static val mkv(double v)
 
 static long varno(const fbn *e);
 static val ev(const fbn *e, int addr);
+static int modalvar(long n, double *v);
+
+/* #4001-#4130 and #4201-#4330: modal information (FBCORPUS.md 5.4) */
+static int ismodal(long n)
+{
+    return (n >= 4001 && n <= 4130) || (n >= 4201 && n <= 4330);
+}
+
+/* a fold of value v into fv/fst: one value, or more than one */
+static void fold(double *fv, int *fst, double v)
+{
+    if (*fst == 0) *fv = v, *fst = 1;
+    else if (*fst == 1 && *fv != v) *fst = 2;
+}
 
 static val *vref(long n)
 {
@@ -115,6 +129,10 @@ static val getvar(const fbn *e)
     }
     n = varno(e);
     if (err || n == 0) return r;
+    if (ismodal(n)) {
+        if (modalvar(n, &r.v)) r.vac = 0;
+        return r;
+    }
     p = vref(n);
     return p ? *p : r;
 }
@@ -337,9 +355,15 @@ static void assign(const fbn *lhs, const fbn *e)
         fail("REFUSED", "%s#0 cannot be set", "", 0);
         return;
     }
+    if (n == 3003 || n == 3004) {       /* single block / feed hold suppression: not the tool path */
+        tr("L%-5d SET    #%ld = %g (left out: the operator controls, FBCORPUS.md 5.5)\n", curline, n, num(e, 0));
+        return;
+    }
     /* #i = #j keeps a vacant #j vacant; in any other expression it counts as 0 */
     if (e->k == EN_VAR) v = getvar(e);
     else v = mkv(num(e, 0));
+    if (e->k == EN_VAR && e->a->k == EN_NUM && ismodal((long)e->a->v) && cur && !err)
+        fold(&cur->sysv, &cur->syst, v.v);
     p = vref(n);
     if (err || !p) return;
     *p = v;
@@ -458,8 +482,32 @@ static int args(const fbs *s, val *a)
 }
 
 /* the modal state of the axes, as the FANUC control keeps it (for the writer, FB2DX.md 3.12) */
-static int gabs, gmot, gpl, known[3], gcyc, gret, tool;
+static int gabs, gmot, gpl, known[3], gcyc, gret, tool, spin;   /* tool: the last T; spin: in the spindle */
 static double pos[3], cz, cr, cq, cinit;   /* the position and the drilling values, program units */
+
+/* the modal information the evaluator keeps; the rest is refused. #42xx is the block being run, which
+   for a macro statement is the same state */
+static int modalvar(long n, double *v)
+{
+    int g = (int)(n > 4200 ? n - 4200 : n - 4000);
+    int u = units ? units : X->par.units;
+    if (g == 1 && gmot >= 0 && gmot <= 3) *v = gmot;
+    else if (g == 1) {
+        fail("REFUSED", "%s#%.0f: no G0-G3 in force (after G80, or before the first one): what FANUC "
+             "reads there depends on the control", "", (double)n);
+        return 0;
+    }
+    else if (g == 2) *v = gpl;
+    else if (g == 3) *v = gabs;
+    else if (g == 6 && u) *v = u;
+    else if (g == 9) *v = gcyc ? gcyc : 80;
+    else if (g == 10) *v = gret;
+    else {
+        fail("REFUSED", "%s#%.0f: this modal information is not kept by fb2dx", "", (double)n);
+        return 0;
+    }
+    return 1;
+}
 static int cycabs;              /* G90 or G91 when the cycle started */
 static double ra, rcx, rcy, sh[3];  /* G68 angle and centre, G52 shift (program units) */
 
@@ -587,17 +635,16 @@ static void modal(fbs *s)
     static const char ax[] = "XYZ";
     int i, a, moved = 0, cw = 0, g4 = 0, pa, pb, newcyc = 0, start = 0, g43 = 0, hole = 0, g28 = 0;
     double v, h = -1, d = -1;
-    int g41 = 0;
+    int g41 = 0, m6 = 0;
     for (i = 0; i < s->nw; i++) {
         int l = s->w[i].l;
         if (l == 'T' && wval(s, i, &v)) tool = (int)v;
         if (l == 'H' && wval(s, i, &v)) h = v;
         if (l == 'D' && wval(s, i, &v)) d = v;
-        if (l == 'M' && wval(s, i, &v) && v == 6) {
-            if (s->tool == -1) s->tool = tool;
-            else if (s->tool != tool) s->tool = -2;
-        }
+        if (l == 'S' && s->w[i].e->k != EN_NUM && wval(s, i, &v)) fold(&s->w[i].fv, &s->w[i].fst, v);   /* S#n */
+        if (l == 'M' && wval(s, i, &v) && v == 6) m6 = 1;
         if (l != 'G' || !wval(s, i, &v)) continue;
+        if (s->w[i].e->k != EN_NUM) fold(&s->w[i].fv, &s->w[i].fst, v);     /* G#n */
         if (v == 0 || v == 1 || v == 2 || v == 3) gmot = (int)v, gcyc = 0;
         else if (v == 90 || v == 91) gabs = (int)v;
         else if (v == 17 || v == 18 || v == 19) gpl = (int)v;
@@ -613,15 +660,37 @@ static void modal(fbs *s)
             return;
         }
     }
-    if (g28) {                          /* to the reference point: where that is, is not known */
+    if (m6) {                           /* the tool change: T in this block or an earlier one */
+        spin = tool;
+        if (s->tool == -1) s->tool = tool;
+        else if (s->tool != tool) s->tool = -2;
+    }
+    if (g28) {                          /* through the intermediate point to the reference point */
+        double np[3];
+        int mv = 0;
+        np[0] = pos[0], np[1] = pos[1], np[2] = pos[2];
+        s->modes |= gabs == 91 ? MO_INC : MO_ABS;
+        if (ra != 0.0) s->modes |= MO_ROT;
+        if (gmot == 1) s->modes |= MO_G1IN;
+        else if (gmot == 2 || gmot == 3) s->modes |= MO_G23IN;
+        for (i = 0; i < s->nw; i++) {
+            const char *p = strchr(ax, s->w[i].l);
+            if (!p || !wval(s, i, &v)) continue;
+            np[p - ax] = gabs == 91 ? pos[p - ax] + v : v;
+            if (gabs != 91 || v != 0) mv = 1;
+        }
+        if (mv) addmv('R', np[0], np[1], np[2], 0, 0, 0);
+        pos[0] = np[0], pos[1] = np[1], pos[2] = np[2];
+        /* where the reference point is, is not known: neither side models it (the DX32 M25 does not
+           move in the trace), so -check follows both from the intermediate point */
         for (i = 0; i < s->nw; i++) {
             const char *p = strchr(ax, s->w[i].l);
             if (p) known[p - ax] = 0;
         }
         return;
     }
-    if (g43 && h != tool) s->modes |= MO_HBAD;
-    if (g41 && d >= 0 && d != tool) s->modes |= MO_DBAD;
+    if (g43 && (spin < 0 || h != spin)) s->modes |= MO_HBAD;
+    if (g41 && d >= 0 && (spin < 0 || d != spin)) s->modes |= MO_DBAD;
     if (g4) return;
     if (newcyc) {
         if (!gcyc) start = 1, cycabs = gabs;
@@ -743,6 +812,7 @@ int fbeval(fbx *x, FILE *out, long limit)
     gcyc = 0;
     gret = 98;
     tool = -1;
+    spin = X->par.ftool;
     pos[0] = pos[1] = pos[2] = cz = cr = cq = cinit = 0;
     ra = rcx = rcy = sh[0] = sh[1] = sh[2] = 0;
     x->nmv = 0;

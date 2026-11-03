@@ -1,0 +1,8 @@
+FILE     fbg28.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+REFUSED  line 6: G43 H other than the tool in the spindle: the DX32 takes the length of the tool itself
+REFUSED  line 8: G28 Z: give -g28 m25 (the DX32 quill home) or -g28 drop (leave it out)
+REFUSED  line 10: G28 Z: give -g28 m25 (the DX32 quill home) or -g28 drop (leave it out)
+REFUSED  line 17: G28 X/Y: the DX32 has no X/Y reference return; -g28xy stay goes to the intermediate point only
+STOP     fbwg28x.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

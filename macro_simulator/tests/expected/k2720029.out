@@ -1,5 +1,16 @@
 FILE     ../../fanuc_macros/programs/p272_O0029.nc (from line 1)
 FILE     ../../fanuc_macros/programs/p272_O8109.nc (from line 13)
 DIALECT  series 0 6 10 15 16 0i 30i (Macro B at line 14)
-REFUSED  line 14: #4001: system variables do not translate
-RESULT   stopped: see REFUSED/STOP above
+NOTE     the output assigns variables: the DX32 needs the PPPL option (param 285 bit 4)
+NOTE     FIX/FUP/ROUND are built on LSR: exact below 4294967296 (TENTATIVE, bench/BFIX.TXT)
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     -ftool 1: T1 must be in the spindle when the program starts
+NOTE     modal information (#4001-#4130), G#n and S#n written as the one value the evaluation saw (FBCORPUS.md 5.4): the program has no outside inputs
+NOTE     G28 X/Y go to the intermediate point only (-g28xy stay): the DX32 has no X/Y reference return; check the program is safe there
+NOTE     G28 Z written as M25, the DX32 quill home (TENTATIVE: check that it goes where FANUC's reference point is) (-g28)
+NOTE     loops and jumps use labels L1-L1; do not call this from a loop that uses them
+NOTE     1 called program(s) written as DX32 macros #1-#1, nested 1 deep
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    dxtk.txt
+CHECK    dxsim reads dxtk.txt cleanly and reaches all 18 FANUC end points in order
+RESULT   ok

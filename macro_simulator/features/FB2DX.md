@@ -576,13 +576,13 @@ What typical FANUC jobs contain, beyond the phases above:
   FANUC alarm ends the run. `#3006 = n (MESSAGE)` becomes the comment and `M0`. The DX32 shows no message:
   the comment is there for whoever reads the program. The evaluator stops at a #3000 alarm, as the control
   does. The message is the first comment in the block (the reader keeps it).
-- **`G91 G28 Z0`** (Z to the reference point) needs `-g28`:
+- **`G28`** (to the reference point, through an intermediate point): section 3.18. Z needs `-g28`:
   - `m25` writes the DX32 quill home, M25 (TENTATIVE: check that it goes where FANUC's reference point
     is);
   - `drop` leaves it out, so Z stays where it is.
 
-  Any other G28 is refused. After a G28 the evaluator treats those axes as not known, so a G90 arc or a
-  G98 cycle that needs them is refused until an absolute move.
+  After a G28 the evaluator treats those axes as not known, so a G90 arc or a G98 cycle that needs them is
+  refused until an absolute move.
 
 ### 3.15 Cutter compensation (G40/G41/G42)
 
@@ -665,6 +665,42 @@ What typical FANUC jobs contain, beyond the phases above:
   - R without a decimal point (its angle unit is not known);
   - G51 scaling.
 
+### 3.18 What the FANUC corpus needed (`FBCORPUS.md` section 5)
+
+- **The tool in the spindle** (5.1). The evaluator keeps the selected tool (the last `T`) and the tool in
+  the spindle (set by `M6`) apart; `G43 H` and `G41/G42 D` are checked against the spindle. A preselected
+  `T02` on the first motion line no longer counts as the tool in use (before, it did: `G43 H02` after
+  `T02 M06 ... T03` was refused). `-ftool n` gives the tool in the spindle at the start, with a NOTE;
+  without it a `G43 H` before the first `M6` is refused.
+- **G28 through an intermediate point** (5.2). FANUC goes to the intermediate point at rapid, then to the
+  reference point. fb2dx writes a `G0` to the intermediate point (in G90 or G91 as programmed), then:
+  - for Z, the `-g28` choice (`M25` or nothing);
+  - for X/Y, nothing, and only with `-g28xy stay`: the DX32 has no X/Y reference return, so the program
+    ends at the intermediate point (NOTE). Without the option it is refused.
+  - G28 leaves the 01-group code as it was; after the `G0`, a `G1` is written back when G1 was in force.
+    G2/G3 in force, G68 in force, or G90 in one pass and G91 in another is refused.
+  - `G91 G28 Z0` (no intermediate move) is written as before, now with `G0` and the M codes of the block.
+  - The tool path of the evaluator gets the move to the intermediate point; the reference point itself is
+    modelled on neither side (dxsim's M25 does not move), so `-check` follows both from there.
+- **Modal information** (5.4). `#4001`-`#4130` and `#4201`-`#4330` are read from the evaluator's state:
+  `#4001` (G0-G3; refused after G80 or before the first, FANUC Q6), `#4002` (plane), `#4003` (G90/G91),
+  `#4006` (G20/G21), `#4009` (cycle or 80), `#4010` (G98/G99). Any other number is refused. In the output,
+  `#n = #4xxx` is written as the one value the evaluation saw, and `G#n` and `S#n` likewise, the same
+  argument as the argument checks (3.14): a translated program has no outside inputs. A value that differs
+  between passes, or a statement never reached, is refused. Only a plain `#n = #4xxx` is folded; `#4xxx`
+  inside a larger expression stays refused.
+- **`#3003`/`#3004` writes** (5.5): single-block and feed-hold suppression are left out with a NOTE; they
+  change how the operator can stop the program, not the tool path. Reads stay refused, as do `#3001`,
+  `#2xxx` and `#5xxx`.
+- **`@FILE`**: options read from a file. COMMAND.COM cuts a command line at 127 characters; the corpus
+  tests use `tests/smid.rsp`.
+- **Bugs the corpus found** (each with a test):
+  - an arc with no end point (FANUC: a full circle, `G3 I-11.`) was written as `G3I-11.J0.`, which dxsim
+    reads as a block that does not move; it is now written with `X0.Y0.` (G91) or `X20Y20` (G90);
+  - two forward jumps to one label, where a later jump crosses them, made an exit-flag region that never
+    closed ("internal: a ? without a !");
+  - a drilling block with `K0`/`L0` (no hole there) dropped its `F`, so the macro's holes had no feed.
+
 ## 4. Errors and warnings (the report)
 
 One line per finding: input line, output line, kind, text.
@@ -698,6 +734,10 @@ output.
     `-check`.
   - `fbxrot.txt`, the same output with the angle's sign flipped, is refused at the first rotated move.
   - `fbrotx` checks the refusals.
+- **G28 and the spindle tool:** `fbg28` (G28 Z25. in G1, `G91 G00 G28 Z0`, G28 X Y Z, a preselected T)
+  translates with `tests/smid.rsp` and `-check`, and a dxsim check confirms the rapid to the intermediate
+  point and the feed after it; `fbg28x` checks the refusals without the options.
+- **The FANUC corpus:** `tests/corpus.lst`, 41 runs (`FBCORPUS.md`).
 - **More drilling:** `fbrow` (a G91 G81 row with K5, then G85, G89 and G86) translates with `-series 16` and
   `-check`. dxtest checks its 8 holes and the two feeds back out to R. Without `-series`, K is refused.
 - **Cutter compensation:**
@@ -766,7 +806,8 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-10-29 | (this commit) | Q2, Q3, Q4 answered from the firmware (LSR unsigned; G70/G71 a flag only; R arcs always ≤ 180°, R's sign ignored) |
+| 2026-11-03 | (this commit) | FANUC corpus proposals 5.1, 5.2, 5.4, 5.5, 5.6 (section 3.18): `-ftool`, the spindle tool kept apart from `T`, G28 through an intermediate point and `-g28xy stay`, modal information and `G#n`/`S#n` folded, `#3003`/`#3004` left out, `@FILE`; fixes for full circles without an end point, two jumps to one label, K0 dropping F; test `fbg28` |
+| 2026-10-29 | 56bb621 | Q2, Q3, Q4 answered from the firmware (LSR unsigned; G70/G71 a flag only; R arcs always ≤ 180°, R's sign ignored) |
 | 2026-10-29 | cf75c34 | Z moves under G68 (and holes' Z moves) get `X20Y20`: the DX32 transforms a G73 block only with an X or Y word (`OPENQ.md` L10); test `fbrotdw` |
 | 2026-10-28 | 49c141d | G41/G42 written on a zero move, `G91G41X0.` then `G90`: the DX32 acts on G41 only in a block with an axis word (`OPENQ.md` A13), so the bare `G41` line left FANUC's start-up move uncompensated (a gouge of the tool radius, now shown by dxsim) |
 | 2026-10-28 | d6c1d47 | 16-bit DOS review (Watcom could not be run here): the FANUC tool path is kept in 512-move chunks (no object over 64 KB; the static 16000-move copy in fbcheck.c is gone); caps of 16000 statements and 16000 output lines; a 16 KB stack for FB2DX.EXE (`-k16384`); user text in messages limited to 200 characters; `pre[]` holds two lines a word (186 passed) |
