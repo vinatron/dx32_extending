@@ -1,0 +1,7 @@
+FILE     fbtap.nc (from line 1)
+DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
+REFUSED  line 8: G84: give -tap float (the DX32 G84, plug reverse tapping with a floating tap holder) or -tap rigid (M29, a DX32 with a closed-loop spindle)
+REFUSED  line 9: G84: give -tap float (the DX32 G84, plug reverse tapping with a floating tap holder) or -tap rigid (M29, a DX32 with a closed-loop spindle)
+REFUSED  line 10: G84: give -tap float (the DX32 G84, plug reverse tapping with a floating tap holder) or -tap rigid (M29, a DX32 with a closed-loop spindle)
+STOP     fbwtapx.txt not written: see REFUSED above
+RESULT   stopped: see REFUSED/STOP above

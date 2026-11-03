@@ -455,6 +455,7 @@ static void opencond(const fbn *c, int neg)
 /* statements                                                           */
 
 static const fbs *cursta;       /* the statement being written */
+static int ntap, ntapq;         /* G84 holes written; with a dwell below the DX32 minimum */
 static int ncancel, ng28, ng28xy, ng53, ng53xy, nalarm, ncomp;
 
 /* a condition that tests a vacant variable (#0), e.g. an argument check: the evaluation ran
@@ -548,6 +549,8 @@ static int hasm(const fbs *s, double m)
 
 static int needpos, anyarc;     /* a G90 arc somewhere: keep the position in X20 Y20 Z20 */
 static int anyhole;
+static int anymulti;            /* a hole block that runs with more than one cycle */
+static char cyk[4];             /* the cycle code in force, for such blocks */
 static char cyz[4], cyr[4], cyi[4], cyq[4], cyp[4];    /* drilling: Z, R, initial level, Q, dwell */
 static int curlab;              /* the label region of the statement being written (peck loops) */
 static int nm3;                 /* G86: spindle restarted with M3 */
@@ -760,16 +763,20 @@ static void dwell(const fbs *s)
 static void hole(const fbs *s)
 {
     static const long cyc[] = { MO_C81, MO_C82, MO_C83, MO_C73, MO_C85, MO_C86, MO_C89 };
+    static const int cycode[] = { 81, 82, 83, 73, 85, 86, 89 };
+    long mk[8];
+    int tapk[8], codek[8], nk = 0, kk;
     char txt[48], fw[48], xv[48], yv[48], d[48];
-    int i, npre = 0, hx = 0, hy = 0, k, inc, nc = 0;
+    int i, npre = 0, hx = 0, hy = 0, k, inc;
     long m = s->modes, r, kr = s->krep;
     const char *rt, *zt, *ret;
     const char *rot = (m & MO_ROT) ? "X20Y20" : "";     /* the Z moves in G73 (see nc) */
     fw[0] = 0;
     inc = (m & MO_INC) != 0;
-    for (i = 0; i < 7; i++)
-        if (m & cyc[i]) nc++;
-    if (nc > 1) { fail("this block drills with more than one cycle in different passes"); return; }
+    for (i = 0; i < 7; i++)             /* the cycles it runs with, one branch each (FB2DX.md 3.19) */
+        if (m & cyc[i]) mk[nk] = (m & ~MO_CYC) | cyc[i], tapk[nk] = 0, codek[nk++] = cycode[i];
+    if (s->tap) mk[nk] = m & ~MO_CYC, tapk[nk] = 1, codek[nk++] = 84;
+    if ((m & MO_C83) && (m & MO_C73)) { fail("this block drills with G83 and with G73 in different passes"); return; }
     if ((m & MO_R98) && (m & MO_R99)) { fail("this hole runs with G98 and with G99"); return; }
     if ((m & MO_ABS) && (m & MO_INC)) { fail("this hole runs in G90 and in G91 in different passes"); return; }
     if (m & MO_MIXC) { fail("G90/G91 changed while the cycle was on: the stored R and Z would mean something else"); return; }
@@ -784,6 +791,15 @@ static void hole(const fbs *s)
         fail(X->cand & (1 << FS_HAAS) ? "G73: give the peck retract with -fparam d73= (a Haas setting, not known yet)" :
              "G73: give the peck retract with -fparam d73= (parameter 5114)");
         return;
+    }
+    if (s->tap) {                       /* G84: features/FB2DX.md 3.19 */
+        if (!X->par.tap) {
+            fail("G84: give -tap float (the DX32 G84, plug reverse tapping with a floating tap holder) or "
+                 "-tap rigid (M29, a DX32 with a closed-loop spindle)");
+            return;
+        }
+        if (s->tapfst == 3) { fail("G84 with no feed in force"); return; }
+        if (s->tapfst == 2) { fail("G84 with different feeds in different passes"); return; }
     }
     if (kr == -2) { fail("the repeat count (K/L) differs between passes"); return; }
     if (kr < 0) kr = 1;
@@ -805,12 +821,12 @@ static void hole(const fbs *s)
         int l = s->w[i].l;
         double v;
         if (l == 'G') {
-            if (whole(s->w[i].e, &v) && (v == 90 || v == 91 || v == 98 || v == 99 || v == 17 || v == 81 ||
-                v == 82 || v == 83 || v == 73 || v == 85 || v == 86 || v == 89 || v == 21 || v == 20)) {
+            if (gw(s, i, &v) && (v == 90 || v == 91 || v == 98 || v == 99 || v == 17 || v == 81 ||
+                v == 82 || v == 83 || v == 73 || v == 84 || v == 85 || v == 86 || v == 89 || v == 21 || v == 20)) {
                 if (v == 20 || v == 21) units = (int)v;
                 continue;
             }
-            if (whole(s->w[i].e, &v)) fail("G%g in a drilling block does not translate", v);
+            if (gw(s, i, &v)) fail("G%g in a drilling block does not translate", v);
             else fail("G with a variable value does not translate");
             return;
         }
@@ -840,6 +856,11 @@ static void hole(const fbs *s)
     }
     /* the cycle values first (a carrier may be among them), then the moves, all in G90 */
     for (i = 0; i < npre; i++) out("%s", pre[i]);
+    if ((m & MO_CST) && (s->tap || (m & (MO_C82 | MO_C89))) && findw(s, 'P') < 0)
+        out("%s=0.", cyp);              /* a cycle started without P has no dwell (G80 clears it on FANUC) */
+    if (anymulti)                       /* the cycle this block starts, for the blocks that branch on it */
+        for (i = 0; i < 8; i++)
+            if (findg(s, i < 7 ? cycode[i] : 84)) out("%s=%d.", cyk, i < 7 ? cycode[i] : 84);
     if ((m & MO_CST) && needpos) out("%s=Z20", cyi);     /* the initial level */
     if (inc) {
         out("G90");
@@ -863,52 +884,77 @@ static void hole(const fbs *s)
         if (hx || hy) out("G0%s%s", hx ? "X20" : "", hy ? "Y20" : "");
         out("Z21=%s", rt);
         out("G0%sZ21", rot);
-        if (m & (MO_C83 | MO_C73)) {    /* the pecks: a loop down from R */
-            const char *dp = tmp(), *dn = tmp();
-            dxnum(d, (m & MO_C83) ? X->par.d83 : X->par.d73);
-            out("%s=%s", dp, rt);
-            for (k = 0; k < nlb; k++)
-                if (lb[k].loop == 2 && lb[k].t == curlab) break;
-            lb[k].line = nln;
-            special(LN_LAB, k);
-            out("?%s<GT>%s", dp, zt);
-            out("%s=%s-%s", dn, dp, cyq);
-            out("?%s<LT>%s", dn, zt);
-            out("%s=%s!", dn, zt);
-            if (m & MO_C83) {           /* back down to the last depth, less the clearance */
-                out("?%s<LT>%s", dp, rt);
-                out("Z21=%s+%s", dp, d);
-                out("G0%sZ21!", rot);
+        if (nk > 1 && fw[0]) {          /* the feed before the branches: any of them may run first */
+            out("%s", fw);
+            fw[0] = 0;
+        }
+        for (kk = 0; kk < nk; kk++) {
+            long m = mk[kk];
+            int tk = tapk[kk];
+            if (nk > 1) out("?%s<EQ>%d.", cyk, codek[kk]);
+            if (tk) {                   /* the DX32's own G84 from R: down, reverse, dwell, out to R */
+                double f = floor(s->tapf * 1000.0 + 0.5) / 1000.0;
+                if (fabs(f - s->tapf) > 1e-9) {
+                    fail("G84 feed %g: more decimals than the DX32 takes (3)", s->tapf);
+                    return;
+                }
+                dxnum(d, f);
+                out("Z21=%s-%s", rt, zt);   /* the DX32 depth is down from where the cycle starts */
+                out("Q19=%s", cyp);         /* the dwell at both ends (P; the DX32 takes at least .05 s) */
+                if (X->par.tap == 2) out("M29");
+                out("G84X20Y20Z21F%sQ19", d);
+                out("G80");
+                if (X->par.tap == 2) out("M28");
+                ntap++;
+            if (s->tapshort) ntapq++;
+            } else if (m & (MO_C83 | MO_C73)) {    /* the pecks: a loop down from R */
+                const char *dp = tmp(), *dn = tmp();
+                dxnum(d, (m & MO_C83) ? X->par.d83 : X->par.d73);
+                out("%s=%s", dp, rt);
+                for (k = 0; k < nlb; k++)
+                    if (lb[k].loop == 2 && lb[k].t == curlab) break;
+                lb[k].line = nln;
+                special(LN_LAB, k);
+                out("?%s<GT>%s", dp, zt);
+                out("%s=%s-%s", dn, dp, cyq);
+                out("?%s<LT>%s", dn, zt);
+                out("%s=%s!", dn, zt);
+                if (m & MO_C83) {           /* back down to the last depth, less the clearance */
+                    out("?%s<LT>%s", dp, rt);
+                    out("Z21=%s+%s", dp, d);
+                    out("G0%sZ21!", rot);
+                }
+                out("Z21=%s", dn);
+                out("G1%sZ21%s", rot, fw);
+                if (m & MO_C83) out("Z21=%s", rt);
+                else out("Z21=%s+%s", dn, d);
+                out("G0%sZ21", rot);
+                out("%s=%s", dp, dn);
+                lb[k].lastjmp = nln;
+                special(LN_JMP, k);
+                out("!");
+            } else {
+                out("Z21=%s", zt);
+                out("G1%sZ21%s", rot, fw);
             }
-            out("Z21=%s", dn);
-            out("G1%sZ21%s", rot, fw);
-            if (m & MO_C83) out("Z21=%s", rt);
-            else out("Z21=%s+%s", dn, d);
+            fw[0] = 0;
+            if (m & (MO_C82 | MO_C89)) {    /* the dwell at the bottom */
+                out("Q19=%s", cyp);
+                out("G4Q19");
+                out("G4");
+            }
+            if (m & (MO_C85 | MO_C89)) {    /* feed back out to R */
+                out("Z21=%s", rt);
+                out("G1%sZ21", rot);
+            }
+            if (m & MO_C86) out("M5");      /* spindle stop at the bottom, rapid out, spindle on again */
+            out("Z21=%s", ret);
             out("G0%sZ21", rot);
-            out("%s=%s", dp, dn);
-            lb[k].lastjmp = nln;
-            special(LN_JMP, k);
-            out("!");
-        } else {
-            out("Z21=%s", zt);
-            out("G1%sZ21%s", rot, fw);
-        }
-        fw[0] = 0;
-        if (m & (MO_C82 | MO_C89)) {    /* the dwell at the bottom */
-            out("Q19=%s", cyp);
-            out("G4Q19");
-            out("G4");
-        }
-        if (m & (MO_C85 | MO_C89)) {    /* feed back out to R */
-            out("Z21=%s", rt);
-            out("G1%sZ21", rot);
-        }
-        if (m & MO_C86) out("M5");      /* spindle stop at the bottom, rapid out, spindle on again */
-        out("Z21=%s", ret);
-        out("G0%sZ21", rot);
-        if (m & MO_C86) {
-            out("M3");
-            nm3++;
+            if (m & MO_C86) {
+                out("M3");
+                nm3++;
+            }
+            if (nk > 1) out("!");
         }
         if (needpos) out("Z20=Z21");
     }
@@ -944,7 +990,7 @@ static void nc(const fbs *s)
         int z = 0, xy = 0;
         for (i = 0; i < s->nw; i++) {
             int l = s->w[i].l;
-            if (l == 'G' && whole(s->w[i].e, &v) && (v == 53 || v == 49 || v == 90 || v == 0)) {
+            if (l == 'G' && gw(s, i, &v) && (v == 53 || v == 49 || v == 90 || v == 0)) {
                 if (v == 49) ntlen++;
                 continue;
             }
@@ -964,7 +1010,7 @@ static void nc(const fbs *s)
                 continue;
             }
             if (l == 'G') {
-                if (whole(s->w[i].e, &v)) fail("G%g with G53 does not translate (only G0, G49 and G90)", v);
+                if (gw(s, i, &v)) fail("G%g with G53 does not translate (only G0, G49 and G90)", v);
                 else fail("G with a variable value with G53 does not translate");
             } else fail("%c with G53 does not translate", l);
             return;
@@ -1006,7 +1052,7 @@ static void nc(const fbs *s)
         int inc = findg(s, 91) || ((s->modes & MO_INC) && !findg(s, 90)), zero = 1;
         for (i = 0; i < s->nw; i++) {
             int l = s->w[i].l;
-            if (l == 'G' && whole(s->w[i].e, &v) && (v == 28 || v == 90 || v == 91 || v == 0 || v == 1)) continue;
+            if (l == 'G' && gw(s, i, &v) && (v == 28 || v == 90 || v == 91 || v == 0 || v == 1)) continue;
             if (l == 'M') continue;
             if (l == 'X' || l == 'Y' || l == 'Z') {
                 if (!(inc && whole(s->w[i].e, &v) && v == 0)) zero = 0;
@@ -2059,14 +2105,19 @@ int fbwrite(fbx *x, const char *path)
     else if (g20) fbrep(x, "NOTE", 0, "the program switches between G20 and G21");
 
     /* arcs: G75 (multi-quadrant) at the top; G90 arcs need the position kept in X20 Y20 Z20 */
-    needpos = anyarc = anyhole = ntlen = ntsel = ncancel = ng28 = ng28xy = ng53 = ng53xy = nfold4 = nfoldg = nsupp = nalarm = ncomp = nm3 = anyxf = nxf = 0;
+    needpos = anyarc = anyhole = anymulti = ntlen = ntsel = ntap = ntapq = ncancel = ng28 = ng28xy = ng53 = ng53xy = nfold4 = nfoldg = nsupp = nalarm = ncomp = nm3 = anyxf = nxf = 0;
     cursta = 0;
     for (k = 0; k < nins; k++)
         for (i = ins[k].s0; i < ins[k].end; i++) {
             if (x->st[i]->modes & MO_ARC) anyarc = 1;
             if ((x->st[i]->modes & MO_ARC) && (x->st[i]->modes & MO_ABS) && findw(x->st[i], 'R') < 0) needpos = 1;
-            if (x->st[i]->modes & MO_HOLE) anyhole = 1;
+            if (x->st[i]->modes & MO_HOLE) {
+                long c = x->st[i]->modes & MO_CYC;
+                anyhole = 1;
+                if ((c & (c - 1)) || (c && x->st[i]->tap)) anymulti = 1;    /* more than one cycle */
+            }
             if ((x->st[i]->modes & MO_HOLE) && (x->st[i]->modes & (MO_R98 | MO_INC))) needpos = 1;
+            if (x->st[i]->tap) needpos = 1;     /* the DX32 G84 block gets X20 Y20 */
         }
 
     for (i = 0; i < x->nst; i++)
@@ -2088,6 +2139,7 @@ int fbwrite(fbx *x, const char *path)
         alloc(cyi);
         alloc(cyq);
         alloc(cyp);
+        if (anymulti) alloc(cyk);
     }
 
     /* the variables of each program at its level */
@@ -2183,6 +2235,12 @@ int fbwrite(fbx *x, const char *path)
                                 "the evaluation saw (FBCORPUS.md 5.4): the program has no outside inputs");
     if (nsupp) fbrep(x, "NOTE", 0, "#3003/#3004 (single block and feed hold suppression) left out: the DX32 "
                      "program can be stopped anywhere");
+    if (ntapq) fbrep(x, "NOTE", 0, "G84 without P (or P below 50): the DX32 G84 dwells at least .05 s at the bottom and "
+                     "at R, where FANUC does not dwell");
+    if (ntap) fbrep(x, "NOTE", 0, X->par.tap == 1 ? "G84 written as the DX32 G84, plug reverse tapping: the "
+                    "tap needs a floating holder, and the spindle speed and feed must suit it (DX32 manual fig. 5-3) "
+                    "(-tap float)" : "G84 written as the DX32 G84 between M29 and M28, rigid tapping: only on a DX32 "
+                    "with a closed-loop spindle (-tap rigid, TENTATIVE)");
     if (ng28xy) fbrep(x, "NOTE", 0, "G28 X/Y go to the intermediate point only (-g28xy stay): the DX32 has no X/Y "
                       "reference return; check the program is safe there");
     if (ng53xy) fbrep(x, "NOTE", 0, "G53 X0/Y0 (machine zero) left out (-g28xy stay): the DX32 has no X/Y home "

@@ -1,6 +1,6 @@
 # Testing the Open Watcom builds
 
-dxsim and fb2dx are tested here with gcc and clang on Linux (`make test`: 274 passed; `make test-screen`: 157). Earlier versions
+dxsim and fb2dx are tested here with gcc and clang on Linux (`make test`: 287 passed; `make test-screen`: 157). Earlier versions
 were also compiled here with Open Watcom 1.9, and built by the owner on Windows 98 SE. Everything since
 then has not been through Watcom: fb2dx (including its 16-bit DOS changes) and the firmware fixes of
 2026-10-28/29. The Watcom tools could not be run in this session. This is the procedure for building and
@@ -20,7 +20,7 @@ It builds (compiler output in `BUILD.TXT`), stops with a message if the build fa
 
 | | Windows | 16-bit DOS |
 |---|---|---|
-| `RUNTESTS` (`tests\RESULTS.TXT`): traces, plots, fb2dx, the FANUC and Haas corpora | `274 passed, 0 failed` (`233` and a corpus `skip` line if `fanuc_macros` is not beside `macro_simulator`) | `233 passed, 0 failed`, and a `skip` line for the corpus (long file names) |
+| `RUNTESTS` (`tests\RESULTS.TXT`): traces, plots, fb2dx, the FANUC and Haas corpora | `287 passed, 0 failed` (`246` and a corpus `skip` line if `fanuc_macros` is not beside `macro_simulator`) | `246 passed, 0 failed`, and a `skip` line for the corpus (long file names) |
 | `PREVIEW` (`tests\PREVIEW.TXT`): the preview's drawing and its keys | `157 passed, 0 failed` | `157 passed, 0 failed` |
 
 It takes about 7 minutes on Windows; leave the mouse and keyboard alone while windows flash past.
@@ -77,10 +77,10 @@ RUNTESTS ..\src\DXSIM4G.EXE    DOS/4GW (DOS4GW.EXE from Watcom's BINW folder on 
 `RUNTESTS` shows the results and also writes them to `RESULTS.TXT`. Each line is `ok`, `FAIL` or
 `skip`. The last line counts them.
 
-- **Expected: `274 passed, 0 failed`.** That includes 16 plot files (SVG, HPGL, PostScript, listed in
+- **Expected: `287 passed, 0 failed`.** That includes 16 plot files (SVG, HPGL, PostScript, listed in
   `PLOTS.LST`), compared with `EXPECTED\` number by number, and 41 fb2dx runs on the FANUC macro
   corpus (`CORPUS.LST`, `../fanuc_macros`). On 16-bit DOS those 41 are skipped (they have long file
-  names), so expect `233 passed` there, with a `skip` line. They are skipped on Windows too when the
+  names), so expect `246 passed` there, with a `skip` line. They are skipped on Windows too when the
   corpus is not where `CORPUS.LST` looks for it: copy the repository's `fanuc_macros` folder next to
   `macro_simulator` (for example both on the Desktop).
 - `skip  the fb2dx tests: ..\src\FB2DX.EXE not found` with `125 passed` (and no corpus runs) means `FB2DX.EXE` was not built.
@@ -180,7 +180,7 @@ To try a script yourself: `..\src\DXSIMW CBOLT.TXT -Sk /Bnnnn -o OUT.TXT`, with 
 at each stop; `/K` is a key typed ahead while it runs, `s` SPACE, `e` ESC, `w` close the window, `r` the
 repaint check. One picture: `..\src\DXSIMW -Sa -v all CBOLT.TXT -bmp CBOLT.BMP`.
 
-**Checked here without Watcom:** MinGW builds of the same Windows programs pass `RUNTESTS.BAT` (274)
+**Checked here without Watcom:** MinGW builds of the same Windows programs pass `RUNTESTS.BAT` (287)
 and `PREVIEW.BAT` (157) under Wine, the preview on a virtual display (`make test-wine`).
 
 **"Sharing violation" on `RESULTS.TXT`:** DXTEST now opens the file only for each write and closes it

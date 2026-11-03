@@ -6,7 +6,7 @@ documents here hold the detail.
 | File | Feature | Roadmap | Status |
 |---|---|---|---|
 | `FB2DX.md` | FANUC Macro A/B to DX32 translator, all FANUC series | item 5 | **Built** (phases 0-6, `-check`); per-series cells TENTATIVE (Q6) |
-| `FBCORPUS.md` | fb2dx on the FANUC macro corpus (`../../fanuc_macros`): review, results, proposed changes | item 5 | **Done**: 13 of 41 runs translate; 5.3 waits for Q6 |
+| `FBCORPUS.md` | fb2dx on the FANUC macro corpus (`../../fanuc_macros`): review, results, proposed changes | item 5 | **Done**: 16 of 41 runs translate; 5.3 waits for Q6 |
 | `HAAS.md` | Haas programs in fb2dx (`-series haas`, `M97`, `G53`) and the Haas workbook corpus | item 5 | **In progress**: series, `M97`, `G53` built; the macro facts wait for the Haas manual |
 | `FLOW.md` | Program flow view (`-flow`, colours by caller, call map) | item 4 | **Done**: `-flow`, `-pc`, preview call stack and step over, `-map` call map |
 | `OPENQ.md` | **Open questions register**: every open question, with how to answer it (firmware trace, bench test, BXX trace); the bench session | all | kept current |

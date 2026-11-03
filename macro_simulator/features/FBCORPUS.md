@@ -14,7 +14,7 @@ the extraction and the copyright caveat. It is a test fixture: nothing here is f
 | Every complete program through the translator (`-fparam default -w ... -check`) | **done**: none translated (section 4, 2026-10-30) |
 | Regression tests: `tests/corpus.lst`, 41 checks in `RUNTESTS` | **done** |
 | fb2dx changes for the common blockers (section 5) | **5.1, 5.2, 5.4, 5.5, 5.6 done** (2026-11-03, `FB2DX.md` 3.18); 5.3 waits for `FB2DX.md` Q6 |
-| The corpus after those changes | **13 of 41 runs translate and pass `-check`** (section 4a) |
+| The corpus after those changes | **16 of 41 runs translate and pass `-check`** (section 4a) |
 
 ## 2. The corpus
 
@@ -111,19 +111,20 @@ corpus), 15 runs, and each macro that no corpus program calls, alone, 26 runs: 4
 
 ## 4a. After the changes (2026-11-03)
 
-Every run now uses `tests/smid.rsp`: `-fparam default -ftool 1 -g28 m25 -g28xy stay`, i.e. T01 in the
-spindle at the start, as the book's programs assume. Macros that a test caller makes sense for get one
+Every run now uses `tests/smid.rsp`: `-fparam default -ftool 1 -g28 m25 -g28xy stay -tap float`, i.e. T01
+in the spindle at the start, as the book's programs assume, and tapping with a floating holder (the DX32's
+plug reverse G84; the book's G84 is the conventional cycle, which needs one too). Macros that a test caller makes sense for get one
 (`tests/kc*.nc`, written for these tests and not from the book, marked so in their first comment): a
 main program with typical arguments, inside a G81 cycle where the macro positions holes. `-series` is given
 where the macro needs it (`L` repeats: 0; `IF..THEN` with `K0`: 16).
 
-**13 of 41 runs translate and pass `-check`** (none did before):
+**16 of 41 runs translate and pass `-check`** (none did before the changes):
 
 | Run | Options besides `@smid.rsp` | Result |
 |---|---|---|
-| `p044_O0001` |  | refused: G84 does not translate yet; address R does not translate yet |
-| `p045_O0002 + p045_O1001` |  | refused: L as the repeat count; G84 does not translate yet; address R does not translate yet; address L does not translate yet |
-| `p046_O0003 + p047_O1002` |  | refused: L as the repeat count; G84 does not translate yet; address R does not translate yet; address L does not translate yet |
+| `p044_O0001` |  | **translates**, `-check`: 52 end points |
+| `p045_O0002 + p045_O1001` | -series 0 | **translates**, `-check`: 52 end points |
+| `p046_O0003 + p047_O1002` | -series 0 | **translates**, `-check`: 52 end points |
 | `p054_O8001` |  | refused: address W does not translate yet; address U does not translate yet; M99 in the main program makes FANUC repeat it for ever |
 | `kc8004 + p122_O8004` |  | **translates**, `-check`: 6 end points |
 | `p151_O0011` |  | refused: axis words with no G0/G1 in force |
@@ -165,7 +166,8 @@ where the macro needs it (`L` repeats: 0; `IF..THEN` with `K0`: 16).
 
 What still stops them:
 - **G80 followed by axis words** (`G80 Z5.0`, six main programs, `O0011`-`O0017`): 5.3, waiting for FANUC Q6.
-- **G84 tapping** (`O0001`-`O0003`), `G13` (`O0031`), lathe programs (`O8001`, `O8021`): not translated.
+- `G13` (`O0031`), lathe programs (`O8001`, `O8021`): not translated. G84 tapping translates since
+  2026-11-03 (`FB2DX.md` 3.19), which, with one hole subprogram run under several cycles, opened `O0001`-`O0003`.
 - **Machine data**: `#2404`/`#2405` (offsets), `#5041` (positions), `#3001` (the clock), `#4214` (work
   offset number): no DX32 equivalent.
 - **The book's own errors** (section 3): `O8009`, `O0033`.
@@ -215,5 +217,6 @@ reports. On 16-bit DOS they are skipped (long file names).
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-03 | (this commit) | 5.1, 5.2, 5.4, 5.5, 5.6 built; test callers `tests/kc*.nc`, `tests/smid.rsp`; 13 of 41 runs translate (section 4a); three fb2dx bugs found by the corpus fixed (`FB2DX.md` 3.18) |
+| 2026-11-03 | (this commit) | G84 (`-tap float` in `smid.rsp`) and hole subprograms run under several cycles: `O0001`-`O0003` translate, 16 of 41 |
+| 2026-11-03 | ed20418 | 5.1, 5.2, 5.4, 5.5, 5.6 built; test callers `tests/kc*.nc`, `tests/smid.rsp`; 13 of 41 runs translate (section 4a); three fb2dx bugs found by the corpus fixed (`FB2DX.md` 3.18) |
 | 2026-10-30 | 4066726 | Corpus reviewed: integrity, reader, translator; source errors listed; blockers counted; changes proposed; `tests/corpus.lst` |

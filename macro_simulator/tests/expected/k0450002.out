@@ -1,10 +1,16 @@
 FILE     ../../fanuc_macros/programs/p045_O0002.nc (from line 1)
 FILE     ../../fanuc_macros/programs/p045_O1001.nc (from line 36)
-DIALECT  series a 0 6 10 15 16 0i 30i (nothing series-specific used)
-REFUSED  line 9: L as the repeat count: known for series 0, 6, 10, 15 and haas; give -series
-REFUSED  line 19: L as the repeat count: known for series 0, 6, 10, 15 and haas; give -series
-REFUSED  line 29: G84 does not translate yet
-REFUSED  line 29: address R does not translate yet
-REFUSED  line 29: address L does not translate yet
-STOP     dxtk.txt not written: see REFUSED above
-RESULT   stopped: see REFUSED/STOP above
+DIALECT  series 0 (given)
+NOTE     drilling cycles are written out as moves; cycle values in D20 D22 D23 D24 D25
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     T without M6 left out: the DX32 takes T in the M6 block
+NOTE     -ftool 1: T1 must be in the spindle when the program starts
+NOTE     G84 without P (or P below 50): the DX32 G84 dwells at least .05 s at the bottom and at R, where FANUC does not dwell
+NOTE     G84 written as the DX32 G84, plug reverse tapping: the tap needs a floating holder, and the spindle speed and feed must suit it (DX32 manual fig. 5-3) (-tap float)
+NOTE     G28 X/Y go to the intermediate point only (-g28xy stay): the DX32 has no X/Y reference return; check the program is safe there
+NOTE     G28 Z written as M25, the DX32 quill home (TENTATIVE: check that it goes where FANUC's reference point is) (-g28)
+NOTE     1 called program(s) written as DX32 macros #1-#1, nested 1 deep
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    dxtk.txt
+CHECK    dxsim reads dxtk.txt cleanly and reaches all 52 FANUC end points in order
+RESULT   ok

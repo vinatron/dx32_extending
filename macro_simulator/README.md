@@ -430,7 +430,7 @@ The series is detected from what the program uses, or given with `-series a|0|6|
 the meaning of a block depends on the series or on a machine parameter, `fb2dx` stops and says which
 option settles it (`-series`, `-fparam dpi=`, `nat=`, `is=`, `o8=`, `avar=`, `d83=`, `d73=`, or `-fparam default`
 for the factory settings; `-g28 m25|drop` and `-g28xy stay` for G28 and G53 to machine zero, `-ftool n` for the tool in the spindle at
-the start, `-fparam sup=` or `-comp dx32` for G41/G42). It never guesses. `@FILE` reads options from a file, for
+the start, `-tap float|rigid` for G84, `-fparam sup=` or `-comp dx32` for G41/G42). It never guesses. `@FILE` reads options from a file, for
 command lines longer than COMMAND.COM takes.
 
 ## Not simulated (yet)

@@ -25,7 +25,7 @@ not known, fb2dx stops and names the option that settles it. It never guesses.
 source. The book allows reproduction for educational use. All dimensions are inches (the book's tools are
 `1/2 DIA.` and so on), so `tests/haas.rsp` gives `-inch`; the programs have no G20.
 
-`tests/haas.lst` runs each program with `@haas.rsp` (`-series haas -inch -g28 m25 -g28xy stay`) and
+`tests/haas.lst` runs each program with `@haas.rsp` (`-series haas -inch -g28 m25 -g28xy stay -tap float`) and
 `-w ... -check`. Runs whose name ends in `a` add a setting fb2dx needs but Haas has not been checked for
 (section 6), as an assumption, so the rest of the translation is exercised; their results are not a claim
 about Haas. The list is part of `DXTEST` (`RUNTESTS`, `make test`); the names are 8.3, so it runs on 16-bit
@@ -71,7 +71,7 @@ DOS too.
   (`FB2DX.md` 3.18). Haas describes G28 as FANUC does (to machine zero through the given point); TENTATIVE
   until the manual is checked.
 
-## 5. Results (2026-11-03)
+## 5. Results (2026-11-03, with G84 from `FB2DX.md` 3.19)
 
 | Program | What it is | Result |
 |---|---|---|
@@ -80,9 +80,9 @@ DOS too.
 | `hw0030` | cutter compensation | refused: the G41 start-up type on Haas; with `sup=0` (`hw0030a`) it translates, 13 end points |
 | `hw0040` | cutter compensation | as `hw0030`; `hw0040a` translates, 16 end points |
 | `hw0050` | G81, G83, G82 | refused: the G83 clearance (a Haas setting) and `G82 ... P0.2` (P with a point); `hw0050a` gives the clearance and still stops at P0.2 |
-| `hw0060` | rows of holes, G81 G83 G84 | refused: the G83 clearance, `G84` tapping |
-| `hw0070` | bolt patterns | refused: `G70`/`G71`/`G72`, the G83 clearance, `G84` |
-| `hw0080` + `hw0081` | profile, drilling, a pocket, `M98 P81` | refused: the G41 start-up type, `G13`, the G83 clearance, `G84` |
+| `hw0060` | rows of holes, G81 G83 G84 | refused: the G83 clearance; with it (`hw0060a`) it translates, 387 end points, the taps as the DX32 G84 |
+| `hw0070` | bolt patterns | refused: `G70`/`G71`/`G72`, the G83 clearance |
+| `hw0080` + `hw0081` | profile, drilling, a pocket, `M98 P81` under G81, G83 and G84 | refused: the G41 start-up type, `G13`, the G83 clearance; with the first and the last assumed, only `G13` is left |
 
 ## 6. Not known yet (needs the Haas manual)
 
@@ -103,5 +103,7 @@ DOS too.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-03 | (this commit) | G53: G91 and G1 refused (in the block or G91 in force), a variable axis value refused with its own message (Copilot review) |
+| 2026-11-03 | (this commit) | Review: two `M97` local subprograms in one program (the second was not found), the same `M97` target called twice (its program was inserted twice); test `fbm97bw` |
+| 2026-11-03 | b57f24f | G84 and hole subprograms under several cycles (`FB2DX.md` 3.19): `hw0060a` translates; `-tap float` in `haas.rsp` |
+| 2026-11-03 | 0f27338 | G53: G91 and G1 refused (in the block or G91 in force), a variable axis value refused with its own message (Copilot review) |
 | 2026-11-03 | 6427caf | Document created. `-series haas` (detected by `M97`), `M97` local subprograms, `G53` to machine zero, P with a point refused; the workbook's 9 programs as `tests/haas.lst`; tests `fbm97w`, `fbm97x`, `fbg53x` |

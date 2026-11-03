@@ -16,6 +16,7 @@ static const char *const usage[] = {
     "  -inch | -mm      the unit system when the program has no G20/G21",
     "  -bdel on|off     the block delete switch, for programs with / blocks",
     "  -g28 m25|drop    G28 Z: the DX32 quill home (M25), or leave it out (after any intermediate point)",
+    "  -tap float|rigid G84: the DX32 G84 with a floating tap holder, or rigid tapping with M29/M28",
     "  -g28xy stay      G28 X/Y: go to the intermediate point only (the DX32 has no X/Y reference return)",
     "  -ftool n         the tool in the spindle when the program starts (for G43 H / G41 D before any M6)",
     "  -comp dx32       G41/G42 with FANUC start-up type B: accept the DX32's lead-in (FB2DX.md 3.15)",
@@ -113,14 +114,18 @@ static void dxpath(char *out, const char *argv0)
    COMMAND.COM cuts a command line at 127 characters, which the corpus tests' options exceed */
 static int atfile(int *pargc, char ***pargv)
 {
-    int i, n = 0, cap = *pargc + 64;
+    int i, n = 0, cap = *pargc + 256;
     char **nv = (char **)fbmalloc((unsigned)(cap * sizeof(char *)));
     for (i = 0; i < *pargc; i++) {
         const char *a = (*pargv)[i];
         FILE *fp;
         char tok[260];
         if (i == 0 || a[0] != '@') {
-            if (n < cap - 1) nv[n++] = (*pargv)[i];
+            if (n >= cap - 1) {
+                fprintf(stderr, "fb2dx: too many options (at most 256 from @ files)\n");
+                return 0;
+            }
+            nv[n++] = (*pargv)[i];
             continue;
         }
         fp = fopen(a + 1, "r");
@@ -128,11 +133,15 @@ static int atfile(int *pargc, char ***pargv)
             fprintf(stderr, "fb2dx: cannot read %s\n", a + 1);
             return 0;
         }
-        while (fscanf(fp, "%259s", tok) == 1)
-            if (n < cap - 1) {
-                nv[n] = (char *)fbmalloc((unsigned)(strlen(tok) + 1));
-                strcpy(nv[n++], tok);
+        while (fscanf(fp, "%259s", tok) == 1) {
+            if (n >= cap - 1) {
+                fprintf(stderr, "fb2dx: too many options in %s (at most 256 from @ files)\n", a + 1);
+                fclose(fp);
+                return 0;
             }
+            nv[n] = (char *)fbmalloc((unsigned)(strlen(tok) + 1));
+            strcpy(nv[n++], tok);
+        }
         fclose(fp);
     }
     nv[n] = 0;
@@ -194,9 +203,17 @@ int main(int argc, char **argv)
             }
             x->par.comp = 1;
         } else if (!strcmp(a, "-ftool") && i + 1 < argc) {
-            x->par.ftool = atoi(argv[++i]);
-            if (x->par.ftool < 0) {
-                fprintf(stderr, "fb2dx: -ftool n, n >= 0\n");
+            a = argv[++i];
+            x->par.ftool = strlen(a) <= 4 ? atoi(a) : -1;     /* tool numbers to 9999 */
+            if (x->par.ftool < 0 || strspn(a, "0123456789") != strlen(a) || !a[0]) {
+                fprintf(stderr, "fb2dx: -ftool n, n from 0 to 9999\n");
+                return 1;
+            }
+        } else if (!strcmp(a, "-tap") && i + 1 < argc) {
+            a = argv[++i];
+            x->par.tap = !strcmp(a, "float") ? 1 : !strcmp(a, "rigid") ? 2 : -1;
+            if (x->par.tap < 0) {
+                fprintf(stderr, "fb2dx: -tap float or rigid\n");
                 return 1;
             }
         } else if (!strcmp(a, "-g28xy") && i + 1 < argc) {

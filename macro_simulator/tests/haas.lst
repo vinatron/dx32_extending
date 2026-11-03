@@ -13,5 +13,6 @@ hw0040a  haas/hw0040.nc @haas.rsp -fparam sup=0 -w dxtk.txt -check
 hw0050   haas/hw0050.nc @haas.rsp -w dxtk.txt -check
 hw0050a  haas/hw0050.nc @haas.rsp -fparam d83=.05 -w dxtk.txt -check
 hw0060   haas/hw0060.nc @haas.rsp -w dxtk.txt -check
+hw0060a  haas/hw0060.nc @haas.rsp -fparam d83=.05 -w dxtk.txt -check
 hw0070   haas/hw0070.nc @haas.rsp -w dxtk.txt -check
 hw0080   haas/hw0080.nc haas/hw0081.nc @haas.rsp -w dxtk.txt -check

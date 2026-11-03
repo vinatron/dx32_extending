@@ -1,0 +1,11 @@
+FILE     fbmcyc.nc (from line 1)
+DIALECT  series 16 (given)
+NOTE     drilling cycles are written out as moves; cycle values in D20 D22 D23 D24 D25
+NOTE     G43/G49 left out: the DX32 applies the tool length of the tool in the spindle from its table (TENTATIVE)
+NOTE     -ftool 1: T1 must be in the spindle when the program starts
+NOTE     G84 written as the DX32 G84, plug reverse tapping: the tap needs a floating holder, and the spindle speed and feed must suit it (DX32 manual fig. 5-3) (-tap float)
+NOTE     1 called program(s) written as DX32 macros #1-#1, nested 1 deep
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwmcyc.txt
+CHECK    dxsim reads fbwmcyc.txt cleanly and reaches all 32 FANUC end points in order
+RESULT   ok

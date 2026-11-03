@@ -1,0 +1,9 @@
+FILE     fbm97b.nc (from line 1)
+DIALECT  series haas (M97 at line 4)
+NOTE     G0 with Z and X/Y: the DX32 moves Z first up or last down, FANUC all at once
+NOTE     2 called program(s) written as DX32 macros #1-#2, nested 1 deep
+NOTE     the output needs BOSS 4-7 compatibility mode off
+WROTE    fbwm97b.txt
+NOTE     -check: dxsim: L11     WARN  feed move with no M3/M4 programmed: the spindle must already be on, or the control stops with SPINDLE NOT ON CANNOT CUT
+CHECK    dxsim reads fbwm97b.txt cleanly and reaches all 6 Haas end points in order (dxsim warnings above)
+RESULT   ok

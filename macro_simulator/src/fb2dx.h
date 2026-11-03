@@ -51,6 +51,7 @@ typedef struct fbpar {
     int units;      /* 20 inch, 21 metric, 0 unknown (-inch/-mm) */
     int dflt;       /* -fparam default given */
     int g28;        /* -g28: 0 not given, 1 m25 (quill home), 2 drop */
+    int tap;        /* -tap: 0 not given, 1 float (DX32 plug reverse tapping), 2 rigid (M29) */
     int g28xy;      /* -g28xy stay: G28 X/Y go to the intermediate point only */
     int ftool;      /* -ftool: the tool in the spindle at the start; -1 not given */
     int comp;       /* -comp dx32: the DX32's own G41/G42 lead-in is accepted for start-up type B */
@@ -130,6 +131,10 @@ typedef struct fbs {
     char *cmt;          /* the first comment in the block, or 0 (alarm messages) */
     int vtest;          /* its condition tests a vacant variable (#0, argument checks) */
     long ctrue, cfalse; /* how often its condition held / did not (IF, WHILE) */
+    int tap;            /* a G84 (tapping) hole */
+    double tapf;        /* its feed, as the evaluation saw it in force; */
+    int tapfst;         /* 0 not run, 1 always tapf, 2 more than one value, 3 no feed in force */
+    int tapshort;       /* ran with a dwell (P) below .05 s, which the DX32 G84 lengthens to .05 s */
     double sysv;        /* #n = #4xxx (modal information): the value read; */
     int syst;           /* 0 not run, 1 always sysv, 2 more than one value */
 } fbs;

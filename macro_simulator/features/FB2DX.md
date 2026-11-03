@@ -637,7 +637,7 @@ What typical FANUC jobs contain, beyond the phases above:
   - G86: feed in, M5, rapid out, then M3 (TENTATIVE: FANUC restarts the spindle in the direction it had).
 
   Then G98/G99 as for the other cycles.
-- **Still refused:** G84/G74 tapping (the spindle has to reverse in step with the feed), G76/G87/G88.
+- **Still refused:** G74 (left-hand tapping), G76/G87/G88. G84 translates since 3.19.
 
 ### 3.17 Rotation and local shift (G68, G69, G52)
 
@@ -702,6 +702,38 @@ What typical FANUC jobs contain, beyond the phases above:
   - two forward jumps to one label, where a later jump crosses them, made an exit-flag region that never
     closed ("internal: a ? without a !");
   - a drilling block with `K0`/`L0` (no hole there) dropped its `F`, so the macro's holes had no feed.
+
+### 3.19 Tapping (G84) and hole subprograms under several cycles
+
+- **G84** is written as the DX32's own G84, not as moves: the spindle has to reverse in step with the feed,
+  which only the control's cycle does. The DX32 G84 (cycle text 0x274d2-0x27538, traced in dxsim) feeds
+  down from where it starts with the spindle forward (M13), reverses (M14), dwells Q1 (at least .05 s),
+  feeds back out to the start, reverses again and dwells Q2. FANUC's conventional G84 does the same from R:
+  feed to Z, dwell P, spindle reverse, feed out to R, spindle forward. So each hole is written as: the move
+  to X Y and to R as for the other cycles, then `Z21=` R minus Z (the DX32 depth is positive downwards),
+  `Q19=` P, `G84X20Y20Z21F..Q19`, `G80`, and the move to the return level (G98/G99).
+- **`-tap float|rigid`** is required, because the program does not say how the machine taps:
+  - `float`: the DX32 G84 as it is, plug reverse tapping, which needs a floating tap holder (DX32 manual,
+    "G84 Tapping Cycle"; speeds and feeds from its fig. 5-3);
+  - `rigid`: the same between `M29` and `M28`, rigid tapping, only on a DX32 with a closed-loop spindle
+    (TENTATIVE: not checked on a machine).
+- **The feed** of the DX32 G84 comes from its own block, so fb2dx writes the FANUC feed in force at the hole
+  (F is modal on FANUC), as the evaluation saw it; a feed that differs between passes, or none, is refused.
+- **P** (the dwell) is cleared when a G82, G89 or G84 cycle starts without one, as FANUC's G80 clears the
+  drilling data; before, a G84 after a G82 kept the G82's dwell.
+- **One hole block under several cycles.** A subprogram of hole positions called once under G81, once
+  under G82 and once under G84 (Smid's `O1001`, the Haas workbook's `O00081`) used to be refused. Now the
+  block where a cycle starts sets a variable to its G code, and a hole block that ran under more than one
+  cycle is written once per cycle, each inside `?var<EQ>code. ... !`. The feed is written before the
+  branches. G83 and G73 in the same block are still refused (one peck loop label per block). The return
+  level must still be the same in every pass (G98 or G99): a subprogram that changes it on its last hole
+  makes its first hole differ between calls, and is refused.
+- **The DX32 G84 dwells at least .05 s** at the bottom and at R (`?Q1<LT>0.05` in its text). A FANUC G84
+  without P, or with P below 50, does not dwell; the tool path is the same, so this is written with a NOTE
+  rather than refused (found in review).
+- `G#n` folded to 84, 28 or 53 (FB2DX.md 3.18) is taken in the drilling, G28 and G53 blocks too.
+- Tests: `fbtapw` (float, `-check`), `fbtapr` (rigid), `fbtapx` (no `-tap`), `fbmcyw` (one subprogram under
+  G81, G82 and G84, `-check`), `fbfoldgw` (`G#1` = 84, 28 and 53).
 
 ## 4. Errors and warnings (the report)
 
@@ -808,7 +840,10 @@ output.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-03 | (this commit) | Haas (`HAAS.md`): `-series haas`, `M97`, `G53` to machine zero for every series, P with a decimal point refused (was read as ms) |
+| 2026-11-03 | (this commit) | Copilot review: a NOTE for the DX32 G84's .05 s minimum dwell; folded `G#n` taken by the drilling, G28 and G53 blocks; `@FILE` no longer drops the options after it; `-ftool` up to 9999 (an overflowing number was read as 0) |
+| 2026-11-03 | 5782cd0 | Review fixes: `M97` with two local subprograms or a target called twice (`HAAS.md`); `@FILE` with more than 64 options and `-ftool` with a non-number are errors instead of being ignored |
+| 2026-11-03 | b57f24f | G84 tapping as the DX32 G84 (`-tap float|rigid`), hole blocks under several cycles branch on the cycle code, P cleared at a cycle start (section 3.19) |
+| 2026-11-03 | 6427caf, 0f27338 | Haas (`HAAS.md`): `-series haas`, `M97`, `G53` to machine zero for every series, P with a decimal point refused (was read as ms) |
 | 2026-11-03 | ed20418, 81452cc | FANUC corpus proposals 5.1, 5.2, 5.4, 5.5, 5.6 (section 3.18): `-ftool`, the spindle tool kept apart from `T`, G28 through an intermediate point and `-g28xy stay`, modal information and `G#n`/`S#n` folded, `#3003`/`#3004` left out, `@FILE`; fixes for full circles without an end point, two jumps to one label, K0 dropping F; test `fbg28` |
 | 2026-10-29 | 56bb621 | Q2, Q3, Q4 answered from the firmware (LSR unsigned; G70/G71 a flag only; R arcs always ≤ 180°, R's sign ignored) |
 | 2026-10-29 | cf75c34 | Z moves under G68 (and holes' Z moves) get `X20Y20`: the DX32 transforms a G73 block only with an X or Y word (`OPENQ.md` L10); test `fbrotdw` |

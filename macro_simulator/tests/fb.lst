@@ -48,4 +48,10 @@ fbg28w   fbg28    @smid.rsp -w fbwg28.txt -check
 fbg28x   fbg28    -fparam default -w fbwg28x.txt
 fbm97w   fbm97    -inch -g28 m25 -w fbwm97.txt -check
 fbm97x   fbm97    -series 16 -inch -g28 m25 -w fbwm97x.txt
+fbm97bw  fbm97b   -inch -w fbwm97b.txt -check
 fbg53x   fbg53    -g28 m25 -w fbwg53x.txt
+fbtapw   fbtap    -fparam default -ftool 1 -tap float -w fbwtap.txt -check
+fbtapr   fbtap    -fparam default -ftool 1 -tap rigid -w fbwtapr.txt -check
+fbtapx   fbtap    -fparam default -ftool 1 -w fbwtapx.txt
+fbfoldgw fbfoldg  -fparam default -ftool 1 -tap float -g28 m25 -w fbwfoldg.txt -check
+fbmcyw   fbmcyc   -series 16 -fparam default -ftool 1 -tap float -w fbwmcyc.txt -check
