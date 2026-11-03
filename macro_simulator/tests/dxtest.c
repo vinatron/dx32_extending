@@ -68,15 +68,22 @@ static int ncov;
 
 /* the results: stdout, or the -o file. DXTEST opens that file itself, so the programs it starts
    do not inherit it (a batch file's > RESULTS.TXT stayed locked on Windows 98 after the run) */
-static FILE *rep;
+/* -o FILE: the results file.  It is opened, appended to and closed on every
+   write, so no handle to it is open while DXSIM or FB2DX run.  On Windows 98 a
+   handle held across system() is inherited by COMMAND.COM and its children, and
+   one that outlives them leaves the file locked ("Sharing violation"). */
+static const char *rep;
 
 static void say(const char *fmt, ...)
 {
     va_list ap;
+    FILE *f = rep ? fopen(rep, "a") : stdout;
+    if (!f) f = stdout;
     va_start(ap, fmt);
-    vfprintf(rep ? rep : stdout, fmt, ap);
+    vfprintf(f, fmt, ap);
     va_end(ap);
-    fflush(rep ? rep : stdout);
+    if (f != stdout) fclose(f);
+    else fflush(stdout);
 }
 
 static void check(int ok, const char *what)
@@ -1213,11 +1220,13 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "-sc") && i + 1 < argc) sc = argv[++i];
         else if (!strcmp(argv[i], "-bmp")) bmp = 1;
         else if (!strcmp(argv[i], "-o") && i + 1 < argc) {
-            rep = fopen(argv[++i], "w");
-            if (!rep) {
+            FILE *f = fopen(argv[++i], "w");
+            if (!f) {
                 printf("dxtest: cannot write %s\n", argv[i]);
                 return 2;
             }
+            fclose(f);
+            rep = argv[i];
             printf("dxtest: running, results in %s\n", argv[i]);
         }
         else dxsim = argv[i];
@@ -1227,7 +1236,6 @@ int main(int argc, char **argv)
         screens(sc, bmp);
         say("%d passed, %d failed%s\n", nok, nfail, update ? " (expected files rewritten)" : "");
         if (rep) {
-            fclose(rep);
             printf("%d passed, %d failed\n", nok, nfail);
         }
         return nfail ? 1 : 0;
@@ -1314,7 +1322,6 @@ int main(int argc, char **argv)
 
     say("%d passed, %d failed%s\n", nok, nfail, update ? " (expected files rewritten)" : "");
     if (rep) {
-        fclose(rep);
         printf("%d passed, %d failed\n", nok, nfail);
     }
     return nfail ? 1 : 0;

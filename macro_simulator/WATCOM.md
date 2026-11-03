@@ -181,6 +181,11 @@ repaint check. One picture: `..\src\DXSIMW -Sa -v all CBOLT.TXT -bmp CBOLT.BMP`.
 **Checked here without Watcom:** MinGW builds of the same Windows programs pass `RUNTESTS.BAT` (252)
 and `PREVIEW.BAT` (157) under Wine, the preview on a virtual display (`make test-wine`).
 
+**"Sharing violation" on `RESULTS.TXT`:** DXTEST now opens the file only for each write and closes it
+straight away, so no program it starts can inherit a handle to it. If Windows 98 still reports the
+file locked, a DXSIM32 or FB2DX from an earlier run is probably still running: close the console
+windows (or restart), then run `type tests\RESULTS.TXT`.
+
 ## 6. What to send back
 
 Post a comment on PR #5 with:
