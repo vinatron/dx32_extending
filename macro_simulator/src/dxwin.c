@@ -309,6 +309,7 @@ long dxwcheck(void)
 {
     HWND top;
     HDC dc;
+    HRGN rg;
     POINT o;
     long bad = 0;
     int x, y;
@@ -326,12 +327,16 @@ long dxwcheck(void)
     pump();
     UpdateWindow(wnd);
     dc = GetDC(wnd);
+    SelectClipRgn(mem, NULL);           /* GetPixel gives CLR_INVALID outside the clip: the status lines */
     for (y = 0; y < H; y += 2)
         for (x = 0; x < W; x += 2) {
             if (o.x + x < 0 || o.x + x >= sw || o.y + y < 0 || o.y + y >= sh) continue;   /* off the desktop */
             if (nearest(GetPixel(dc, x, y)) != nearest(GetPixel(mem, x, y))) bad++;
         }
     ReleaseDC(wnd, dc);
+    rg = CreateRectRgn(clip.left, clip.top, clip.right, clip.bottom);
+    SelectClipRgn(mem, rg);
+    DeleteObject(rg);
     SetWindowPos(wnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     return bad;
 }

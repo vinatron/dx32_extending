@@ -77,7 +77,16 @@ void fbrep(fbx *x, const char *kind, int line, const char *fmt, ...)
     }
 }
 
-/* dxsim next to this program: the same directory, DXSIM.EXE (or DXSIM32.EXE) on DOS/Windows */
+/* dxsim next to this program: the same directory; on Windows DXSIM32.EXE, else DXSIM.EXE; on DOS
+   DXSIM.EXE, else DXSIM32.EXE (both may be there after building both, and a Windows program should
+   not start the 16-bit one) */
+#if defined(__NT__) || defined(_WIN32)
+#define DXFIRST "DXSIM32.EXE"
+#define DXOTHER "DXSIM.EXE"
+#else
+#define DXFIRST "DXSIM.EXE"
+#define DXOTHER "DXSIM32.EXE"
+#endif
 static void dxpath(char *out, const char *argv0)
 {
     const char *b = argv0, *p;
@@ -90,10 +99,10 @@ static void dxpath(char *out, const char *argv0)
     out[b - argv0] = 0;
     if (n > 4 && (!strcmp(argv0 + n - 4, ".EXE") || !strcmp(argv0 + n - 4, ".exe"))) {
         size_t d = strlen(out);
-        strcat(out, "DXSIM.EXE");
+        strcat(out, DXFIRST);
         fp = fopen(out, "rb");
         if (fp) fclose(fp);
-        else strcpy(out + d, "DXSIM32.EXE");
+        else strcpy(out + d, DXOTHER);
     } else strcat(out, "dxsim");
 }
 
