@@ -3,7 +3,7 @@
 Symptom: after launching NC-VIEW (runs `NC`) or WINDOWS (runs `WIN`) from BXX and coming back,
 **9 EXIT TO DOS** runs that same program again instead of leaving you at the DOS prompt.
 
-Status: mechanism CONFIRMED by disassembly of both BXX builds. Patch
+Status: mechanism CONFIRMED by disassembly of both BXX builds. On the machine the real cause is RUN.BAT (see the last section), and the fix is a batch-file edit. The optional patch
 (`tools/patch_bxx_exit_dos.py`) verified by disassembly only. It has not been run on the machine yet.
 
 Addresses below are **file offsets** in the EXE, header included. For 4.79 the code is in Ghidra
@@ -88,15 +88,53 @@ python3 tools/patch_bxx_exit_dos.py BXX.EXE BXX_NEW.EXE      # then copy over BX
 3. If Exit to DOS now brings BXX straight back up, the outer batch file loops on its own. Check
    AUTOEXEC.BAT and the batch file that starts BXX.
 
-## Alternative without patching BXX
+## Actual cause on the machine: Windows 98 Setup disabled the DEL in RUN.BAT (CONFIRMED)
 
-Change the batch file that starts BXX so that a NEXT.BAT left over from an earlier run can't be used:
+AUTOEXEC.BAT runs `RUN`, and RUN.BAT is the loop that runs BXX and then NEXT.BAT:
 
 ```bat
-if exist C:\NEXT.BAT del C:\NEXT.BAT
-BXX
-if exist C:\NEXT.BAT call C:\NEXT.BAT
+@ECHO OFF
+:LOOP
+BDX
+FONTLOAD \DOS\BXT.FNT
+ECHO Loading Operator Interface...
+BXX %1
+IF NOT EXIST C:\NEXT.BAT GOTO SKIP
+CALL C:\NEXT.BAT
+rem - By Windows Setup - DEL C:\NEXT.BAT     <- the original line, commented out by Win98 Setup
+GOTO LOOP
+:SKIP
 ```
 
-This only works if BXX is started from that one place. If EZ-VIEW.BAT and the others restart BXX
-directly, each of them needs the `del` line too. The binary patch is independent of how the batch files are laid out.
+`EZ-VIEW.BAT` is just `NC`, and `EZ-WNDO.BAT` is just `WIN`. They return to RUN, which loops back to BXX.
+BXX was designed so that each run either writes a fresh NEXT.BAT (an app launch) or writes nothing
+(Exit to DOS). RUN.BAT then has to delete the file once it has run it. Without the `DEL`, NEXT.BAT
+lasts forever, so Exit to DOS finds it, runs the old app and loops back into BXX. Leaving BXX
+would then always relaunch the last app, which matches the symptom.
+
+**Fix (no EXE patch needed):** use `dos_batch/RUN.BAT`. It has DOS line endings, the `DEL` is
+restored, and it adds one line before `:LOOP` that clears any NEXT.BAT left over from an
+earlier session:
+
+```bat
+@ECHO OFF
+IF EXIST C:\NEXT.BAT DEL C:\NEXT.BAT
+:LOOP
+BDX
+FONTLOAD \DOS\BXT.FNT
+ECHO Loading Operator Interface...
+BXX %1
+IF NOT EXIST C:\NEXT.BAT GOTO SKIP
+CALL C:\NEXT.BAT
+DEL C:\NEXT.BAT
+GOTO LOOP
+:SKIP
+```
+
+The `DEL` comes after `CALL` returns, so NEXT.BAT is no longer running when it is deleted. The 4.79 comm-failure path writes
+a one-line NEXT.BAT, so the loop runs that blank line, deletes the file and restarts BXX, which is
+what "Hit any key to restart machine" implies. If Windows Setup runs again, check whether it has
+commented the line out again.
+
+With RUN.BAT fixed, the BXX patch above is optional. It only helps if NEXT.BAT can be left over by
+something other than this loop.
